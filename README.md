@@ -1,55 +1,42 @@
 # certreg — реєстр і перевірка сертифікатів
 
-Простий PHP‑застосунок для ведення реєстру, генерації JPEG‑сертифікатів із QR‑кодом та публічної перевірки дійсності сертифіката за детермінованим HMAC‑хешем.
+Простий PHP‑застосунок для ведення реєстру слухачів, генерації JPEG‑сертифікатів із QR‑кодом та публічної перевірки дійсності сертифіката за детермінованим HMAC‑SHA256 хешем.
 
 Протестовано на Ubuntu 22.04 LTS (nginx + php-fpm + MySQL).
 
 ## Що всередині
+- Чистий PHP без фреймворків
+- PDO (MySQL), сесії, CSRF захист форм
+- Генерація QR (вбудована `lib/phpqrcode.php`)
+- Графічна генерація сертифіката (GD + TrueType шрифт)
+- Детермінований HMAC-SHA256 хеш для перевірки достовірності
+- Каталог `files/certs` для збереження згенерованих JPEG
+- Налаштовувані координати тексту та QR у `config.php`
 
 ## Вимоги і пакети
+Мінімум: Linux (Ubuntu 22.04), nginx, PHP 8.3 (або новіше), MySQL/MariaDB, git. Рекомендовано Certbot для TLS.
 
-## Безпека SSH зʼєднань
-
-Рекомендовано одразу захистити доступ до сервера:
-
-1. Заборонити вхід root напряму та паролі:
+Встановлення (узгоджені версії модулів під 8.3):
 ```bash
-sudo nano /etc/ssh/sshd_config
+sudo apt update
+sudo apt install -y nginx php8.3-fpm php8.3-gd php8.3-mbstring php8.3-xml php8.3-mysql mysql-server git
+sudo phpenmod gd mbstring
+sudo systemctl restart php8.3-fpm
+sudo apt install -y certbot python3-certbot-nginx  # TLS
 ```
-Змініть/додайте:
-```
-PermitRootLogin no
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-ChallengeResponseAuthentication no
-PubkeyAuthentication yes
-AllowUsers youradminuser
-```
-Перевірка й перезапуск:
-```bash
-sudo sshd -t && sudo systemctl restart ssh
-```
+Перевірте: `php -m | grep -E 'gd|pdo_mysql|mbstring'`.
 
-2. Генерація ключів (ed25519):
-```bash
-ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_certreg -C "admin@certreg"
-```
-Публічний ключ додайте до `~youradminuser/.ssh/authorized_keys` (права каталогу 700, файл 600). Для апаратного ключа (YubiKey) – використовуйте `ssh-keygen -K` / `yubico-piv-tool` залежно від режиму.
+## Швидкий огляд розгортання (TL;DR)
+1. Встановити пакети (вище).
+2. Налаштувати MySQL: створити БД/користувача/таблиці.
+3. Клонувати репозиторій у `/var/www/certreg`.
+4. Створити `config.php` з `config.php.example`.
+5. Права: код read-only, `files/certs` запис для `www-data`, `config.php` → `root:www-data 640`.
+6. Nginx конфіг (HTTP), потім `certbot --nginx`.
+7. Додати адміністратора (INSERT у `creds`).
+8. Перевірити `/checkCert?hash=...` та вхід до адмінки.
 
-3. (Опційно) Fail2ban:
-```bash
-sudo apt install -y fail2ban
-```
-
-4. Обмеження UFW для SSH (наприклад конкретна підмережа):
-```bash
-sudo ufw allow from 203.0.113.0/24 to any port 22 proto tcp
-sudo ufw delete allow OpenSSH  # якщо був загальний
-```
-
-## Безпека
-
-У цьому розділі узагальнено застосовані та рекомендовані заходи захисту.
+---
 
 ### 1. Захист конфігурації та секретів
 | Міра | Стан | Деталі |
@@ -161,6 +148,8 @@ location ~ ^/(?!checkCert$).*\.php$ { return 403; }
 
 ### Підсумок
 Комбінація файлових прав (read-only код, ізольований writable каталог), захисту сесій, валідації вхідних параметрів, обмеження IP + Basic Auth, TLS + HSTS, закриття зайвих маршрутів і rate limiting суттєво знижує площу атаки та спрощує аудит.
+
+---
 
 На чистій Ubuntu 22.04 встановіть веб‑стек і залежності. Нижче наведені команди, якими користувалися (зверніть увагу на версії):
 
@@ -437,5 +426,53 @@ Certbot оновить vhost на HTTPS (додасть `listen 443 ssl`, шля
 - Якщо шаблон або шрифт відсутні, генератор поверне помилку 500. Перевірте `template_path` і `font_path` у `config.php`.
 - Хеш формується через `hash_hmac('sha256', ...)` з сіллю з `config.php` — збережіть сіль у таємниці.
 - Для додаткового харденінгу можна закрити виконання PHP поза коренем додатку та віддавати статику з окремого локації.
+
+## Безпека SSH зʼєднань
+
+1. Заборонити вхід root та паролі:
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+```
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PubkeyAuthentication yes
+AllowUsers youradminuser
+```
+Перезапуск:
+```bash
+sudo sshd -t && sudo systemctl restart ssh
+```
+2. Генерувати ключі:
+```bash
+ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_certreg -C "admin@certreg"
+```
+3. Fail2ban (опційно): `sudo apt install -y fail2ban`
+4. Обмежити SSH у UFW на підмережу: `sudo ufw allow from 203.0.113.0/24 to any port 22 proto tcp`
+
+## Безпека (узагальнення та рекомендації)
+
+Повтор винесених кроків для зручності аудитів:
+- `config.php` з правами `640` (`root:www-data`)
+- Валідація `hash` формату (захист від шумових запитів)
+- CSRF токени у формах POST
+- Власне імʼя сесії, строгий режим сесій, `httponly`, `samesite=Lax`
+- Обмеження непривілейованих маршрутів (корінь → 403)
+- Можливість обфускації адмінки (`/butterfly`) + IP allowlist + Basic Auth
+- HSTS, security headers, rate limiting для `/checkCert`
+- Read-only код, вузький writable каталог для сертифікатів
+- TLS сертифікати й регулярне автооновлення Certbot
+- SSH: заборона root/паролів, тільки ключі, опційно fail2ban
+
+Додатково рекомендовано (ще не впроваджено за замовчуванням):
+- Перейменування `admin.php` → `admin_portal.php` та проксі через прихований URI
+- CSP політика після чистки inline‑стилів/скриптів
+- Перехід критичних мутацій на POST + окремі контролери
+- 2FA / WebAuthn для адміністраторів через окремий шлюз / reverse proxy
+
+---
+Останнє оновлення безпекових рекомендацій: див. git history цього файлу.
 
 
