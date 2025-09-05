@@ -80,6 +80,9 @@ main{flex:1}
 }
 .card__title{text-align:center;margin:2px 0 18px}
 
+/* Add extra space before centered actions inside cards (e.g. download button) */
+.card .text-center{margin-top:18px}
+
 .form label{display:block;margin-bottom:10px}
 .form input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px}
 .form-inline{display:flex;gap:10px;flex-wrap:wrap}

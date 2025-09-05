@@ -35,9 +35,9 @@ if ($row) {
             $fileUrl = '/files/certs/' . rawurlencode($fileName);
             if (is_file($filePath)):
             ?>
-              <p><a class="btn btn-primary" href="<?= htmlspecialchars($fileUrl) ?>" download>Завантажити сертифікат</a></p>
+              <p class="text-center"><a class="btn btn-primary" href="<?= htmlspecialchars($fileUrl) ?>" download>Завантажити сертифікат</a></p>
             <?php else: ?>
-              <p class="card__meta">Сертифікат ще не згенеровано.</p>
+              <p class="card__meta text-center">Сертифікат ще не згенеровано.</p>
             <?php endif; ?>
           </div>
         </section>
