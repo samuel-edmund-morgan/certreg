@@ -40,6 +40,10 @@ $font = $cfg['font_path'];
 if (!is_file($font)) { imagedestroy($im); http_response_code(500); exit('Відсутній шрифт'); }
 
 imagettftext($im, $coords['name']['size'],   $coords['name']['angle'],   $coords['name']['x'],   $coords['name']['y'],   $black, $font, $row['name']);
+// Render registration id on the certificate using coords from config
+if (isset($coords['id'])) {
+  imagettftext($im, $coords['id']['size'], $coords['id']['angle'], $coords['id']['x'], $coords['id']['y'], $black, $font, (string)$id);
+}
 imagettftext($im, $coords['score']['size'],  $coords['score']['angle'],  $coords['score']['x'],  $coords['score']['y'],  $black, $font, "Оцінка: ".$row['score']);
 imagettftext($im, $coords['course']['size'], $coords['course']['angle'], $coords['course']['x'], $coords['course']['y'], $black, $font, "Курс: ".$row['course']);
 imagettftext($im, $coords['date']['size'],   $coords['date']['angle'],   $coords['date']['x'],   $coords['date']['y'],   $black, $font, "Дата: ".$row['date']);

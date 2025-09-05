@@ -100,8 +100,8 @@ $rows = $st->fetchAll();
     <table class="table">
       <thead>
         <tr>
-          <th>Реєстраційний номер</th>
-          <th></th>Ім'я</th>
+          <th>Реєстраційний<br>номер</th>
+          <th>Ім'я</th>
           <th>Оцінка</th>
           <th>Курс</th>
           <th>Дата</th>
