@@ -8,7 +8,7 @@
   <title><?= htmlspecialchars($cfg['site_name']) ?></title>
   <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
-<body>
+<body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?>>
 <header class="topbar">
   <div class="topbar__inner">
     <div class="brand">

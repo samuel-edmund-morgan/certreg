@@ -1,3 +1,6 @@
+body.admin-page .alert-banner {
+  display: none !important;
+}
 :root{
   --bg:#ffffff; --text:#0f172a; --muted:#475569; --primary:#102d4e;
   --card:#ffffff; --border:#e2e8f0; --accent:#2563eb; --danger:#dc2626;
