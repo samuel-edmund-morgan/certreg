@@ -13,7 +13,7 @@
   <div class="topbar__inner">
     <div class="brand">
       <div class="logo" style="background-image:url('<?= htmlspecialchars($cfg['logo_path']) ?>')"></div>
-      <div class="title"><?= htmlspecialchars($cfg['site_name']) ?></div>
+  <div class="title"><?= nl2br(htmlspecialchars($cfg['site_name'])) ?></div>
     </div>
     <nav class="topbar__actions">
       <?php require_once __DIR__.'/auth.php'; ?>
