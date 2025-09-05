@@ -15,6 +15,7 @@ if (!is_admin_logged()):
         <div class="alert alert-error">Невірні облікові дані або порожні поля.</div>
       <?php endif; ?>
       <form class="form" method="post" action="/login.php" autocomplete="off">
+        <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
         <label>Логін
           <input type="text" name="username" required>
         </label>

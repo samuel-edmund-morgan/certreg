@@ -1,5 +1,18 @@
 <?php
-session_start();
+// Start session with hardened cookie params if not already started
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] ?? '') == 443;
+    // set conservative cookie params before starting session
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
 require_once __DIR__.'/db.php';
 
 function is_admin_logged(): bool {
@@ -19,8 +32,11 @@ function login_admin(string $u, string $p): bool {
     $st->execute([$u]);
     $row = $st->fetch();
     if ($row && password_verify($p, $row['passhash'])) {
-        $_SESSION['admin_id'] = (int)$row['id'];
-        $_SESSION['admin_user'] = $u;
+    // prevent session fixation
+    if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+    session_regenerate_id(true);
+    $_SESSION['admin_id'] = (int)$row['id'];
+    $_SESSION['admin_user'] = $u;
         return true;
     }
     return false;

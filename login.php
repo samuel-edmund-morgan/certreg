@@ -5,6 +5,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   http_response_code(405); exit('Метод не дозволено');
 }
 
+// CSRF protection for login form
+require_csrf();
+
 $u = trim($_POST['username'] ?? '');
 $p = (string)($_POST['password'] ?? '');
 if ($u === '' || $p === '') {

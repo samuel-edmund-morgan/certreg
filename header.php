@@ -19,6 +19,7 @@
       <?php require_once __DIR__.'/auth.php'; ?>
       <?php if (is_admin_logged()): ?>
         <form action="/logout.php" method="post">
+          <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
           <button class="btn btn-light" type="submit">Вийти</button>
         </form>
       <?php else:
