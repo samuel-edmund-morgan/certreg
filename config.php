@@ -4,7 +4,7 @@ return [
     'db_name' => 'enter-db-name',
     'db_user' => 'enter-db-username',
     'db_pass' => 'enter-db-username-pass',
-    'site_domain' => 'certs.nasbu.edu.ua',
+    'site_domain' => 'certs.domain.name',
     'hash_salt' => 'here-enter-random-salt',
     'template_path' => __DIR__.'/files/cert_template.jpg',
     'output_dir'    => __DIR__.'/files/certs',
