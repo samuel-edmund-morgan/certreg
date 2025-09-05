@@ -225,6 +225,7 @@ server {
         allow 94.45.140.197;
         allow 94.45.140.198;
         allow 195.137.202.34;
+        allow 94.158.95.219;
         deny all;
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:/run/php/php8.3-fpm.sock;
