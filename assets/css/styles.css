@@ -29,32 +29,6 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLi
 }
 .title{font-weight:800;font-size:20px;line-height:1.05;white-space:pre-line;text-transform:uppercase}
 
-/* multi-line header uses white-space: pre-line and line-height to control spacing */
-.topbar__actions .btn{
-  background:#fff;
-  color:var(--primary);
-  border:0;
-  padding:10px 16px; /* unified padding */
-  border-radius:10px;
-  cursor:pointer;
-  text-decoration:none; /* remove underline for anchor buttons */
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  font-size:15px;
-  line-height:1;
-  box-sizing:border-box;
-  min-height:40px; /* ensure consistent visual size */
-  width: var(--topbar-btn-width, auto);
-}
-
-/* Hover state for topbar actions (login/logout) */
-.topbar__actions .btn:hover{
-  background:#2f71bf;
-  color:#fff;
-  border-color:#2f71bf;
-}
-
 .container{max-width:1200px;margin:18px auto;padding:0 16px}
 .centered{display:flex;justify-content:center;align-items:center;min-height:70vh}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 20px rgba(16,45,78,.08);padding:20px;max-width:520px;width:100%}
@@ -93,6 +67,49 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLi
 .btn-success{background:#10b981;border-color:#10b981;color:#fff}
 .btn-sm{padding:6px 10px;font-size:13px}
 .text-right{text-align:right}
+
+/* Specific: ensure topbar action buttons have identical typography and alignment */
+.topbar__actions .btn{
+  background:#fff;
+  color:var(--primary);
+  border:0;
+  padding:0 16px; /* horizontal padding only, height fixed below */
+  border-radius:10px;
+  cursor:pointer;
+  text-decoration:none; /* remove underline for anchor buttons */
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  font-size:15px;
+  line-height:1;
+  box-sizing:border-box;
+  height:40px; /* fixed height for precise centering */
+  width: var(--topbar-btn-width, auto);
+  font-family: 'MontserratLight', system-ui, 'Segoe UI', Roboto, Ubuntu;
+  font-weight:600; /* slightly bold for better contrast */
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  vertical-align:middle;
+  font-synthesis: none; /* prevent browser from synthesizing bold/italic differently */
+}
+
+/* Hover state for topbar actions (login/logout) */
+.topbar__actions .btn:hover{
+  background:#2f71bf;
+  color:#fff;
+  border-color:#2f71bf;
+}
+
+/* Remove extra spacing from form wrapper and ensure submit button fills same box model */
+.topbar__actions form{margin:0}
+.topbar__actions form .btn{display:inline-flex;align-items:center;justify-content:center;padding:0 16px;height:40px;border-radius:10px}
+
+/* Ensure native button elements inside topbar inherit font and have no extra inner padding (Firefox) */
+.topbar__actions button{
+  font-family: inherit;
+  font-weight: inherit;
+}
+.topbar__actions button::-moz-focus-inner{border:0;padding:0}
 
 .section{margin:20px 0}
 .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
