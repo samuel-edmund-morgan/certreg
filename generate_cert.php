@@ -23,7 +23,6 @@ $dataString = implode('|', [
 $hash = hash_hmac('sha256', $dataString, $cfg['hash_salt']);
 
 // URL для QR
-// $url = "https://certs.nasbu.edu.ua/checkCert?hash=".$hash;
 $url = "https://{$cfg['site_domain']}/checkCert?hash=".$hash;
 
 // Підготовка зображення-сертифіката
