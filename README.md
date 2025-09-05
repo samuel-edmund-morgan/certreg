@@ -5,13 +5,162 @@
 Протестовано на Ubuntu 22.04 LTS (nginx + php-fpm + MySQL).
 
 ## Що всередині
-- PHP (PDO MySQL, GD з FreeType, сесії), без фреймворків
-- Генерація QR (вбудована бібліотека `lib/phpqrcode.php`)
-- Шаблон сертифіката: `files/cert_template.jpg`
-- Збереження згенерованих JPG у `files/certs/`
-- Шрифт для TTF‑рендерингу: `fonts/Montserrat-Light.ttf` (налаштовується у `config.php`)
 
 ## Вимоги і пакети
+
+## Безпека SSH зʼєднань
+
+Рекомендовано одразу захистити доступ до сервера:
+
+1. Заборонити вхід root напряму та паролі:
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+Змініть/додайте:
+```
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+PubkeyAuthentication yes
+AllowUsers youradminuser
+```
+Перевірка й перезапуск:
+```bash
+sudo sshd -t && sudo systemctl restart ssh
+```
+
+2. Генерація ключів (ed25519):
+```bash
+ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_certreg -C "admin@certreg"
+```
+Публічний ключ додайте до `~youradminuser/.ssh/authorized_keys` (права каталогу 700, файл 600). Для апаратного ключа (YubiKey) – використовуйте `ssh-keygen -K` / `yubico-piv-tool` залежно від режиму.
+
+3. (Опційно) Fail2ban:
+```bash
+sudo apt install -y fail2ban
+```
+
+4. Обмеження UFW для SSH (наприклад конкретна підмережа):
+```bash
+sudo ufw allow from 203.0.113.0/24 to any port 22 proto tcp
+sudo ufw delete allow OpenSSH  # якщо був загальний
+```
+
+## Безпека
+
+У цьому розділі узагальнено застосовані та рекомендовані заходи захисту.
+
+### 1. Захист конфігурації та секретів
+| Міра | Стан | Деталі |
+|------|------|--------|
+| Права `config.php` | Впроваджено | `root:www-data 640` – обмежує читання |
+| Прикладовий файл без секретів | Є | `config.php.example` |
+| Винесення секретів поза webroot | Рекомендовано | Можна створити `/var/www/certreg-config/secure.php` (640) |
+
+### 2. Права файлової системи
+- Код read-only для сервера (`root:root`, 644/755).
+- Вихідні сертифікати: лише каталог `files/certs` записуваний (`www-data`).
+- Нові згенеровані файли сертифікатів примусово мають права `0640`.
+
+### 3. Додаткові покращення у коді
+- Валідація формату `hash` (64 hex) у `checkCert.php`.
+- Установка власного імені сесії `certreg_s` + захищені cookie параметри.
+- CSRF захист для POST (вже був) – токен перевіряється.
+- Хеш сертифіката детермінований через HMAC-SHA256 із сіллю (унікальність + неможливість підробки без секрету).
+
+### 4. Nginx харденінг (рекомендації для оновлення конфігу)
+Додайте у `server {}` або `http {}` блоку:
+```
+# Сховати версію nginx
+server_tokens off;
+
+# Додаткові заголовки безпеки
+add_header X-Frame-Options SAMEORIGIN always;
+add_header X-Content-Type-Options nosniff always;
+add_header Referrer-Policy no-referrer-when-downgrade always;
+add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+
+# Захист від надмірних запитів (rate limit для публічного ендпойнта)
+limit_req_zone $binary_remote_addr zone=chkcert:10m rate=30r/m;
+```
+
+Потім у локації для публічного ендпойнта:
+```
+location = /checkCert {
+    limit_req zone=chkcert burst=10 nodelay;
+    rewrite ^ /checkCert.php last;
+}
+```
+
+### 5. Обфускація та ізоляція адмінки
+- Можна перейменувати `/admin.php` на унікальний URI без `.php`, напр.: створити файл `admin_portal.php`, а в nginx:
+```
+location = /butterfly {
+    allow 94.45.140.194; # ... інші IP
+    deny all;
+    include snippets/fastcgi-php.conf;
+    fastcgi_param SCRIPT_FILENAME /var/www/certreg/admin_portal.php;
+    fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd_certreg; # HTTP Basic
+}
+```
+І тоді оригінальний `admin.php` можна або видалити, або зробити редірект 404. Файл `delete_record.php` і `generate_cert.php` можна викликати лише через форму – заблокуйте прямий доступ:
+```
+location = /generate_cert.php { return 404; }
+```
+та замість цього всередині адмінки виклик через POST (вимагає рефакторингу – винести у внутрішню дію). *Опційно*.
+
+### 6. HTTP Basic Auth для адмінки
+Створіть файл паролів:
+```bash
+sudo apt install -y apache2-utils
+sudo htpasswd -c /etc/nginx/.htpasswd_certreg admin_portal_user
+```
+Пароль буде збережено у хешованому вигляді. Потім перезавантажте nginx.
+
+### 7. Жорстке обмеження доступів для анонімів
+- У публічного користувача повинен бути єдиний маршрут: `/checkCert?hash=...`.
+- Всі інші URI повертають 403 / 404.
+- Заборонити виконання довільних `.php` файлів:
+```
+location ~ ^/(?!checkCert$).*\.php$ { return 403; }
+```
+Потім визначити конкретні allow-локації.
+
+### 8. PHP-FPM / PHP.ini
+- `expose_php=Off` (приховує версію PHP у заголовках)
+- `session.use_strict_mode=1` (захист від фіксації SID)
+- Вказана `date.timezone` для узгодженості.
+- Використання сучасних алгоритмів `password_hash()` / `password_verify()` для адміністраторів.
+
+### 9. Логи та моніторинг
+- Активуйте ротацію логів (logrotate типово вже налаштований у Ubuntu для nginx та mysql).
+- Періодично переглядайте `/var/log/nginx/access.log` для підозрілих запитів.
+- Налаштуйте `fail2ban` для шаблонів brute-force (`http-get-dos`, власні фільтри по 403/401).
+
+### 10. UFW та мережа
+- Відкриті лише 80/443 (та 22 для адміндоступу, обмежений за IP/ключами).
+- Опційно закрийте порт 80 після примусових редіректів TLS, залишивши лише 443 (якщо Certbot сценарій це дозволяє; зазвичай залишають 80 для оновлення HTTP-01 викликів).
+
+### 11. TLS
+- Certbot додає сучасні шифросути; переконайтесь що `options-ssl-nginx.conf` актуальний.
+- Додано HSTS (див. вище) – переконайтесь що тестуєте перед preload.
+
+### 12. Забезпечення цілісності
+- Контрольні суми (git history) для відстеження змін у коді.
+- Обмежити shell‑доступ лише потрібним користувачам.
+
+### 13. Майбутні покращення (опційно)
+- Перенесення секретів у `.env` або systemd EnvironmentFile з поза webroot.
+- Перехід адмінських дій на POST + окремий контролер.
+- Додавання Content Security Policy (CSP) (потребує audit inline‑стилів/скриптів).
+- Multi‑factor для адмінів (TOTP / WebAuthn через додатковий шлюз).
+
+### Підсумок
+Комбінація файлових прав (read-only код, ізольований writable каталог), захисту сесій, валідації вхідних параметрів, обмеження IP + Basic Auth, TLS + HSTS, закриття зайвих маршрутів і rate limiting суттєво знижує площу атаки та спрощує аудит.
 
 На чистій Ubuntu 22.04 встановіть веб‑стек і залежності. Нижче наведені команди, якими користувалися (зверніть увагу на версії):
 

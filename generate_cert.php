@@ -71,6 +71,8 @@ if ($qrImg) {
 // Зберегти JPG і оновити hash в БД
 $outFile = rtrim($cfg['output_dir'],'/')."/cert_{$id}_{$hash}.jpg";
 imagejpeg($im, $outFile, 92);
+// Обмежити права на збережений файл (читання власнику та групі web, без решти)
+@chmod($outFile, 0640);
 imagedestroy($im);
 
 $up = $pdo->prepare("UPDATE data SET hash=? WHERE id=?");

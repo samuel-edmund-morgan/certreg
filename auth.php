@@ -3,6 +3,10 @@
 if (session_status() !== PHP_SESSION_ACTIVE) {
     $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] ?? '') == 443;
     // set conservative cookie params before starting session
+    // Власна назва сесії щоб уникати колізій з іншими проектами на сервері
+    if (!headers_sent()) {
+        @session_name('certreg_s');
+    }
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',

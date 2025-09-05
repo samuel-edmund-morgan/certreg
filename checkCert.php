@@ -4,8 +4,9 @@ require_once __DIR__.'/db.php';
 $cfg = require __DIR__.'/config.php';
 
 $hash = $_GET['hash'] ?? '';
-if ($hash === '') {
-  echo '<section class="centered"><div class="card"><div class="alert">Відсутній параметр hash.</div></div></section>';
+// Валідація параметра hash: очікуємо рівно 64 hex-символи (SHA-256 HMAC)
+if ($hash === '' || !preg_match('/^[a-f0-9]{64}$/i', $hash)) {
+  echo '<section class="centered"><div class="card"><div class="alert">Невірний або відсутній параметр hash.</div></div></section>';
   require_once __DIR__.'/footer.php'; exit;
 }
 
