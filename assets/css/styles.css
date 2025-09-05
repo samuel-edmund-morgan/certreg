@@ -17,7 +17,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLi
 .topbar{position:sticky;top:0;z-index:10;background:var(--primary);height:10vh;min-height:60px;color:#fff}
 .topbar__inner{max-width:1200px;margin:0 auto;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
 .brand{display:flex;align-items:center;gap:12px}
-.logo{width:40px;height:40px;background-size:contain;background-position:center;background-repeat:no-repeat;border-radius:6px}
+.logo{width:clamp(40px, 6vw, 80px);height:clamp(40px, 6vw, 80px);background-size:contain;background-position:center;background-repeat:no-repeat;border-radius:8px}
 .title{font-weight:700;font-size:18px}
 .topbar__actions .btn{background:#fff;color:var(--primary);border:0;padding:8px 12px;border-radius:10px;cursor:pointer}
 
