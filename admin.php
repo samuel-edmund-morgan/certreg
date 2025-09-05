@@ -42,7 +42,8 @@ $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 50;
 $offset = ($page - 1) * $perPage;
 
-$allowedSort = ['id', 'name', 'score', 'course', 'date'];
+// allowed sort keys (note: no 'date' because date values are free-form strings)
+$allowedSort = ['id', 'name', 'score', 'course'];
 if (!in_array($sort, $allowedSort, true)) {
   $sort = 'id';
 }
@@ -85,8 +86,10 @@ $rows = $st->fetchAll();
   <form class="form form-inline" method="get">
     <input type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Пошук...">
     <select name="sort">
-      <?php foreach ($allowedSort as $s): ?>
-        <option value="<?= $s ?>" <?= $sort === $s ? 'selected' : '' ?>>Сортувати за: <?= $s ?></option>
+    <?php foreach ($allowedSort as $s):
+      $label = $s === 'id' ? 'Реєстраційний номер' : ($s === 'name' ? "Ім'я" : ($s === 'score' ? 'Оцінка' : 'Курс'));
+    ?>
+      <option value="<?= $s ?>" <?= $sort === $s ? 'selected' : '' ?>>Сортувати за: <?= $label ?></option>
       <?php endforeach; ?>
     </select>
     <select name="dir">
