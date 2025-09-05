@@ -1,93 +1,105 @@
 :root{
   --bg:#ffffff; --text:#0f172a; --muted:#475569; --primary:#102d4e;
   --card:#ffffff; --border:#e2e8f0; --accent:#2563eb; --danger:#dc2626;
+
+  /* Висота липкого хедера та банера для коректних offsets */
+  --topbar-h: 96px;
+  --alert-h: 36px; /* мінімальна висота банера; за потреби відкоригуйте */
+  --sticky-stack: calc(var(--topbar-h) + var(--alert-h));
 }
 
 *{box-sizing:border-box}
 html,body{height:100%}
-/* make the page a column flex layout so footer can stick to bottom */
-body{display:flex;flex-direction:column;min-height:100vh}
-@font-face{
-  font-family: 'MontserratLight';
-  src: local('Montserrat Light'), local('Montserrat-Light'), url('/fonts/Montserrat-Light.ttf') format('truetype');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
+html{scroll-padding-top:var(--sticky-stack)}
+/* Колонковий флекс для «прибитого» футера */
+body{
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+  font:15px/1.5 'Montserrat', system-ui, 'Segoe UI', Roboto, Ubuntu;
 }
 
-/* main content should grow to push footer to bottom */
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLight', system-ui, 'Segoe UI', Roboto, Ubuntu}
+/* Шрифти: використовуйте реальні ваги, щоб уникнути «тонких» кнопок */
+@font-face{
+  font-family:'Montserrat';
+  src: local('Montserrat Light'), local('Montserrat-Light'),
+       url('/fonts/Montserrat-Light.ttf') format('truetype');
+  font-weight:300; font-style:normal; font-display:swap;
+}
+/* Додайте файл Montserrat-SemiBold.ttf у /fonts */
+@font-face{
+  font-family:'Montserrat';
+  src: local('Montserrat SemiBold'), local('Montserrat-SemiBold'),
+       url('/fonts/Montserrat-SemiBold.ttf') format('truetype');
+  font-weight:600; font-style:normal; font-display:swap;
+}
+
+/* Основний контент розтягується */
 main{flex:1}
 
-.topbar{position:sticky;top:0;z-index:10;background:var(--primary);color:#fff;
-  /* ensure topbar is always taller than logo: set a logo max and provide padding */
-  --logo-max:72px;
-  min-height: calc(var(--logo-max) + 24px);
+/* Topbar */
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:1100;
+  background:var(--primary);
+  color:#fff;
+  /* logo-max залежить від загальної висоти хедера */
+  --logo-max: calc(var(--topbar-h) - 24px);
+  min-height:var(--topbar-h);
+  height:var(--topbar-h);
+  overflow:visible; /* щоб логотип не «різався» */
 }
-.topbar__inner{max-width:1200px;margin:0 auto;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.topbar__inner{
+  max-width:1200px;margin:0 auto;height:100%;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px
+}
 .brand{display:flex;align-items:center;gap:16px}
 .logo{
   width:clamp(36px, 8vw, var(--logo-max));
-  height:auto;
   aspect-ratio: 1 / 1;
-  /* vertically center via flexbox; avoid extra margins that can cause overflow */
   margin:0;
   max-height: var(--logo-max);
   max-width: var(--logo-max);
-  background-size:contain;
-  background-position:center;
-  background-repeat:no-repeat;
+  background: center/contain no-repeat;
   border-radius:8px;
-  box-sizing:border-box;
 }
-/* Allow logo to be visible and not be clipped */
-.topbar{overflow:visible}
 .title{font-weight:800;font-size:20px;line-height:1.05;white-space:pre-line;text-transform:uppercase}
 
+/* Layout */
 .container{max-width:1200px;margin:18px auto;padding:0 16px}
 .centered{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  /* let main control available space; add vertical padding so content is visually a bit higher
-     which helps when header/footer are fixed on mobile */
-  min-height:auto;
-  padding:3vh 0; /* push content slightly down from top but keep it centered in the remaining space */
+  display:flex;justify-content:center;align-items:center;
+  min-height:auto;padding:3vh 0;
 }
+
+/* Cards */
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 20px rgba(16,45,78,.08);padding:20px;max-width:520px;width:100%}
 .card--narrow{max-width:420px}
 .card__logo{
-  width:80px;
-  height:80px;
-  margin:0 auto 16px;
-  background:transparent;
-  border-radius:16px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
+  width:80px;height:80px;margin:0 auto 16px;background:transparent;border-radius:16px;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
 }
 .card__logo .logo{
-  /* force fixed size for logos inside cards so they don't follow the responsive topbar .logo rules */
-  width:80px !important;
-  height:80px !important;
-  max-width:none !important;
-  max-height:none !important;
-  margin:0 !important;
-  border-radius:12px !important;
-  background-size:contain !important;
-  background-position:center !important;
+  width:80px !important;height:80px !important;max-width:none !important;max-height:none !important;
+  margin:0 !important;border-radius:12px !important;background-size:contain !important;background-position:center !important;
 }
 .card__title{text-align:center;margin:2px 0 18px}
-
-/* Add extra space before centered actions inside cards (e.g. download button) */
+/* Дод. відступ перед центрованими діями у картці */
 .card .text-center{margin-top:18px}
 
+/* Forms & Buttons */
 .form label{display:block;margin-bottom:10px}
 .form input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px}
 .form-inline{display:flex;gap:10px;flex-wrap:wrap}
+
 .btn{border:1px solid var(--border);padding:8px 12px;border-radius:10px;background:#f8fafc;cursor:pointer;text-decoration:none}
 .btn:hover{filter:brightness(.97);text-decoration:none}
+.btn:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
 .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
 .btn-light{background:#fff;color:var(--primary)}
 .btn-success{background:#10b981;border-color:#10b981;color:#fff}
@@ -95,110 +107,83 @@ main{flex:1}
 .text-right{text-align:right}
 .text-center{text-align:center}
 
-/* Specific: ensure topbar action buttons have identical typography and alignment */
+/* Кнопки в топбарі – реальний 600 вага + чітка типографіка */
 .topbar__actions .btn{
-  background:#fff;
-  color:var(--primary);
-  border:0;
-  padding:0 16px; /* horizontal padding only, height fixed below */
-  border-radius:10px;
-  cursor:pointer;
-  text-decoration:none; /* remove underline for anchor buttons */
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  font-size:15px;
-  line-height:1;
-  box-sizing:border-box;
-  height:40px; /* fixed height for precise centering */
+  background:#fff;color:var(--primary);border:0;padding:0 16px;
+  border-radius:10px;cursor:pointer;text-decoration:none;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font-size:15px;line-height:1;box-sizing:border-box;height:40px;
   width: var(--topbar-btn-width, auto);
-  font-family: 'MontserratLight', system-ui, 'Segoe UI', Roboto, Ubuntu;
-  font-weight:600; /* slightly bold for better contrast */
-  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  font-family:'Montserrat', system-ui, 'Segoe UI', Roboto, Ubuntu;
+  font-weight:600; /* справжня вага з @font-face вище */
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
   vertical-align:middle;
-  font-synthesis: none; /* prevent browser from synthesizing bold/italic differently */
+  font-synthesis: none; /* не синтезувати жирність, використовуємо справжню 600 */
 }
+.topbar__actions .btn:hover{background:#2f71bf;color:#fff;border-color:#2f71bf}
+.topbar__actions .btn:focus-visible{outline:3px solid #bfdbfe;outline-offset:2px}
 
-/* Hover state for topbar actions (login/logout) */
-.topbar__actions .btn:hover{
-  background:#2f71bf;
-  color:#fff;
-  border-color:#2f71bf;
-}
-
-/* Remove extra spacing from form wrapper and ensure submit button fills same box model */
+/* Форм-кнопка в топбарі */
 .topbar__actions form{margin:0}
 .topbar__actions form .btn{display:inline-flex;align-items:center;justify-content:center;padding:0 16px;height:40px;border-radius:10px}
 
-/* Ensure native button elements inside topbar inherit font and have no extra inner padding (Firefox) */
-.topbar__actions button{
-  font-family: inherit;
-  font-weight: inherit;
-}
+/* Firefox внутрішній padding */
+.topbar__actions button{font-family:inherit;font-weight:inherit}
 .topbar__actions button::-moz-focus-inner{border:0;padding:0}
 
+/* Tables */
 .section{margin:20px 0}
 .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
 .table{border-collapse:collapse;width:100%;min-width:720px}
 .table th,.table td{padding:10px 12px;border-bottom:1px solid var(--border)}
-.table thead th{background:#f1f5f9;text-align:left;position:sticky;top:0}
+.table thead th{background:#f1f5f9;text-align:left;position:sticky;top:0;z-index:1}
 
+/* Alerts */
 .alert{padding:10px 12px;border-radius:10px;background:#fff3cd;border:1px solid #ffe69c}
 .alert-error{background:#ffe2e2;border-color:#ffc9c9;color:#7f1d1d}
 
-/* Full-width scrolling alert banner placed under the topbar */
-.alert-banner {
-  width: 100vw;
-  min-width: 0;
-  background: #b91c1c;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  position: sticky;
-  top: var(--topbar-sticky-top, 0px); /* stick right under the topbar */
-  z-index: 1002; /* above main content, below modal overlays */
+/* ==== Alert banner: липкий під топбаром + безмиготливий marquee ==== */
+.alert-banner{
+  width:100%;
+  min-width:0;
+  background:#b91c1c;color:#fff;
+  display:flex;align-items:center;overflow:hidden;box-sizing:border-box;
+  margin:0;padding:0;border:0;
+  position:sticky;top:var(--topbar-h);
+  z-index:1000; /* нижче за топбар */
+  min-height:var(--alert-h);
 }
-.alert-banner__marquee {
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  align-items: center;
-  /* no gap so text is seamless */
+.alert-banner__marquee{
+  display:flex;align-items:center;width:100%;min-width:0;
+  max-width:1200px;margin:0 auto; /* центруємо контент, фон повний */
+  overflow:hidden;
 }
-.alert-banner__text {
-  display: inline-block;
-  white-space: nowrap;
-  font-weight: 600;
-  font-size: clamp(10px,1.6vw,14px);
-  line-height: 1.3;
-  padding: 0 2rem;
-  animation: alert-marquee 14s linear infinite;
+.alert-banner__track{
+  display:flex;width:max-content;
+  animation:alert-marquee 14s linear infinite;
+  will-change:transform;
+  backface-visibility:hidden;
+  transform:translate3d(0,0,0);
 }
-@keyframes alert-marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-100%); }
+.alert-banner__text{
+  flex:none;display:inline-block;white-space:nowrap;
+  font-weight:600;
+  font-size:clamp(10px,1.6vw,14px);
+  line-height:1.3;
+  padding:0 2rem;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+  font-kerning:normal;
+  font-feature-settings:"kern";
 }
-/* Duplicate text for seamless loop */
-.alert-banner__marquee .alert-banner__text {
-  flex-shrink: 0;
+@keyframes alert-marquee{
+  to{ transform: translate3d(-50%,0,0); } /* два однакові спани => -50% без розривів */
 }
-/* Center the banner content and match topbar__inner max-width */
-.alert-banner__marquee {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-@media (max-width: 1200px) {
-  .alert-banner__marquee {
-    max-width: 100vw;
-  }
+@media (prefers-reduced-motion: reduce){
+  .alert-banner__track{ animation:none; transform:none; }
 }
 
+/* Pagination & misc */
 .pagination{display:flex;gap:6px;margin-top:12px}
 .page{padding:6px 10px;border:1px solid var(--border);border-radius:10px;text-decoration:none;color:inherit}
 .page.active{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -206,79 +191,64 @@ main{flex:1}
 .btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
 .btn-danger:hover{filter:brightness(.95)}
 
-
-/* Responsive: tablet and mobile adjustments (popular sizes) */
-@media (max-width: 768px) {
-  .topbar{height:16vh; min-height:88px}
+/* ==== Responsive ==== */
+/* План: керуємо висотою хедера через змінну, а не явні height у .topbar */
+@media (max-width: 768px){
+  :root{ --topbar-h:88px; }
   .topbar__inner{padding:0 24px}
-  .logo{width:clamp(56px,10vw,120px);height:clamp(56px,10vw,120px);max-height:calc(16vh - 20px)}
   .title{font-size:18px;line-height:1.08;}
   .topbar__actions .btn{height:38px}
 }
+@media (max-width: 414px){
+  /* більше місця під лого */
+  :root{ --topbar-h: 120px; } /* було 96px */
 
-@media (max-width: 414px) {
-  /* common large phone sizes (iPhone 11/12/13/14 Pro max variants) */
-  .topbar{height:18vh; min-height:96px}
-  .topbar__inner{padding:0 20px}
-  .logo{width:100px;height:100px;max-height:calc(18vh - 20px)}
-  .title{font-size:16px;line-height:1.06;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-clamp:3}
-  .topbar__actions .btn{height:38px;padding:0 14px}
+  /* лого тепер росте до межі (var(--topbar-h) - 24px) */
+  .logo{
+    width: clamp(90px, 26vw, calc(var(--topbar-h) - 24px));
+  }
 }
-
-@media (max-width: 375px) {
-  /* small phones (iPhone SE, many Android) */
-  .topbar{height:20vh; min-height:110px}
+@media (max-width: 375px){
+  :root{ --topbar-h:110px; }
   .topbar__inner{padding:0 16px;gap:12px}
-  .logo{width:110px;height:110px;max-height:calc(20vh - 22px)}
-  .title{font-size:15px;line-height:1.04;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-clamp:3}
+  .title{
+    font-size:15px;line-height:1.04;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-clamp:3
+  }
   .topbar__actions .btn{height:36px;padding:0 12px;font-size:14px}
 }
-
-@media (max-width: 320px) {
-  /* very small devices */
-  .topbar{height:22vh; min-height:120px}
+@media (max-width: 320px){
+  :root{ --topbar-h:120px; }
   .topbar__inner{padding:0 12px;gap:10px}
-  .logo{width:116px;height:116px;max-height:calc(22vh - 24px)}
-  .title{font-size:14px;line-height:1.02;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-clamp:3}
+  .title{
+    font-size:14px;line-height:1.02;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-clamp:3
+  }
   .topbar__actions .btn{height:34px;padding:0 10px;font-size:13px}
 }
 
-/* Footer - match topbar / primary color */
-.site-footer {
+/* ==== Footer ==== */
+.site-footer{
   --footer-bg: var(--primary);
-  background: var(--footer-bg);
-  color: #ffffff;
-  padding: 1rem 1.25rem;
-  margin-top: 2rem;
+  background:var(--footer-bg);color:#ffffff;
+  padding:1rem 1.25rem;margin-top:2rem;
 }
-.site-footer__inner {
-  max-width:1200px;
-  margin:0 auto;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:1rem;
+.site-footer__inner{
+  max-width:1200px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;
   font-size:0.95rem;
 }
 .site-footer__left{font-weight:600}
 .site-footer__right a{color:rgba(255,255,255,0.95);text-decoration:underline}
 
+/* Mobile: фіксований футер + відступ під контент */
 @media (max-width:520px){
   .site-footer__inner{flex-direction:column;align-items:flex-start}
   .site-footer__right{margin-top:.5rem}
-}
-
-/* Mobile: keep footer fixed at bottom so header and footer are visible */
-@media (max-width:520px){
   .site-footer{
-    position:fixed;
-    left:0;right:0;bottom:0;
-    width:100%;
-    z-index:50; /* above page content but below sticky header (if header uses higher z-index) */
+    position:fixed;left:0;right:0;bottom:0;width:100%;z-index:50;
     border-top:1px solid rgba(255,255,255,0.06);
-    padding: .75rem 1rem; /* slightly smaller padding on mobile */
+    padding:.75rem 1rem;
   }
-  /* ensure content isn't hidden behind the fixed footer */
   body{padding-bottom:72px}
 }
-

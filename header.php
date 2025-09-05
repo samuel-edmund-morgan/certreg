@@ -13,7 +13,7 @@
   <div class="topbar__inner">
     <div class="brand">
       <div class="logo" style="background-image:url('<?= htmlspecialchars($cfg['logo_path']) ?>')"></div>
-  <div class="title"><?= htmlspecialchars($cfg['site_name']) ?></div>
+      <div class="title"><?= htmlspecialchars($cfg['site_name']) ?></div>
     </div>
     <nav class="topbar__actions">
       <?php require_once __DIR__.'/auth.php'; ?>
@@ -31,11 +31,15 @@
       <?php endif; ?>
     </nav>
   </div>
-  </header>
-  <div class="alert-banner" role="alert" aria-live="polite">
-    <div class="alert-banner__marquee">
-      <span class="alert-banner__text">Увага! Якщо данні в цьому вікні, або в завантаженому сертифікаті не відповідають тому, що написано на роздрукованому сертифікаті - сертифікат є підробкою!</span>
-      <span class="alert-banner__text">Увага! Якщо данні в цьому вікні, або в завантаженому сертифікаті не відповідають тому, що написано на роздрукованому сертифікаті - сертифікат є підробкою!</span>
+</header>
+
+<div class="alert-banner" role="alert" aria-live="polite">
+  <div class="alert-banner__marquee">
+    <div class="alert-banner__track">
+      <span class="alert-banner__text">Увага! Якщо данні в цьому вікні, або в завантаженому сертифікаті не відповідають тому, що написано на роздрукованому сертифікаті — сертифікат є підробкою!</span>
+      <span class="alert-banner__text">Увага! Якщо данні в цьому вікні, або в завантаженому сертифікаті не відповідають тому, що написано на роздрукованому сертифікаті — сертифікат є підробкою!</span>
     </div>
   </div>
+</div>
+
 <main class="container">
