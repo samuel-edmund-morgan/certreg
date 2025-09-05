@@ -21,8 +21,12 @@
         <form action="/logout.php" method="post">
           <button class="btn btn-light" type="submit">Вийти</button>
         </form>
-      <?php else: ?>
-        <a class="btn btn-light" href="/admin.php">Увійти</a>
+      <?php else:
+        // show login link only when user is on admin.php (public pages like checkCert should not show it)
+        $current = basename($_SERVER['SCRIPT_NAME'] ?? '');
+        if ($current === 'admin.php'): ?>
+          <a class="btn btn-light" href="/admin.php">Увійти</a>
+      <?php endif; ?>
       <?php endif; ?>
     </nav>
   </div>

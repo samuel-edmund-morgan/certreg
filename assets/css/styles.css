@@ -27,10 +27,32 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLi
   background-size:contain;background-position:center;background-repeat:no-repeat;border-radius:8px;
   box-sizing:border-box;
 }
-.title{font-weight:700;font-size:20px;line-height:1.05;white-space:pre-line;text-transform:uppercase}
+.title{font-weight:800;font-size:20px;line-height:1.05;white-space:pre-line;text-transform:uppercase}
 
 /* multi-line header uses white-space: pre-line and line-height to control spacing */
-.topbar__actions .btn{background:#fff;color:var(--primary);border:0;padding:8px 12px;border-radius:10px;cursor:pointer}
+.topbar__actions .btn{
+  background:#fff;
+  color:var(--primary);
+  border:0;
+  padding:10px 16px; /* unified padding */
+  border-radius:10px;
+  cursor:pointer;
+  text-decoration:none; /* remove underline for anchor buttons */
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:15px;
+  line-height:1;
+  box-sizing:border-box;
+  min-height:40px; /* ensure consistent visual size */
+}
+
+/* Hover state for topbar actions (login/logout) */
+.topbar__actions .btn:hover{
+  background:#2f71bf;
+  color:#fff;
+  border-color:#2f71bf;
+}
 
 .container{max-width:1200px;margin:18px auto;padding:0 16px}
 .centered{display:flex;justify-content:center;align-items:center;min-height:70vh}
