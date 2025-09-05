@@ -17,7 +17,16 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLi
 .topbar{position:sticky;top:0;z-index:10;background:var(--primary);height:12vh;min-height:72px;color:#fff}
 .topbar__inner{max-width:1200px;margin:0 auto;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
 .brand{display:flex;align-items:center;gap:16px}
-.logo{width:clamp(40px, 6vw, 100px);height:clamp(40px, 6vw, 100px);background-size:contain;background-position:center;background-repeat:no-repeat;border-radius:8px}
+.logo{
+  width:clamp(40px, 6vw, 100px);
+  height:clamp(40px, 6vw, 100px);
+  /* ensure some space above/below the logo */
+  margin:8px 0;
+  /* prevent logo from exceeding topbar height minus vertical margins */
+  max-height: calc(12vh - 16px);
+  background-size:contain;background-position:center;background-repeat:no-repeat;border-radius:8px;
+  box-sizing:border-box;
+}
 .title{font-weight:700;font-size:20px;line-height:1.05;white-space:pre-line}
 
 /* Ensure multi-line header lines don't overlap and have small controlled gap */
