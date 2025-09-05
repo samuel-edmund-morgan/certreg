@@ -260,7 +260,7 @@ sudo systemctl reload nginx
 ## Отримання TLS сертифікатів (Certbot)
 
 ```bash
-sudo certbot --nginx -d certs.nasbu.edu.ua -m your-email@example.com --agree-tos --redirect
+sudo certbot --nginx -d your.domain.name.here -m your-email@example.com --agree-tos --redirect
 ```
 
 Certbot оновить vhost на HTTPS (додасть `listen 443 ssl`, шляхи до сертифікатів і редірект з 80 → 443). Автоподовження працює через таймер systemd: `systemctl list-timers | grep certbot`.
