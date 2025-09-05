@@ -4,7 +4,15 @@
 }
 
 *{box-sizing:border-box} html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Roboto,Ubuntu}
+@font-face{
+  font-family: 'MontserratLight';
+  src: local('Montserrat Light'), local('Montserrat-Light'), url('/fonts/Montserrat-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLight', system-ui, 'Segoe UI', Roboto, Ubuntu}
 
 .topbar{position:sticky;top:0;z-index:10;background:var(--primary);height:10vh;min-height:60px;color:#fff}
 .topbar__inner{max-width:1200px;margin:0 auto;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
