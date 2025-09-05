@@ -29,8 +29,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLi
 }
 .title{font-weight:700;font-size:20px;line-height:1.05;white-space:pre-line}
 
-/* Ensure multi-line header lines don't overlap and have small controlled gap */
-.title br{display:block; content:''; margin-bottom:4px}
+/* multi-line header uses white-space: pre-line and line-height to control spacing */
 .topbar__actions .btn{background:#fff;color:var(--primary);border:0;padding:8px 12px;border-radius:10px;cursor:pointer}
 
 .container{max-width:1200px;margin:18px auto;padding:0 16px}
