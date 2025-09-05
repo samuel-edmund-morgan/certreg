@@ -1,13 +1,15 @@
 <?php
-require_once __DIR__.'/header.php';
-require_once __DIR__.'/db.php';
-require_once __DIR__.'/auth.php';
+require_once __DIR__ . '/header.php';
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
 if (!is_admin_logged()):
-?>
+  ?>
   <section class="centered">
     <div class="card card--narrow">
-      <div class="card__logo"><div class="logo" style="background-image:url('<?= htmlspecialchars($cfg['logo_path']) ?>')"></div></div>
+      <div class="card__logo">
+        <div class="logo" style="background-image:url('<?= htmlspecialchars($cfg['logo_path']) ?>')"></div>
+      </div>
       <h1 class="card__title">Вхід адміністратора</h1>
       <?php if (!empty($_GET['err'])): ?>
         <div class="alert alert-error">Невірні облікові дані або порожні поля.</div>
@@ -23,20 +25,26 @@ if (!is_admin_logged()):
       </form>
     </div>
   </section>
-<?php
-  require_once __DIR__.'/footer.php'; exit;
+  <?php
+  require_once __DIR__ . '/footer.php';
+  exit;
 endif;
+
+// CSRF токен для захисту форм
+$csrf = csrf_token();
 
 // --- після логіну: форма додавання + таблиця з пошуком/сортуванням/пагінацією
 $q = trim($_GET['q'] ?? '');
 $sort = $_GET['sort'] ?? 'id';
 $dir = strtolower($_GET['dir'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
-$page = max(1, (int)($_GET['page'] ?? 1));
+$page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = 50;
-$offset = ($page-1)*$perPage;
+$offset = ($page - 1) * $perPage;
 
-$allowedSort = ['id','name','score','course','date'];
-if (!in_array($sort, $allowedSort, true)) { $sort = 'id'; }
+$allowedSort = ['id', 'name', 'score', 'course', 'date'];
+if (!in_array($sort, $allowedSort, true)) {
+  $sort = 'id';
+}
 
 $where = '';
 $params = [];
@@ -47,19 +55,21 @@ if ($q !== '') {
 
 $total = $pdo->prepare("SELECT COUNT(*) FROM data $where");
 $total->execute($params);
-$totalRows = (int)$total->fetchColumn();
+$totalRows = (int) $total->fetchColumn();
 
 $sql = "SELECT id,name,score,course,date,hash FROM data $where ORDER BY $sort $dir LIMIT :lim OFFSET :off";
 $st = $pdo->prepare($sql);
-foreach ($params as $k=>$v) $st->bindValue($k,$v);
-$st->bindValue(':lim',$perPage,PDO::PARAM_INT);
-$st->bindValue(':off',$offset,PDO::PARAM_INT);
+foreach ($params as $k => $v)
+  $st->bindValue($k, $v);
+$st->bindValue(':lim', $perPage, PDO::PARAM_INT);
+$st->bindValue(':off', $offset, PDO::PARAM_INT);
 $st->execute();
 $rows = $st->fetchAll();
 ?>
 <section class="section">
   <h2>Додати запис</h2>
   <form class="form form-inline" method="post" action="/add_record.php">
+    <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
     <input type="text" name="name" placeholder="Ім'я" required>
     <input type="text" name="score" placeholder="Оцінка" required>
     <input type="text" name="course" placeholder="Курс" required>
@@ -75,12 +85,12 @@ $rows = $st->fetchAll();
     <input type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Пошук...">
     <select name="sort">
       <?php foreach ($allowedSort as $s): ?>
-        <option value="<?= $s ?>" <?= $sort===$s?'selected':'' ?>>Сортувати за: <?= $s ?></option>
+        <option value="<?= $s ?>" <?= $sort === $s ? 'selected' : '' ?>>Сортувати за: <?= $s ?></option>
       <?php endforeach; ?>
     </select>
     <select name="dir">
-      <option value="asc"  <?= $dir==='asc'?'selected':'' ?>>↑ зростання</option>
-      <option value="desc" <?= $dir==='desc'?'selected':'' ?>>↓ спадання</option>
+      <option value="asc" <?= $dir === 'asc' ? 'selected' : '' ?>>↑ зростання</option>
+      <option value="desc" <?= $dir === 'desc' ? 'selected' : '' ?>>↓ спадання</option>
     </select>
     <button class="btn" type="submit">Застосувати</button>
   </form>
@@ -97,32 +107,41 @@ $rows = $st->fetchAll();
         </tr>
       </thead>
       <tbody>
-      <?php foreach ($rows as $r): ?>
-        <tr>
-          <td><?= htmlspecialchars($r['name']) ?></td>
-          <td><?= htmlspecialchars($r['score']) ?></td>
-          <td><?= htmlspecialchars($r['course']) ?></td>
-          <td><?= htmlspecialchars($r['date']) ?></td>
-          <td class="text-right">
-            <a class="btn btn-primary btn-sm" href="/generate_cert.php?id=<?= (int)$r['id'] ?>">Згенерувати сертифікат</a>
-          </td>
-        </tr>
-      <?php endforeach; ?>
+        <?php foreach ($rows as $r): ?>
+          <tr>
+            <td><?= htmlspecialchars($r['name']) ?></td>
+            <td><?= htmlspecialchars($r['score']) ?></td>
+            <td><?= htmlspecialchars($r['course']) ?></td>
+            <td><?= htmlspecialchars($r['date']) ?></td>
+            <td class="text-right">
+              <a class="btn btn-primary btn-sm" href="/generate_cert.php?id=<?= (int) $r['id'] ?>">Згенерувати
+                сертифікат</a>
+
+              <form class="inline js-delete-form" method="post" action="/delete_record.php"
+                style="display:inline-block;margin-left:6px">
+                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
+                <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
+                <button class="btn btn-danger btn-sm" type="submit">Видалити</button>
+              </form>
+            </td>
+
+          </tr>
+        <?php endforeach; ?>
       </tbody>
     </table>
   </div>
 
   <?php
-    $pages = max(1, (int)ceil($totalRows/$perPage));
-    if ($pages > 1):
-  ?>
-  <nav class="pagination">
-    <?php for ($p=1; $p<=$pages; $p++): ?>
-      <a class="page <?= $p===$page?'active':'' ?>"
-         href="?<?= http_build_query(['q'=>$q,'sort'=>$sort,'dir'=>$dir,'page'=>$p]) ?>"><?= $p ?></a>
-    <?php endfor; ?>
-  </nav>
+  $pages = max(1, (int) ceil($totalRows / $perPage));
+  if ($pages > 1):
+    ?>
+    <nav class="pagination">
+      <?php for ($p = 1; $p <= $pages; $p++): ?>
+        <a class="page <?= $p === $page ? 'active' : '' ?>"
+          href="?<?= http_build_query(['q' => $q, 'sort' => $sort, 'dir' => $dir, 'page' => $p]) ?>"><?= $p ?></a>
+      <?php endfor; ?>
+    </nav>
   <?php endif; ?>
 </section>
 
-<?php require_once __DIR__.'/footer.php'; ?>
+<?php require_once __DIR__ . '/footer.php'; ?>

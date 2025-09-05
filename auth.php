@@ -36,3 +36,24 @@ function logout_admin() {
     }
     session_destroy();
 }
+
+// === CSRF ===
+function csrf_token(): string {
+    if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+    if (empty($_SESSION['csrf'])) {
+        $_SESSION['csrf'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf'];
+}
+function require_csrf(): void {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $sent = $_POST['_csrf'] ?? '';
+        $sess = $_SESSION['csrf'] ?? '';
+        if ($sent === '' || $sess === '' || !hash_equals($sess, $sent)) {
+            http_response_code(403);
+            exit('Помилка безпеки (CSRF). Оновіть сторінку та повторіть.');
+        }
+    }
+}
+
+

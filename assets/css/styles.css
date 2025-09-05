@@ -43,3 +43,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,Seg
 .pagination{display:flex;gap:6px;margin-top:12px}
 .page{padding:6px 10px;border:1px solid var(--border);border-radius:10px;text-decoration:none;color:inherit}
 .page.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.inline{display:inline}
+.btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn-danger:hover{filter:brightness(.95)}
+
