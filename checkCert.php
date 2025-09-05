@@ -28,6 +28,17 @@ if ($row) {
             <p><strong>Оцінка:</strong> <?= htmlspecialchars($row['score']) ?></p>
             <p><strong>Курс:</strong> <?= htmlspecialchars($row['course']) ?></p>
             <p><strong>Дата:</strong> <?= htmlspecialchars($row['date']) ?></p>
+            <?php
+            // Provide download link if the generated certificate file exists
+            $fileName = sprintf('cert_%d_%s.jpg', (int)$row['id'], $row['hash']);
+            $filePath = rtrim($cfg['output_dir'], '/') . '/' . $fileName;
+            $fileUrl = '/files/certs/' . rawurlencode($fileName);
+            if (is_file($filePath)):
+            ?>
+              <p><a class="btn btn-primary" href="<?= htmlspecialchars($fileUrl) ?>" download>Завантажити сертифікат</a></p>
+            <?php else: ?>
+              <p class="card__meta">Сертифікат ще не згенеровано.</p>
+            <?php endif; ?>
           </div>
         </section>
         <?php
