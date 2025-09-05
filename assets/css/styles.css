@@ -27,7 +27,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLi
   background-size:contain;background-position:center;background-repeat:no-repeat;border-radius:8px;
   box-sizing:border-box;
 }
-.title{font-weight:700;font-size:20px;line-height:1.05;white-space:pre-line}
+.title{font-weight:700;font-size:20px;line-height:1.05;white-space:pre-line;text-transform:uppercase}
 
 /* multi-line header uses white-space: pre-line and line-height to control spacing */
 .topbar__actions .btn{background:#fff;color:var(--primary);border:0;padding:8px 12px;border-radius:10px;cursor:pointer}
