@@ -3,7 +3,10 @@
   --card:#ffffff; --border:#e2e8f0; --accent:#2563eb; --danger:#dc2626;
 }
 
-*{box-sizing:border-box} html,body{height:100%}
+*{box-sizing:border-box}
+html,body{height:100%}
+/* make the page a column flex layout so footer can stick to bottom */
+body{display:flex;flex-direction:column;min-height:100vh}
 @font-face{
   font-family: 'MontserratLight';
   src: local('Montserrat Light'), local('Montserrat-Light'), url('/fonts/Montserrat-Light.ttf') format('truetype');
@@ -12,7 +15,9 @@
   font-display: swap;
 }
 
+/* main content should grow to push footer to bottom */
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLight', system-ui, 'Segoe UI', Roboto, Ubuntu}
+main{flex:1}
 
 .topbar{position:sticky;top:0;z-index:10;background:var(--primary);height:12vh;min-height:72px;color:#fff}
 .topbar__inner{max-width:1200px;margin:0 auto;height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
@@ -187,5 +192,19 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLi
 @media (max-width:520px){
   .site-footer__inner{flex-direction:column;align-items:flex-start}
   .site-footer__right{margin-top:.5rem}
+}
+
+/* Mobile: keep footer fixed at bottom so header and footer are visible */
+@media (max-width:520px){
+  .site-footer{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    width:100%;
+    z-index:50; /* above page content but below sticky header (if header uses higher z-index) */
+    border-top:1px solid rgba(255,255,255,0.06);
+    padding: .75rem 1rem; /* slightly smaller padding on mobile */
+  }
+  /* ensure content isn't hidden behind the fixed footer */
+  body{padding-bottom:72px}
 }
 
