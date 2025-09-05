@@ -17,7 +17,7 @@
 
 ```bash
 sudo apt update
-sudo apt install -y nginx php8.3-fpm php8.4-gd php8.4-mbstring php8.3-xml php8.3-mysql mysql-server git
+sudo apt install -y nginx php8.3-fpm php8.3-gd php8.3-mbstring php8.3-xml php8.3-mysql mysql-server git
 sudo phpenmod gd mbstring
 sudo systemctl restart php8.3-fpm
 ```
