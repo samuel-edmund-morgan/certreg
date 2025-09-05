@@ -31,5 +31,11 @@
       <?php endif; ?>
     </nav>
   </div>
-</header>
+  </header>
+  <div class="alert-banner" role="alert" aria-live="polite">
+    <div class="alert-banner__marquee">
+      <span class="alert-banner__text">Увага! Якщо данні в цьому вікні, або в завантаженому сертифікаті не відповідають тому, що написано на роздрукованому сертифікаті - сертифікат є підробкою!</span>
+      <span class="alert-banner__text">Увага! Якщо данні в цьому вікні, або в завантаженому сертифікаті не відповідають тому, що написано на роздрукованому сертифікаті - сертифікат є підробкою!</span>
+    </div>
+  </div>
 <main class="container">
