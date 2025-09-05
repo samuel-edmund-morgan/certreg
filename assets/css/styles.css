@@ -37,7 +37,28 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLi
 .centered{display:flex;justify-content:center;align-items:center;min-height:70vh}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 20px rgba(16,45,78,.08);padding:20px;max-width:520px;width:100%}
 .card--narrow{max-width:420px}
-.card__logo{width:80px;height:80px;margin:0 auto 16px;background:transparent;border-radius:16px}
+.card__logo{
+  width:80px;
+  height:80px;
+  margin:0 auto 16px;
+  background:transparent;
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.card__logo .logo{
+  /* force fixed size for logos inside cards so they don't follow the responsive topbar .logo rules */
+  width:80px !important;
+  height:80px !important;
+  max-width:none !important;
+  max-height:none !important;
+  margin:0 !important;
+  border-radius:12px !important;
+  background-size:contain !important;
+  background-position:center !important;
+}
 .card__title{text-align:center;margin:2px 0 18px}
 
 .form label{display:block;margin-bottom:10px}
