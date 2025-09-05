@@ -35,7 +35,15 @@ main{flex:1}
 .title{font-weight:800;font-size:20px;line-height:1.05;white-space:pre-line;text-transform:uppercase}
 
 .container{max-width:1200px;margin:18px auto;padding:0 16px}
-.centered{display:flex;justify-content:center;align-items:center;min-height:70vh}
+.centered{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  /* let main control available space; add vertical padding so content is visually a bit higher
+     which helps when header/footer are fixed on mobile */
+  min-height:auto;
+  padding:6vh 0; /* push content slightly down from top but keep it centered in the remaining space */
+}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 20px rgba(16,45,78,.08);padding:20px;max-width:520px;width:100%}
 .card--narrow{max-width:420px}
 .card__logo{
