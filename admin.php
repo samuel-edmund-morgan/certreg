@@ -100,7 +100,8 @@ $rows = $st->fetchAll();
     <table class="table">
       <thead>
         <tr>
-          <th>Ім'я</th>
+          <th>Реєстраційний номер</th>
+          <th></th>Ім'я</th>
           <th>Оцінка</th>
           <th>Курс</th>
           <th>Дата</th>
@@ -110,6 +111,7 @@ $rows = $st->fetchAll();
       <tbody>
         <?php foreach ($rows as $r): ?>
           <tr>
+            <td><?= (int)$r['id'] ?></td>
             <td><?= htmlspecialchars($r['name']) ?></td>
             <td><?= htmlspecialchars($r['score']) ?></td>
             <td><?= htmlspecialchars($r['course']) ?></td>

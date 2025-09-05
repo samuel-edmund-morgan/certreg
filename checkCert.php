@@ -24,6 +24,7 @@ if ($row) {
           <div class="card">
             <h1>Сертифікат валідний</h1>
             <p><strong>Ім'я:</strong> <?= htmlspecialchars($row['name']) ?></p>
+            <p><strong>Реєстраційний номер:</strong> <?= (int)$row['id'] ?></p>
             <p><strong>Оцінка:</strong> <?= htmlspecialchars($row['score']) ?></p>
             <p><strong>Курс:</strong> <?= htmlspecialchars($row['course']) ?></p>
             <p><strong>Дата:</strong> <?= htmlspecialchars($row['date']) ?></p>
