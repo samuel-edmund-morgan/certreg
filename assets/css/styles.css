@@ -83,13 +83,14 @@ main{flex:1}
 .form label{display:block;margin-bottom:10px}
 .form input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px}
 .form-inline{display:flex;gap:10px;flex-wrap:wrap}
-.btn{border:1px solid var(--border);padding:8px 12px;border-radius:10px;background:#f8fafc;cursor:pointer}
-.btn:hover{filter:brightness(.97)}
-.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn{border:1px solid var(--border);padding:8px 12px;border-radius:10px;background:#f8fafc;cursor:pointer;text-decoration:none}
+.btn:hover{filter:brightness(.97);text-decoration:none}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
 .btn-light{background:#fff;color:var(--primary)}
 .btn-success{background:#10b981;border-color:#10b981;color:#fff}
 .btn-sm{padding:6px 10px;font-size:13px}
 .text-right{text-align:right}
+.text-center{text-align:center}
 
 /* Specific: ensure topbar action buttons have identical typography and alignment */
 .topbar__actions .btn{
