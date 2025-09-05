@@ -45,6 +45,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'MontserratLi
   line-height:1;
   box-sizing:border-box;
   min-height:40px; /* ensure consistent visual size */
+  width: var(--topbar-btn-width, auto);
 }
 
 /* Hover state for topbar actions (login/logout) */
