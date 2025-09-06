@@ -110,7 +110,7 @@ $rows = $st->fetchAll();
           <th>Курс</th>
           <th>Дата</th>
           <th>Статус</th>
-          <th></th>
+          <th>Дії</th>
         </tr>
       </thead>
       <tbody>
@@ -128,33 +128,7 @@ $rows = $st->fetchAll();
                 <span class="badge badge-success">Активний</span>
               <?php endif; ?>
             </td>
-            <td class="text-right">
-              <a class="btn btn-primary btn-sm" href="/generate_cert.php?id=<?= (int) $r['id'] ?>">Згенерувати
-                сертифікат</a>
-
-              <form class="inline js-delete-form" method="post" action="/delete_record.php"
-                style="display:inline-block;margin-left:6px">
-                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-                <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
-                <button class="btn btn-danger btn-sm" type="submit">Видалити</button>
-              </form>
-              <?php if (!$r['revoked_at']): ?>
-              <form class="inline" method="post" action="/revoke.php" style="display:inline-block;margin-left:6px">
-                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
-                <input type="hidden" name="action" value="revoke">
-                <input type="text" name="reason" placeholder="Причина" style="width:120px" required>
-                <button class="btn btn-warning btn-sm" type="submit">Відкликати</button>
-              </form>
-              <?php else: ?>
-              <form class="inline" method="post" action="/revoke.php" style="display:inline-block;margin-left:6px">
-                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
-                <input type="hidden" name="action" value="restore">
-                <button class="btn btn-secondary btn-sm" type="submit">Відновити</button>
-              </form>
-              <?php endif; ?>
-            </td>
+            <td class="text-right"><a class="btn btn-primary btn-sm" href="/record.php?id=<?= (int)$r['id'] ?>">Перегляд</a></td>
 
           </tr>
         <?php endforeach; ?>
