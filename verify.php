@@ -73,11 +73,16 @@ require __DIR__.'/header.php';
           hashOut.textContent = js.h;
           if(js.revoked){
             existBox.className='alert alert-error';
-            let txt='Запис існує, але СЕРТИФІКАТ ВІДКЛИКАНО.';
-            if(js.revoked_at){ txt += ' (дата: '+js.revoked_at+')'; }
-            if(js.revoke_reason){ txt += ' Причина: '+js.revoke_reason; }
-            existBox.textContent = txt;
-            // Не показуємо форму перевірки імені для відкликаних
+            function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
+            function fmtDate(str){
+              if(!str) return '';
+              const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+              if(!m) return escapeHtml(str);
+              return `${m[3]}.${m[2]}.${m[1]}, ${m[4]}:${m[5]}`;
+            }
+            const dateLine = js.revoked_at ? `<p><strong>Дата відкликання:</strong> ${fmtDate(js.revoked_at)}</p>` : '';
+            const reasonLine = `<p><strong>Причина:</strong> ${js.revoke_reason ? escapeHtml(js.revoke_reason) : '<em>(не вказано)</em>'}</p>`;
+            existBox.innerHTML = `<p>Сертифікат існує, але <strong style="color:#b91c1c">ВІДКЛИКАНО</strong>.</p>${dateLine}${reasonLine}`;
             ownForm.style.display='none';
           }
           else {

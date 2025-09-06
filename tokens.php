@@ -48,7 +48,7 @@ $csrf = csrf_token();
           <th>Дата</th>
           <th>Створено</th>
           <th>Статус</th>
-          <th>Дії</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -67,25 +67,7 @@ $csrf = csrf_token();
               <span class="badge badge-success">Активний</span>
             <?php endif; ?>
           </td>
-          <td>
-            <?php if(!$r['revoked_at']): ?>
-              <form class="revoke-form" method="post" action="/api/revoke.php" style="display:flex;gap:4px;align-items:center">
-                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-                <input type="hidden" name="cid" value="<?= htmlspecialchars($r['cid']) ?>">
-                <input type="text" name="reason" placeholder="Причина" style="width:140px" maxlength="120">
-                <button class="btn btn-danger btn-sm" type="submit">Відкликати</button>
-              </form>
-            <?php else: ?>
-              <div style="display:flex;flex-direction:column;gap:4px">
-                <small style="font-size:11px;opacity:.7;max-width:160px;word-break:break-word"><?= htmlspecialchars($r['revoke_reason'] ?? '') ?></small>
-                <form class="unrevoke-form" method="post" action="/api/unrevoke.php" style="display:flex;gap:4px;align-items:center">
-                  <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-                  <input type="hidden" name="cid" value="<?= htmlspecialchars($r['cid']) ?>">
-                  <button class="btn btn-light btn-sm" type="submit" title="Скасувати відкликання">Відновити</button>
-                </form>
-              </div>
-            <?php endif; ?>
-          </td>
+          <td><a class="btn btn-light btn-sm" href="/token.php?cid=<?= urlencode($r['cid']) ?>">Деталі</a></td>
         </tr>
       <?php endforeach; ?>
       </tbody>
