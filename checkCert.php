@@ -26,7 +26,14 @@ $row = $st->fetch();
 if ($row && (int)$row['id'] === $id) {
   // Перевірка на відкликання
   if (!empty($row['revoked_at'])) {
-    echo '<section class="centered"><div class="card"><h1>Сертифікат відкликано</h1><p><strong>Причина:</strong> '.htmlspecialchars($row['revoke_reason'] ?? '—').'</p><p><strong>Дата відкликання:</strong> '.htmlspecialchars($row['revoked_at']).'</p></div></section>';
+    // Форматувати дату у вигляді: 06.09.2025, 18:55:21
+    $revRaw = $row['revoked_at'];
+    $revFmt = $revRaw;
+    $ts = strtotime($revRaw);
+    if ($ts) {
+      $revFmt = date('d.m.Y, H:i:s', $ts);
+    }
+    echo '<section class="centered"><div class="card"><h1>Сертифікат відкликано</h1><p><strong>Причина:</strong> '.htmlspecialchars($row['revoke_reason'] ?? '—').'</p><p><strong>Дата відкликання:</strong> '.htmlspecialchars($revFmt).'</p></div></section>';
     require_once __DIR__.'/footer.php'; exit;
   }
     // 3) Перерахунок і звірка детермінованого HMAC (тільки після підтвердження id)
