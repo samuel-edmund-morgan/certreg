@@ -2,9 +2,71 @@
 Оригінальний зміст README було замінено інструкцією розгортання згідно запиту користувача.
 -->
 
-# Інструкція з розгортання проєкту certreg
+# certreg (privacy-first версія)
 
-certreg – це простий PHP‑додаток для ведення реєстру, генерації JPEG‑сертифікатів з QR‑кодом та публічної перевірки дійсності сертифікатів. Даний гайд описує повний процес його розгортання на сервері Ubuntu 22.04 LTS (веб-стек: nginx + php-fpm + MySQL) з акцентом на безпеку та покроковими командами для новачків і досвідчених користувачів. Дотримуйтесь інструкцій послідовно – від встановлення залежностей до фінального запуску – щоб гарантовано налаштувати систему безпечно і правильно.
+Ця версія системи прибрала персональні дані (ПІБ) із сервера. Сертифікат видається локально в браузері адміністратора, а сервер зберігає тільки анонімний токен:
+
+Поле | Зберігається на сервері | В QR | Візуально на сертифікаті
+---- | ----------------------- | ---- | -----------------------
+ПІБ  | ✖ (ніколи)              | ✖    | ✔ (намальовано локально)
+course | ✔ | ✔ | ✔
+grade  | ✔ | ✔ | ✔
+date   | ✔ | ✔ | ✔
+salt (s) | ✖ | ✔ | (імпліцитно в QR)
+cid      | ✔ | ✔ | ✔ (за бажанням можна додати)
+HMAC h   | ✔ | ✖ | (опційно фрагмент)
+
+Перевірка працює так: QR → `verify.php?p=...` → сторінка зчитує JSON (v,cid,s,course,grade,date) → запитує `/api/status?cid=` щоб отримати `h` та `revoked` → користувач вводить ПІБ → HMAC(s, canonical) порівнюється з серверним h.
+
+Canonical рядок (v1): `v1|NAME|COURSE|GRADE|DATE` де NAME нормалізований (NFC, без апострофів, collapse spaces, UPPERCASE).
+
+## Розгортання (скорочено)
+1. Клонування коду, налаштування `config.php`.
+2. Міграція таблиці `tokens` (див. `migrations/004_create_tokens_table.php`). Legacy таблиця `data` та повʼязані файли видалені.
+3. Створення адміністратора в `creds`.
+4. Nginx: відкрийте лише `issue_token.php`, `tokens.php`, `verify.php`, `api/*.php`, `qr.php`. Забороніть доступ до інших .php (whitelist підхід).
+
+Приклад спрощеного блоку nginx (HTTPS сервер опущено для стислості):
+```nginx
+location = / { return 403; }
+location = /verify.php { include snippets/fastcgi-php.conf; fastcgi_pass unix:/run/php/php8.3-fpm.sock; }
+location ^~ /api/ { include snippets/fastcgi-php.conf; fastcgi_pass unix:/run/php/php8.3-fpm.sock; }
+location = /issue_token.php { include snippets/fastcgi-php.conf; fastcgi_pass unix:/run/php/php8.3-fpm.sock; }
+location = /tokens.php { include snippets/fastcgi-php-conf; fastcgi_pass unix:/run/php/php8.3-fpm.sock; }
+location = /qr.php { include snippets/fastcgi-php.conf; fastcgi_pass unix:/run/php/php8.3-fpm.sock; }
+location ~ ^/(?!verify\.php|issue_token\.php|tokens\.php|api/|qr\.php).+\.php$ { return 403; }
+```
+
+## Видача
+- Форма `issue_token.php` генерує сіль, рахує HMAC та реєструє токен через `/api/register`.
+- ПІБ не передається.
+- Зображення сертифіката (canvas → JPG) з QR та ПІБ зберігається локально користувачем.
+
+## Перевірка
+- Скан QR → `verify.php?p=...`.
+- Введення ПІБ користувачем → локальний HMAC → порівняння з серверним `h`.
+- Якщо відкликано — повідомлення + причина.
+
+## Відкликання / Відновлення
+Через `tokens.php` (кнопки «Відкликати» / «Відновити»), API: `/api/revoke.php`, `/api/unrevoke.php`.
+
+## Роудмап (далі можна додати)
+- template_version у canonical.
+- issuer / valid_until.
+- Масова видача (CSV).
+- PDF експорт.
+- Легкий audit log (агрегація спроб перевірки без IP або з хешованим IP).
+
+## Безпека
+- Немає ПІБ у базі — витік дає лише анонімні токени.
+- Відсутність `h` у QR унеможливлює офлайн підробку без звернення до сервера.
+- Можна додати rate-limit на `/api/status`.
+
+## Очистка legacy
+Legacy файли (generate_cert.php, checkCert.php, admin data CRUD) видалені. Історія доступна у Git. Якщо потрібен rollback — checkout попередній commit.
+
+## License
+MIT (за потреби додайте свій текст).
 
 ## 1. Встановлення залежностей
 Почнемо з установки необхідного серверного ПЗ та залежностей. Виконайте оновлення списку пакетів і встановіть веб-сервер nginx, PHP (версії 8.3 з потрібними модулями), СУБД MySQL/MariaDB та Git:

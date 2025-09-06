@@ -26,9 +26,8 @@
     <nav class="topbar__actions">
   <?php // auth already required above ?>
     <?php if (is_admin_logged()): ?>
-  <a class="btn btn-light" href="/issue_token.php" style="margin-right:8px">Видача (анон.)</a>
+  <a class="btn btn-light" href="/issue_token.php" style="margin-right:8px">Видача</a>
   <a class="btn btn-light" href="/tokens.php" style="margin-right:8px">Токени</a>
-  <a class="btn btn-light" href="/logs.php" style="margin-right:8px">Журнал перевірок</a>
         <form action="/logout.php" method="post" style="display:inline-block">
           <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
           <button class="btn btn-light" type="submit">Вийти</button>
