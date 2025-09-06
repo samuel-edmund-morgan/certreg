@@ -3,16 +3,37 @@ require_once __DIR__.'/header.php';
 require_once __DIR__.'/db.php';
 $cfg = require __DIR__.'/config.php';
 
+// Простий логер в БД (verification_logs) — мінімальний overhead.
+function log_verification($pdo, $data) {
+  try {
+    $st = $pdo->prepare("INSERT INTO verification_logs (requested_id, requested_hash, data_id, success, status, revoked, remote_ip, user_agent) VALUES (?,?,?,?,?,?,?,?)");
+    $st->execute([
+      $data['requested_id'] ?? null,
+      $data['requested_hash'] ?? null,
+      $data['data_id'] ?? null,
+      (int)($data['success'] ?? 0),
+      $data['status'] ?? 'unknown',
+      (int)($data['revoked'] ?? 0),
+      substr($data['remote_ip'] ?? ($_SERVER['REMOTE_ADDR'] ?? ''),0,45),
+      substr($data['user_agent'] ?? ($_SERVER['HTTP_USER_AGENT'] ?? ''),0,255),
+    ]);
+  } catch (Throwable $e) {
+    // не валимо сторінку якщо лог не записався
+  }
+}
+
 // Новий режим: потрібні обидва параметри id та hash
 $hash = $_GET['hash'] ?? '';
 $id   = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 // Базова валідація
 if ($id <= 0) {
+  log_verification($pdo, [ 'requested_id'=>$id, 'requested_hash'=>$hash, 'success'=>0, 'status'=>'bad_id' ]);
   echo '<section class="centered"><div class="card"><div class="alert">Невірний або відсутній параметр id.</div></div></section>';
   require_once __DIR__.'/footer.php'; exit;
 }
 if ($hash === '' || !preg_match('/^[a-f0-9]{64}$/i', $hash)) {
+  log_verification($pdo, [ 'requested_id'=>$id, 'requested_hash'=>$hash, 'success'=>0, 'status'=>'bad_hash' ]);
   echo '<section class="centered"><div class="card"><div class="alert">Невірний або відсутній параметр hash.</div></div></section>';
   require_once __DIR__.'/footer.php'; exit;
 }
@@ -33,6 +54,7 @@ if ($row && (int)$row['id'] === $id) {
     if ($ts) {
       $revFmt = date('d.m.Y, H:i:s', $ts);
     }
+    log_verification($pdo, [ 'requested_id'=>$id, 'requested_hash'=>$hash, 'data_id'=>$row['id'], 'success'=>0, 'status'=>'revoked', 'revoked'=>1 ]);
     echo '<section class="centered"><div class="card"><h1>Сертифікат відкликано</h1><p><strong>Причина:</strong> '.htmlspecialchars($row['revoke_reason'] ?? '—').'</p><p><strong>Дата відкликання:</strong> '.htmlspecialchars($revFmt).'</p></div></section>';
     require_once __DIR__.'/footer.php'; exit;
   }
@@ -65,7 +87,8 @@ if ($row && (int)$row['id'] === $id) {
   }
   $calc = hash_hmac('sha256', $dataString, $cfg['hash_salt']);
 
-    if (hash_equals($hash, $calc)) {
+  if (hash_equals($hash, $calc)) {
+    log_verification($pdo, [ 'requested_id'=>$id, 'requested_hash'=>$hash, 'data_id'=>$row['id'], 'success'=>1, 'status'=>'ok', 'revoked'=>0 ]);
         ?>
         <section class="centered">
           <div class="card">
@@ -90,6 +113,9 @@ if ($row && (int)$row['id'] === $id) {
         <?php
         require_once __DIR__.'/footer.php'; exit;
     }
+} else {
+  // hash не знайдено або id не збігається
+  log_verification($pdo, [ 'requested_id'=>$id, 'requested_hash'=>$hash, 'success'=>0, 'status'=>'not_found' ]);
 }
 
 ?>

@@ -71,7 +71,7 @@ ALTER TABLE data ADD UNIQUE KEY uq_data_hash (hash);
 ### Підвищення прав існуючого користувача (якщо потрібно додати індекс пізніше)
 Якщо ви вже створили користувача (наприклад `certuser`) з обмеженими правами і отримуєте помилки `ALTER command denied` або `DROP command denied` під час додавання унікального індексу чи використання `TRUNCATE`, зайдіть під root і виконайте:
 ```sql
-GRANT ALTER, INDEX, DROP ON certreg.* TO 'certuser'@'localhost';
+GRANT ALTER, INDEX, DROP, CREATE ON certreg.* TO 'certuser'@'localhost';
 FLUSH PRIVILEGES;
 ```
 Після цього можна створити унікальний індекс (якщо ще не створений):
@@ -103,6 +103,34 @@ ALTER TABLE data ADD COLUMN hash_version TINYINT UNSIGNED NOT NULL DEFAULT 1 AFT
 ALTER TABLE data
     ADD COLUMN revoked_at DATETIME NULL AFTER hash_version,
     ADD COLUMN revoke_reason VARCHAR(255) NULL AFTER revoked_at;
+```
+
+### Логи перевірок (verification_logs)
+Створюється таблиця `verification_logs` для аудиту звернень до `/checkCert`.
+Поля: requested_id, requested_hash, data_id (фактичний знайдений id або NULL), success (0/1), status (наприклад: ok, revoked, not_found, bad_id, bad_hash), revoked (0/1), remote_ip, user_agent, created_at.
+Міграція:
+```sql
+CREATE TABLE verification_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    requested_id INT NULL,
+    requested_hash CHAR(64) NULL,
+    data_id INT NULL,
+    success TINYINT(1) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    revoked TINYINT(1) NOT NULL DEFAULT 0,
+    remote_ip VARCHAR(45) NOT NULL,
+    user_agent VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_created_at (created_at),
+    INDEX idx_hash (requested_hash),
+    INDEX idx_data (data_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+Перегляд: сторінка `/logs.php` (доступна лише адміністратору) з фільтром та пагінацією.
+Примітка: для створення цієї таблиці користувачу потрібне право CREATE (додано в розширений GRANT вище). Якщо міграція впала з помилкою типу `CREATE command denied`, дайте право:
+```sql
+GRANT CREATE ON certreg.* TO 'certuser'@'localhost';
+FLUSH PRIVILEGES;
 ```
 ```bash
 php -r "echo password_hash('your-strong-admin-pass', PASSWORD_DEFAULT), PHP_EOL;"

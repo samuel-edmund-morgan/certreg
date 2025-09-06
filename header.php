@@ -11,14 +11,23 @@
 <body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?>>
 <header class="topbar">
   <div class="topbar__inner">
-    <div class="brand">
-      <div class="logo" style="background-image:url('<?= htmlspecialchars($cfg['logo_path']) ?>')"></div>
-      <div class="title"><?= htmlspecialchars($cfg['site_name']) ?></div>
-    </div>
+    <?php require_once __DIR__.'/auth.php'; ?>
+    <?php if (is_admin_logged()): ?>
+      <a href="/admin.php" class="brand" style="text-decoration:none;color:inherit">
+        <div class="logo" style="background-image:url('<?= htmlspecialchars($cfg['logo_path']) ?>')" aria-label="Адмін панель"></div>
+        <div class="title"><?= htmlspecialchars($cfg['site_name']) ?></div>
+      </a>
+    <?php else: ?>
+      <div class="brand">
+        <div class="logo" style="background-image:url('<?= htmlspecialchars($cfg['logo_path']) ?>')"></div>
+        <div class="title"><?= htmlspecialchars($cfg['site_name']) ?></div>
+      </div>
+    <?php endif; ?>
     <nav class="topbar__actions">
-      <?php require_once __DIR__.'/auth.php'; ?>
+  <?php // auth already required above ?>
       <?php if (is_admin_logged()): ?>
-        <form action="/logout.php" method="post">
+        <a class="btn btn-light" href="/logs.php" style="margin-right:8px">Логи</a>
+        <form action="/logout.php" method="post" style="display:inline-block">
           <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
           <button class="btn btn-light" type="submit">Вийти</button>
         </form>

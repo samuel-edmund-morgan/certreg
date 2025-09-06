@@ -261,3 +261,17 @@ main{flex:1}
   .badge-danger{background:#dc2626;color:#fff}
   .badge-success{background:#15803d;color:#fff}
   .row-revoked td{background:#fff1f1}
+
+  /* Sortable table header links: force neutral styling across states */
+  .table th a,
+  .table th a:link,
+  .table th a:visited{
+    color:inherit !important;
+    text-decoration:none !important;
+    font-weight:600;
+  }
+  .table th a:hover,
+  .table th a:focus,
+  .table th a:active{ text-decoration:underline dotted; color:inherit !important; }
+  /* In case browser applies default focus outline, keep accessibility */
+  .table th a:focus-visible{ outline:2px solid #94a3b8; outline-offset:2px; }

@@ -70,7 +70,7 @@ $st->execute();
 $rows = $st->fetchAll();
 ?>
 <section class="section">
-  <h2>Додати запис</h2>
+  <h2 style="margin-top:0">Додати сертифікат</h2>
   <form class="form form-inline" method="post" action="/add_record.php">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
     <input type="text" name="name" placeholder="Ім'я" required>

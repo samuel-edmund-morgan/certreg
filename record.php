@@ -67,4 +67,77 @@ require_once __DIR__.'/header.php';
     </div>
   </div>
 </section>
+<?php
+// Показ логів саме для цього сертифіката
+$logLimit = 50; // останні 50
+$sort = $_GET['lsort'] ?? 'id';
+$dir  = strtolower($_GET['ldir'] ?? 'desc') === 'asc' ? 'asc':'desc';
+$allowedSortL = ['id','requested_id','status','created_at'];
+if (!in_array($sort,$allowedSortL,true)) { $sort='id'; }
+$sortLabelsL = [
+  'id'=>'ID',
+  'requested_id'=>'ID запиту',
+  'status'=>'Статус',
+  'created_at'=>'Час'
+];
+$orderL = "$sort $dir";
+$sqlLogs = "SELECT id, requested_id, requested_hash, success, status, revoked, remote_ip, user_agent, created_at FROM verification_logs WHERE data_id=? ORDER BY $orderL LIMIT ?";
+$logSt = $pdo->prepare($sqlLogs);
+$logSt->bindValue(1, $row['id'], PDO::PARAM_INT);
+$logSt->bindValue(2, $logLimit, PDO::PARAM_INT);
+try { $logSt->execute(); $logRows = $logSt->fetchAll(); } catch (Throwable $e) { $logRows = []; }
+if ($logRows): ?>
+<section class="section">
+  <h3>Останні перевірки (<?= count($logRows) ?>)</h3>
+  <form method="get" class="form form-inline" style="margin-bottom:10px;gap:6px">
+    <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
+    <label style="display:flex;flex-direction:column;font-size:12px;gap:2px">Стовпець
+      <select name="lsort">
+        <?php foreach ($allowedSortL as $s): ?>
+          <option value="<?= $s ?>" <?= $sort===$s?'selected':'' ?>><?= $sortLabelsL[$s] ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <label style="display:flex;flex-direction:column;font-size:12px;gap:2px">Напрямок
+      <select name="ldir">
+        <option value="desc" <?= $dir==='desc'?'selected':'' ?>>спадання</option>
+        <option value="asc" <?= $dir==='asc'?'selected':'' ?>>зростання</option>
+      </select>
+    </label>
+    <button class="btn" type="submit">OK</button>
+  </form>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th><a href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'id','ldir'=>$sort==='id'&&$dir==='asc'?'desc':'asc'])) ?>">ID</a></th>
+          <th><a href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'requested_id','ldir'=>$sort==='requested_id'&&$dir==='asc'?'desc':'asc'])) ?>">ID запиту</a></th>
+          <th>Хеш (скор.)</th>
+          <th><a href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'status','ldir'=>$sort==='status'&&$dir==='asc'?'desc':'asc'])) ?>">Статус</a></th>
+          <th>Успіх</th>
+          <th>Відкликано</th>
+          <th>IP</th>
+          <th><a href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'created_at','ldir'=>$sort==='created_at'&&$dir==='asc'?'desc':'asc'])) ?>">Час</a></th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($logRows as $lr): ?>
+          <tr>
+            <td><?= (int)$lr['id'] ?></td>
+            <td><?= htmlspecialchars($lr['requested_id']) ?></td>
+            <td style="font-family:monospace;font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis" title="<?= htmlspecialchars($lr['requested_hash']) ?>"><?= htmlspecialchars(substr($lr['requested_hash'],0,20)) ?></td>
+            <td><?= htmlspecialchars($lr['status']) ?></td>
+            <td><?= $lr['success'] ? '1' : '0' ?></td>
+            <td><?= $lr['revoked'] ? '1' : '0' ?></td>
+            <td><?= htmlspecialchars($lr['remote_ip']) ?></td>
+            <td><?= htmlspecialchars($lr['created_at']) ?></td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</section>
+<?php else: ?>
+<section class="section"><p>Перевірок поки немає.</p></section>
+<?php endif; ?>
 <?php require_once __DIR__.'/footer.php'; ?>
