@@ -58,7 +58,9 @@ CREATE TABLE data (
     course VARCHAR(255) NOT NULL,
     date  VARCHAR(50)  NOT NULL,
     hash  VARCHAR(64) DEFAULT NULL,
-    hash_version TINYINT UNSIGNED NOT NULL DEFAULT 1
+    hash_version TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    revoked_at DATETIME NULL,
+    revoke_reason VARCHAR(255) NULL
 );
 -- (Опціонально, але РЕКОМЕНДОВАНО) Забезпечити унікальність hash, щоби не допустити дубльованих сертифікатів з однаковим набором полів:
 ALTER TABLE data ADD UNIQUE KEY uq_data_hash (hash);
@@ -90,6 +92,18 @@ ALTER TABLE data ADD UNIQUE KEY uq_data_hash (hash);
 ALTER TABLE data ADD COLUMN hash_version TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER hash;
 ```
 Конфіг: у `config.php` параметр `hash_version` контролює, яку версію формує `generate_cert.php`.
+
+### Відкликання сертифікатів (revocation)
+Додано стовпці `revoked_at`, `revoke_reason`. В адмін-панелі з'являються кнопки «Відкликати» (з обов'язковою причиною) та «Відновити». Після відкликання:
+* У публічній перевірці сертифікат показує статус «Сертифікат відкликано» та причину.
+* Хеш залишається в БД для аудиту, але вважається недійсним.
+
+Міграція (окремо, якщо оновлюєте):
+```sql
+ALTER TABLE data
+    ADD COLUMN revoked_at DATETIME NULL AFTER hash_version,
+    ADD COLUMN revoke_reason VARCHAR(255) NULL AFTER revoked_at;
+```
 ```bash
 php -r "echo password_hash('your-strong-admin-pass', PASSWORD_DEFAULT), PHP_EOL;"
 ```

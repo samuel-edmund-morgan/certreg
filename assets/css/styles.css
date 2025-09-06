@@ -255,3 +255,9 @@ main{flex:1}
   }
   body{padding-bottom:72px}
 }
+
+  /* === Revocation status styles === */
+  .badge{display:inline-block;padding:2px 6px;border-radius:6px;font-size:12px;line-height:1.2;font-weight:600}
+  .badge-danger{background:#dc2626;color:#fff}
+  .badge-success{background:#15803d;color:#fff}
+  .row-revoked td{background:#fff1f1}

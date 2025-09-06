@@ -60,7 +60,7 @@ $total = $pdo->prepare("SELECT COUNT(*) FROM data $where");
 $total->execute($params);
 $totalRows = (int) $total->fetchColumn();
 
-$sql = "SELECT id,name,score,course,date,hash FROM data $where ORDER BY $sort $dir LIMIT :lim OFFSET :off";
+$sql = "SELECT id,name,score,course,date,hash,revoked_at,revoke_reason FROM data $where ORDER BY $sort $dir LIMIT :lim OFFSET :off";
 $st = $pdo->prepare($sql);
 foreach ($params as $k => $v)
   $st->bindValue($k, $v);
@@ -109,17 +109,25 @@ $rows = $st->fetchAll();
           <th>Оцінка</th>
           <th>Курс</th>
           <th>Дата</th>
+          <th>Статус</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <?php foreach ($rows as $r): ?>
-          <tr>
+          <tr class="<?= $r['revoked_at'] ? 'row-revoked' : '' ?>">
             <td><?= (int)$r['id'] ?></td>
             <td><?= htmlspecialchars($r['name']) ?></td>
             <td><?= htmlspecialchars($r['score']) ?></td>
             <td><?= htmlspecialchars($r['course']) ?></td>
             <td><?= htmlspecialchars($r['date']) ?></td>
+            <td>
+              <?php if ($r['revoked_at']): ?>
+                <span class="badge badge-danger" title="<?= htmlspecialchars($r['revoke_reason'] ?? '') ?>">Відкликано</span>
+              <?php else: ?>
+                <span class="badge badge-success">Активний</span>
+              <?php endif; ?>
+            </td>
             <td class="text-right">
               <a class="btn btn-primary btn-sm" href="/generate_cert.php?id=<?= (int) $r['id'] ?>">Згенерувати
                 сертифікат</a>
@@ -130,6 +138,22 @@ $rows = $st->fetchAll();
                 <input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
                 <button class="btn btn-danger btn-sm" type="submit">Видалити</button>
               </form>
+              <?php if (!$r['revoked_at']): ?>
+              <form class="inline" method="post" action="/revoke.php" style="display:inline-block;margin-left:6px">
+                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
+                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+                <input type="hidden" name="action" value="revoke">
+                <input type="text" name="reason" placeholder="Причина" style="width:120px" required>
+                <button class="btn btn-warning btn-sm" type="submit">Відкликати</button>
+              </form>
+              <?php else: ?>
+              <form class="inline" method="post" action="/revoke.php" style="display:inline-block;margin-left:6px">
+                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
+                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+                <input type="hidden" name="action" value="restore">
+                <button class="btn btn-secondary btn-sm" type="submit">Відновити</button>
+              </form>
+              <?php endif; ?>
             </td>
 
           </tr>

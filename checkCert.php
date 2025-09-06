@@ -24,6 +24,11 @@ $row = $st->fetch();
 
 // 2) Перевіряємо, що id з параметра збігається з id знайденого запису
 if ($row && (int)$row['id'] === $id) {
+  // Перевірка на відкликання
+  if (!empty($row['revoked_at'])) {
+    echo '<section class="centered"><div class="card"><h1>Сертифікат відкликано</h1><p>Причина: '.htmlspecialchars($row['revoke_reason'] ?? '—').'</p></div></section>';
+    require_once __DIR__.'/footer.php'; exit;
+  }
     // 3) Перерахунок і звірка детермінованого HMAC (тільки після підтвердження id)
   $version = isset($row['hash_version']) ? (int)$row['hash_version'] : 1;
   switch ($version) {
