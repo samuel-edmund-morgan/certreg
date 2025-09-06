@@ -76,7 +76,14 @@ $csrf = csrf_token();
                 <button class="btn btn-danger btn-sm" type="submit">Відкликати</button>
               </form>
             <?php else: ?>
-              <small style="font-size:11px;opacity:.7"><?= htmlspecialchars($r['revoke_reason'] ?? '') ?></small>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <small style="font-size:11px;opacity:.7;max-width:160px;word-break:break-word"><?= htmlspecialchars($r['revoke_reason'] ?? '') ?></small>
+                <form class="unrevoke-form" method="post" action="/api/unrevoke.php" style="display:flex;gap:4px;align-items:center">
+                  <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
+                  <input type="hidden" name="cid" value="<?= htmlspecialchars($r['cid']) ?>">
+                  <button class="btn btn-light btn-sm" type="submit" title="Скасувати відкликання">Відновити</button>
+                </form>
+              </div>
             <?php endif; ?>
           </td>
         </tr>
@@ -93,17 +100,20 @@ $csrf = csrf_token();
   <?php endif; ?>
 </section>
 <script>
-document.querySelectorAll('.revoke-form').forEach(f=>{
-  f.addEventListener('submit', async e=>{
-    e.preventDefault();
-    if(!confirm('Відкликати цей токен?')) return;
-    const fd = new FormData(f);
-    const res = await fetch(f.action,{method:'POST',body:fd});
-    if(!res.ok){ alert('Помилка відкликання'); return; }
-    const js = await res.json();
-    if(js.ok){ location.reload(); }
-    else alert('Не вдалося: '+(js.error||'??'));
+function bindAjax(formSelector, confirmText){
+  document.querySelectorAll(formSelector).forEach(f=>{
+    f.addEventListener('submit', async e=>{
+      e.preventDefault();
+      if(confirmText && !confirm(confirmText)) return;
+      const fd = new FormData(f);
+      const res = await fetch(f.action,{method:'POST',body:fd});
+      if(!res.ok){ alert('Помилка запиту'); return; }
+      const js = await res.json();
+      if(js.ok){ location.reload(); } else { alert('Не вдалося: '+(js.error||'??')); }
+    });
   });
-});
+}
+bindAjax('.revoke-form','Відкликати цей токен?');
+bindAjax('.unrevoke-form','Скасувати відкликання і зробити активним?');
 </script>
 <?php require_once __DIR__.'/footer.php'; ?>
