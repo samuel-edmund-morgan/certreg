@@ -57,7 +57,8 @@ CREATE TABLE data (
     score VARCHAR(255) NOT NULL,
     course VARCHAR(255) NOT NULL,
     date  VARCHAR(50)  NOT NULL,
-    hash  VARCHAR(64) DEFAULT NULL
+    hash  VARCHAR(64) DEFAULT NULL,
+    hash_version TINYINT UNSIGNED NOT NULL DEFAULT 1
 );
 -- (Опціонально, але РЕКОМЕНДОВАНО) Забезпечити унікальність hash, щоби не допустити дубльованих сертифікатів з однаковим набором полів:
 ALTER TABLE data ADD UNIQUE KEY uq_data_hash (hash);
@@ -76,6 +77,19 @@ FLUSH PRIVILEGES;
 ALTER TABLE data ADD UNIQUE KEY uq_data_hash (hash);
 ```
 `TRUNCATE TABLE data;` стане доступним (воно вимагає права DROP). Якщо не хочете давати DROP, використовуйте `DELETE FROM data;` для очистки.
+
+### Версіонування хешу (hash_version)
+Починаючи з пункту 1 дорожньої карти ми додали поле `hash_version` та ключ `hash_version` у `config.php`.
+
+Поточне значення 1 означає canonical рядок: `name|score|course|date`.
+
+У майбутній версії (2) планується розширення (наприклад: `v2|id=<id>|name=<...>|score=<...>|course=<...>|date=<...>|issuer=<...>|valid_until=<...>`). Перевірка у `checkCert.php` читає `hash_version` і відтворює відповідний canonical string, тому старі сертифікати лишаються валідними.
+
+Оновлення: для додавання стовпця окремо (якщо він відсутній) можна виконати:
+```sql
+ALTER TABLE data ADD COLUMN hash_version TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER hash;
+```
+Конфіг: у `config.php` параметр `hash_version` контролює, яку версію формує `generate_cert.php`.
 ```bash
 php -r "echo password_hash('your-strong-admin-pass', PASSWORD_DEFAULT), PHP_EOL;"
 ```

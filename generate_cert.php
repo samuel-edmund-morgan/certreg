@@ -14,12 +14,46 @@ $row = $st->fetch();
 if (!$row) { http_response_code(404); exit('Не знайдено'); }
 
 // Детермінований хеш (HMAC-SHA256 із сіллю), щоб checkCert міг перевірити:
-$dataString = implode('|', [
-  (string)$row['name'],
-  (string)$row['score'],
-  (string)$row['course'],
-  (string)$row['date'],
-]);
+// Побудова canonical string залежно від версії алгоритму
+$hashVersion = (int)($cfg['hash_version'] ?? 1);
+switch ($hashVersion) {
+  /* =============================================================
+   *  HASH VERSION DISPATCH
+   *  -------------------------------------------------------------
+   *  Тут визначається canonical string (рядок, який іде у HMAC) для 
+   *  поточної версії алгоритму. КОЖНОГО разу, коли ви плануєте 
+   *  змінити склад полів або формат (наприклад, додати issuer,
+   *  valid_until, id, префікс v2| тощо) — ДОДАЙТЕ НОВИЙ case
+   *  (НЕ редагуйте існуючий case 1, щоб не зламати старі сертифікати).
+   *
+   *  Швидкий чекліст для додавання нової версії (припустимо v2):
+   *    1. ДОДАЙТЕ стовпці у таблицю (якщо потрібні: issuer, valid_until ...).
+   *    2. ОНОВІТЬ форму вводу / адмінку відповідними полями.
+   *    3. ДОДАЙТЕ case 2 нижче з побудовою НОВОГО canonical рядка.
+   *    4. В `config.php` підніміть 'hash_version' => 2.
+   *    5. У `checkCert.php` теж додайте аналогічний case 2 (ідентичний формат!).
+   *    6. Перегенеруйте (за потреби) нові сертифікати — старі лишаються валідними,
+   *       бо їх hash_version = 1 і перевірка виконується за старим шаблоном.
+   *
+   *  ВАЖЛИВО: Canonical рядок має бути суворо детермінований: порядок полів,
+   *  регістр, роздільники. Не додавайте пробіли «для краси». 
+   *  Рекомендація — явно вставляти префікс версії у нові формати:
+   *    v2|name=...|score=...|course=...|date=...|issuer=...|valid_until=...
+   *  (префікс полегшує зовнішній аудит і ручне дебагування).
+   *
+   *  Пошук цього блоку у майбутньому: шукайте ключові слова
+   *  "HASH VERSION DISPATCH" або "canonical string".
+   * ============================================================= */
+  case 1:
+  default:
+    $dataString = implode('|', [
+      (string)$row['name'],
+      (string)$row['score'],
+      (string)$row['course'],
+      (string)$row['date'],
+    ]);
+    break;
+}
 $hash = hash_hmac('sha256', $dataString, $cfg['hash_salt']);
 
 // URL для QR (тепер вимагаємо і id, і hash)
@@ -76,8 +110,8 @@ imagejpeg($im, $outFile, 92);
 imagedestroy($im);
 
 try {
-  $up = $pdo->prepare("UPDATE data SET hash=? WHERE id=?");
-  $up->execute([$hash, $id]);
+  $up = $pdo->prepare("UPDATE data SET hash=?, hash_version=? WHERE id=?");
+  $up->execute([$hash, $hashVersion, $id]);
 } catch (PDOException $e) {
   // 23000 = integrity constraint violation (duplicate key, etc.)
   if ($e->getCode() === '23000') {

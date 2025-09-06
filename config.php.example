@@ -19,4 +19,5 @@ return [
     ],
     'site_name' => "Glorious Site Name",
     'logo_path' => '/assets/logo.png',
+    'hash_version' => 1, // 1 = name|score|course|date (v2 додамо пізніше)
 ];

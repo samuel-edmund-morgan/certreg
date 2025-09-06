@@ -25,8 +25,33 @@ $row = $st->fetch();
 // 2) Перевіряємо, що id з параметра збігається з id знайденого запису
 if ($row && (int)$row['id'] === $id) {
     // 3) Перерахунок і звірка детермінованого HMAC (тільки після підтвердження id)
-    $dataString = implode('|', [$row['name'],$row['score'],$row['course'],$row['date']]);
-    $calc = hash_hmac('sha256', $dataString, $cfg['hash_salt']);
+  $version = isset($row['hash_version']) ? (int)$row['hash_version'] : 1;
+  switch ($version) {
+    /* =============================================================
+     *  HASH VERSION DISPATCH (VERIFICATION SIDE)
+     *  -------------------------------------------------------------
+     *  Дзеркальний блок до generate_cert.php. Будь-яку нову версію
+     *  (case 2, 3, ...) треба додати тут з ТОЧНО ТИМ ЖЕ форматом
+     *  canonical рядка, що використано при генерації.
+     *
+     *  Процедура додавання нової версії v2 (нагадування):
+     *    1. Додати стовпці/поля, що потрібні (issuer, valid_until ...).
+     *    2. Додати case 2 в generate_cert.php і тут.
+     *    3. Підняти 'hash_version' у config.php до 2.
+     *    4. НЕ змінювати case 1 — старі сертифікати мають лишитись валідними.
+     *    5. Перевірити, що HMAC сходиться для тестового сертифіката v2.
+     *
+     *  Порада: у нових версіях додайте явний префікс (v2| ... ) для
+     *  прозорості та спрощення аудиту/логування.
+     *
+     *  Пошук цього блоку: "HASH VERSION DISPATCH (VERIFICATION SIDE)".
+     * ============================================================= */
+    case 1:
+    default:
+      $dataString = implode('|', [$row['name'],$row['score'],$row['course'],$row['date']]);
+      break;
+  }
+  $calc = hash_hmac('sha256', $dataString, $cfg['hash_salt']);
 
     if (hash_equals($hash, $calc)) {
         ?>
