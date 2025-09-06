@@ -46,27 +46,27 @@
     const rnd = crypto.getRandomValues(new Uint8Array(2));
     return 'C'+ts+'-'+toHex(rnd);
   }
-  function drawCertificate(bgLoaded, data){
+  let currentData = null;
+  function renderAll(){
+    if(!currentData) return;
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    if(bgLoaded){ ctx.drawImage(bgLoaded,0,0,canvas.width,canvas.height); }
+    if(bgImage.complete){ ctx.drawImage(bgImage,0,0,canvas.width,canvas.height); }
     ctx.fillStyle = '#000';
     ctx.font = '28px sans-serif';
-    // fallback coordinates if not in config
     const cName = coords.name || {x:600,y:420};
     const cId   = coords.id   || {x:600,y:445};
     const cScore= coords.score|| {x:600,y:470};
     const cCourse=coords.course||{x:600,y:520};
     const cDate = coords.date || {x:600,y:570};
     const cQR   = coords.qr   || {x:150,y:420,size:220};
-    ctx.fillText(data.pib, cName.x, cName.y);
-    ctx.font = '20px sans-serif'; ctx.fillText(data.cid, cId.x, cId.y);
-    ctx.font = '24px sans-serif'; ctx.fillText('Оцінка: '+data.grade, cScore.x, cScore.y);
-    ctx.fillText('Курс: '+data.course, cCourse.x, cCourse.y);
-    ctx.fillText('Дата: '+data.date, cDate.x, cDate.y);
-    // Draw QR once loaded
-    const img = new Image();
-    img.onload = ()=>{ ctx.drawImage(img, cQR.x, cQR.y, cQR.size, cQR.size); };
-    img.src = qrImg.src;
+    ctx.fillText(currentData.pib, cName.x, cName.y);
+    ctx.font = '20px sans-serif'; ctx.fillText(currentData.cid, cId.x, cId.y);
+    ctx.font = '24px sans-serif'; ctx.fillText('Оцінка: '+currentData.grade, cScore.x, cScore.y);
+    ctx.fillText('Курс: '+currentData.course, cCourse.x, cCourse.y);
+    ctx.fillText('Дата: '+currentData.date, cDate.x, cDate.y);
+    if(qrImg.complete){
+      ctx.drawImage(qrImg, cQR.x, cQR.y, cQR.size, cQR.size);
+    }
   }
   async function handleSubmit(e){
     e.preventDefault();
@@ -90,21 +90,29 @@
     }
     const js = await res.json();
     if(!js.ok){ alert('Не вдалося створити запис'); return; }
-    // Build QR payload
+    // Build QR payload (JSON) then embed as base64url in verification URL
     const payloadObj = {v:VERSION,cid:cid,s:b64url(salt),course:course,grade:grade,date:date};
     const payloadStr = JSON.stringify(payloadObj);
-    qrPayloadEl.textContent = payloadStr;
-    const encoded = encodeURIComponent(payloadStr);
-    qrImg.src = '/qr.php?data='+encoded;
-    qrImg.onload = ()=>{
-      drawCertificate(bgImage, {pib:pibRaw,cid:cid,grade:grade,course:course,date:date});
-      btnJpg.disabled = false;
-    };
-    regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span style="font-family:monospace">${h}</span>`;
+    function b64urlStr(str){
+      return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    }
+    const packed = b64urlStr(payloadStr);
+    const verifyUrl = window.location.origin + '/verify.php?p=' + packed;
+    qrPayloadEl.textContent = verifyUrl + "\n\n" + payloadStr;
+    // Ensure onload handler is set BEFORE changing src to avoid race (cache instant load)
+    currentData = {pib:pibRaw,cid:cid,grade:grade,course:course,date:date};
+    qrImg.onload = ()=>{ renderAll(); btnJpg.disabled=false; };
+    qrImg.src = '/qr.php?data='+encodeURIComponent(verifyUrl);
+    // If image was cached and already complete, trigger manually
+    if(qrImg.complete){
+      // Use microtask to keep async behavior consistent
+      setTimeout(()=>{ if(qrImg.onload) qrImg.onload(); },0);
+    }
+  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span style="font-family:monospace">${h}</span><br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank">відкрити перевірку</a>`;
     resultWrap.style.display = '';
   }
   let bgImage = new Image();
-  bgImage.onload = ()=>{};
+  bgImage.onload = ()=>{ renderAll(); };
   bgImage.src = '/files/cert_template.jpg'; // may 404 if not present
   form.addEventListener('submit', handleSubmit);
   btnJpg.addEventListener('click', ()=>{
