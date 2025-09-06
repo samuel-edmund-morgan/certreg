@@ -75,8 +75,17 @@ imagejpeg($im, $outFile, 92);
 @chmod($outFile, 0640);
 imagedestroy($im);
 
-$up = $pdo->prepare("UPDATE data SET hash=? WHERE id=?");
-$up->execute([$hash, $id]);
+try {
+  $up = $pdo->prepare("UPDATE data SET hash=? WHERE id=?");
+  $up->execute([$hash, $id]);
+} catch (PDOException $e) {
+  // 23000 = integrity constraint violation (duplicate key, etc.)
+  if ($e->getCode() === '23000') {
+    http_response_code(409);
+    exit('Конфлікт: унікальний хеш вже існує (інший сертифікат із таким самим набором полів).');
+  }
+  throw $e; // неочікувана помилка
+}
 
 // Віддати файл на завантаження
 header('Content-Type: image/jpeg');

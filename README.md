@@ -59,9 +59,23 @@ CREATE TABLE data (
     date  VARCHAR(50)  NOT NULL,
     hash  VARCHAR(64) DEFAULT NULL
 );
+-- (Опціонально, але РЕКОМЕНДОВАНО) Забезпечити унікальність hash, щоби не допустити дубльованих сертифікатів з однаковим набором полів:
+ALTER TABLE data ADD UNIQUE KEY uq_data_hash (hash);
 ```
 
 Генерація хеша пароля адміністратора:
+
+### Підвищення прав існуючого користувача (якщо потрібно додати індекс пізніше)
+Якщо ви вже створили користувача (наприклад `certuser`) з обмеженими правами і отримуєте помилки `ALTER command denied` або `DROP command denied` під час додавання унікального індексу чи використання `TRUNCATE`, зайдіть під root і виконайте:
+```sql
+GRANT ALTER, INDEX, DROP ON certreg.* TO 'certuser'@'localhost';
+FLUSH PRIVILEGES;
+```
+Після цього можна створити унікальний індекс (якщо ще не створений):
+```sql
+ALTER TABLE data ADD UNIQUE KEY uq_data_hash (hash);
+```
+`TRUNCATE TABLE data;` стане доступним (воно вимагає права DROP). Якщо не хочете давати DROP, використовуйте `DELETE FROM data;` для очистки.
 ```bash
 php -r "echo password_hash('your-strong-admin-pass', PASSWORD_DEFAULT), PHP_EOL;"
 ```
