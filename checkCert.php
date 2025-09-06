@@ -3,19 +3,28 @@ require_once __DIR__.'/header.php';
 require_once __DIR__.'/db.php';
 $cfg = require __DIR__.'/config.php';
 
+// Новий режим: потрібні обидва параметри id та hash
 $hash = $_GET['hash'] ?? '';
-// Валідація параметра hash: очікуємо рівно 64 hex-символи (SHA-256 HMAC)
+$id   = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+// Базова валідація
+if ($id <= 0) {
+  echo '<section class="centered"><div class="card"><div class="alert">Невірний або відсутній параметр id.</div></div></section>';
+  require_once __DIR__.'/footer.php'; exit;
+}
 if ($hash === '' || !preg_match('/^[a-f0-9]{64}$/i', $hash)) {
   echo '<section class="centered"><div class="card"><div class="alert">Невірний або відсутній параметр hash.</div></div></section>';
   require_once __DIR__.'/footer.php'; exit;
 }
 
+// 1) Шукаємо рядок по hash (як і раніше)
 $st = $pdo->prepare("SELECT * FROM data WHERE hash=?");
 $st->execute([$hash]);
 $row = $st->fetch();
 
-if ($row) {
-    // Перерахунок і звірка детермінованого HMAC
+// 2) Перевіряємо, що id з параметра збігається з id знайденого запису
+if ($row && (int)$row['id'] === $id) {
+    // 3) Перерахунок і звірка детермінованого HMAC (тільки після підтвердження id)
     $dataString = implode('|', [$row['name'],$row['score'],$row['course'],$row['date']]);
     $calc = hash_hmac('sha256', $dataString, $cfg['hash_salt']);
 
@@ -30,7 +39,6 @@ if ($row) {
             <p><strong>Курс:</strong> <?= htmlspecialchars($row['course']) ?></p>
             <p><strong>Дата:</strong> <?= htmlspecialchars($row['date']) ?></p>
             <?php
-            // Provide download link if the generated certificate file exists
             $fileName = sprintf('cert_%d_%s.jpg', (int)$row['id'], $row['hash']);
             $filePath = rtrim($cfg['output_dir'], '/') . '/' . $fileName;
             $fileUrl = '/files/certs/' . rawurlencode($fileName);
@@ -51,7 +59,7 @@ if ($row) {
 <section class="centered">
   <div class="card">
     <h1>Сертифікат не підтверджено</h1>
-    <p>Невірний або прострочений хеш.</p>
+  <p>Невірні параметри або сертифікат не підтверджено.</p>
   </div>
 </section>
 <?php require_once __DIR__.'/footer.php'; ?>

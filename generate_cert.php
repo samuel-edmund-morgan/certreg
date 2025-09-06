@@ -22,8 +22,8 @@ $dataString = implode('|', [
 ]);
 $hash = hash_hmac('sha256', $dataString, $cfg['hash_salt']);
 
-// URL для QR
-$url = "https://{$cfg['site_domain']}/checkCert?hash=".$hash;
+// URL для QR (тепер вимагаємо і id, і hash)
+$url = "https://{$cfg['site_domain']}/checkCert?id={$id}&hash=".$hash;
 
 // Підготовка зображення-сертифіката
 $template = $cfg['template_path'];
