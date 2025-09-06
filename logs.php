@@ -46,7 +46,7 @@ require_once __DIR__.'/header.php';
 ?>
 <section class="section" style="display:flex;flex-direction:column;gap:12px">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-    <h2 style="margin:0">Логи перевірок</h2>
+  <h2 style="margin:0">Журнал перевірок сертифікатів</h2>
     <a class="btn" href="/admin.php">← Повернутись</a>
   </div>
   <form method="get" class="form form-inline" style="margin-bottom:12px;gap:6px;align-items:flex-end">
@@ -70,7 +70,7 @@ require_once __DIR__.'/header.php';
   <table class="table">
       <thead>
         <tr>
-  <th><a title="ID логу – унікальний номер запису журналу" href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'id','dir'=>$sort==='id'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">ID</a></th>
+  <th><a title="ID запису журналу – унікальний номер" href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'id','dir'=>$sort==='id'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">ID</a></th>
   <th><a title="ID запиту – значення параметра id із URL перевірки (що ввів користувач)" href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'requested_id','dir'=>$sort==='requested_id'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">ID запиту</a></th>
   <th title="Хеш запиту – hash із URL, який перевірявся">Хеш запиту</th>
   <th><a title="ID запису – реальний ID сертифіката в таблиці data (якщо знайдений)" href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'data_id','dir'=>$sort==='data_id'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">ID запису</a></th>

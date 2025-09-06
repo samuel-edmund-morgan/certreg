@@ -68,7 +68,7 @@ require_once __DIR__.'/header.php';
   </div>
 </section>
 <?php
-// Показ логів саме для цього сертифіката
+// Журнал перевірок саме для цього сертифіката
 $logLimit = 50; // останні 50
 $sort = $_GET['lsort'] ?? 'id';
 $dir  = strtolower($_GET['ldir'] ?? 'desc') === 'asc' ? 'asc':'desc';
@@ -110,7 +110,7 @@ if ($logRows): ?>
     <table class="table">
       <thead>
         <tr>
-          <th><a title="ID логу – унікальний номер запису журналу" href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'id','ldir'=>$sort==='id'&&$dir==='asc'?'desc':'asc'])) ?>">ID</a></th>
+          <th><a title="ID запису журналу – унікальний номер" href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'id','ldir'=>$sort==='id'&&$dir==='asc'?'desc':'asc'])) ?>">ID</a></th>
           <th><a title="ID запиту – параметр id із URL перевірки" href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'requested_id','ldir'=>$sort==='requested_id'&&$dir==='asc'?'desc':'asc'])) ?>">ID запиту</a></th>
           <th title="Скорочене відображення хешу запиту (перші 20 символів)">Хеш (скор.)</th>
           <th><a title="Статус перевірки (success, bad_hash, not_found, bad_id, revoked)" href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'status','ldir'=>$sort==='status'&&$dir==='asc'?'desc':'asc'])) ?>">Статус</a></th>
