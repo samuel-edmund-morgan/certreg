@@ -70,15 +70,15 @@ require_once __DIR__.'/header.php';
   <table class="table">
       <thead>
         <tr>
-  <th><a href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'id','dir'=>$sort==='id'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">ID</a></th>
-  <th><a href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'requested_id','dir'=>$sort==='requested_id'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">ID запиту</a></th>
-  <th>Хеш запиту</th>
-  <th><a href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'data_id','dir'=>$sort==='data_id'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">ID запису</a></th>
-  <th><a href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'status','dir'=>$sort==='status'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">Статус</a></th>
-  <th>Відкликано</th>
-  <th>IP</th>
-  <th>Агент</th>
-  <th><a href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'created_at','dir'=>$sort==='created_at'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">Час</a></th>
+  <th><a title="ID логу – унікальний номер запису журналу" href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'id','dir'=>$sort==='id'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">ID</a></th>
+  <th><a title="ID запиту – значення параметра id із URL перевірки (що ввів користувач)" href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'requested_id','dir'=>$sort==='requested_id'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">ID запиту</a></th>
+  <th title="Хеш запиту – hash із URL, який перевірявся">Хеш запиту</th>
+  <th><a title="ID запису – реальний ID сертифіката в таблиці data (якщо знайдений)" href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'data_id','dir'=>$sort==='data_id'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">ID запису</a></th>
+  <th><a title="Статус перевірки (success, bad_hash, not_found, bad_id, revoked)" href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'status','dir'=>$sort==='status'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">Статус</a></th>
+  <th title="Чи був сертифікат відкликаний на момент перевірки">Відкликано</th>
+  <th title="IP адреса клієнта">IP</th>
+  <th title="User-Agent браузера / клієнта">Агент</th>
+  <th><a title="Час фіксації події" href="?<?= htmlspecialchars(http_build_query(['q'=>$filter,'sort'=>'created_at','dir'=>$sort==='created_at'&&$dir==='asc'?'desc':'asc','page'=>$page])) ?>">Час</a></th>
         </tr>
       </thead>
       <tbody>

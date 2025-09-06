@@ -110,14 +110,14 @@ if ($logRows): ?>
     <table class="table">
       <thead>
         <tr>
-          <th><a href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'id','ldir'=>$sort==='id'&&$dir==='asc'?'desc':'asc'])) ?>">ID</a></th>
-          <th><a href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'requested_id','ldir'=>$sort==='requested_id'&&$dir==='asc'?'desc':'asc'])) ?>">ID запиту</a></th>
-          <th>Хеш (скор.)</th>
-          <th><a href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'status','ldir'=>$sort==='status'&&$dir==='asc'?'desc':'asc'])) ?>">Статус</a></th>
-          <th>Успіх</th>
-          <th>Відкликано</th>
-          <th>IP</th>
-          <th><a href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'created_at','ldir'=>$sort==='created_at'&&$dir==='asc'?'desc':'asc'])) ?>">Час</a></th>
+          <th><a title="ID логу – унікальний номер запису журналу" href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'id','ldir'=>$sort==='id'&&$dir==='asc'?'desc':'asc'])) ?>">ID</a></th>
+          <th><a title="ID запиту – параметр id із URL перевірки" href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'requested_id','ldir'=>$sort==='requested_id'&&$dir==='asc'?'desc':'asc'])) ?>">ID запиту</a></th>
+          <th title="Скорочене відображення хешу запиту (перші 20 символів)">Хеш (скор.)</th>
+          <th><a title="Статус перевірки (success, bad_hash, not_found, bad_id, revoked)" href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'status','ldir'=>$sort==='status'&&$dir==='asc'?'desc':'asc'])) ?>">Статус</a></th>
+          <th title="1 – перевірка валідна; 0 – невдала / невалідна">Успіх</th>
+          <th title="Чи був сертифікат відкликаний на момент перевірки">Відкликано</th>
+          <th title="IP адреса клієнта">IP</th>
+          <th><a title="Час фіксації події" href="?<?= htmlspecialchars(http_build_query(['id'=>$row['id'],'lsort'=>'created_at','ldir'=>$sort==='created_at'&&$dir==='asc'?'desc':'asc'])) ?>">Час</a></th>
         </tr>
       </thead>
       <tbody>
