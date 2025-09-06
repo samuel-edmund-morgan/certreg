@@ -17,6 +17,9 @@
   const qrPayloadEl = document.getElementById('qrPayload');
   const qrImg = document.getElementById('qrImg');
   const btnJpg = document.getElementById('downloadJpg');
+  const toggleDetails = document.getElementById('toggleDetails');
+  const advancedBlock = document.getElementById('advanced');
+  const summary = document.getElementById('summary');
   const resetBtn = document.getElementById('resetBtn');
   const canvas = document.getElementById('certCanvas');
   const ctx = canvas.getContext('2d');
@@ -98,18 +101,21 @@
     }
     const packed = b64urlStr(payloadStr);
     const verifyUrl = window.location.origin + '/verify.php?p=' + packed;
-    qrPayloadEl.textContent = verifyUrl + "\n\n" + payloadStr;
+  qrPayloadEl.textContent = verifyUrl + "\n\n" + payloadStr;
     // Ensure onload handler is set BEFORE changing src to avoid race (cache instant load)
     currentData = {pib:pibRaw,cid:cid,grade:grade,course:course,date:date};
-    qrImg.onload = ()=>{ renderAll(); btnJpg.disabled=false; };
+    qrImg.onload = ()=>{ renderAll(); btnJpg.disabled=false; // auto-download in minimal mode
+      autoDownload(); };
     qrImg.src = '/qr.php?data='+encodeURIComponent(verifyUrl);
     // If image was cached and already complete, trigger manually
     if(qrImg.complete){
       // Use microtask to keep async behavior consistent
       setTimeout(()=>{ if(qrImg.onload) qrImg.onload(); },0);
     }
-  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span style="font-family:monospace">${h}</span><br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank">відкрити перевірку</a>`;
-    resultWrap.style.display = '';
+  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span style="font-family:monospace">${h}</span><br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
+  summary.innerHTML = `<div class="alert" style="background:#ecfdf5;border:1px solid #6ee7b7;margin:0 0 12px">Сертифікат створено. CID <strong>${cid}</strong>. Зображення завантажено. Збережіть його – ПІБ не відновлюється з бази.</div><div style="font-size:13px">Перевірка: <a href="${verifyUrl}" target="_blank" rel="noopener">${verifyUrl}</a></div>`;
+  toggleDetails.style.display='inline-block';
+  resultWrap.style.display = '';
   }
   let bgImage = new Image();
   bgImage.onload = ()=>{ renderAll(); };
@@ -120,6 +126,20 @@
     link.download = 'certificate.jpg';
     link.href = canvas.toDataURL('image/jpeg',0.92);
     link.click();
+  });
+  function autoDownload(){
+    // Avoid multiple triggers if user regenerates quickly
+    if(!canvas) return;
+    const link = document.createElement('a');
+    link.download = 'certificate.jpg';
+    link.href = canvas.toDataURL('image/jpeg',0.92);
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(()=>{ if(link.parentNode) link.parentNode.removeChild(link); }, 100);
+  }
+  toggleDetails && toggleDetails.addEventListener('click',()=>{
+    if(advancedBlock.style.display==='none'){ advancedBlock.style.display='block'; toggleDetails.textContent='Сховати технічні деталі'; }
+    else { advancedBlock.style.display='none'; toggleDetails.textContent='Показати технічні деталі'; }
   });
   resetBtn.addEventListener('click', ()=>{ form.reset(); resultWrap.style.display='none'; btnJpg.disabled=true; });
 })();
