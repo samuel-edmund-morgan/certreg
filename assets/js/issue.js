@@ -16,7 +16,7 @@
   const regMeta = document.getElementById('regMeta');
   const qrPayloadEl = document.getElementById('qrPayload');
   const qrImg = document.getElementById('qrImg');
-  const btnJpg = document.getElementById('downloadJpg');
+  const btnJpg = null; // removed explicit download button (auto + link)
   const toggleDetails = document.getElementById('toggleDetails');
   const advancedBlock = document.getElementById('advanced');
   const summary = document.getElementById('summary');
@@ -28,10 +28,25 @@
 
   function normName(s){
     return s.normalize('NFC')
-      .replace(/[\u2019'`’]/g,'')
+      .replace(/[\u2019'`’\u02BC]/g,'') // видаляємо різні апострофи включно з U+02BC
       .replace(/\s+/g,' ')
       .trim()
       .toUpperCase();
+  }
+  const HOMO_LATIN = /[TOCtoc]/; // мінімальний набір, який просили
+  const CYRILLIC_LETTER = /[\u0400-\u04FF]/; // базовий діапазон кирилиці
+  function hasHomoglyphRisk(raw){
+    if(!HOMO_LATIN.test(raw)) return false;
+    // якщо змішано латиницю з кирилицею — ризик
+    let hasCyr = CYRILLIC_LETTER.test(raw);
+    if(!hasCyr) return false;
+    // Перевіряємо чи є латинські T/O/C
+    for(const ch of raw){
+      if('TOCtoc'.includes(ch) && ch.charCodeAt(0) < 128){
+        return true;
+      }
+    }
+    return false;
   }
   function toHex(bytes){ return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(''); }
   function b64url(bytes){
@@ -73,12 +88,18 @@
   }
   async function handleSubmit(e){
     e.preventDefault();
-    btnJpg.disabled = true;
+  // disable generate button to avoid duplicates until finished
+  const genBtn = document.getElementById('generateBtn');
+  if(genBtn) genBtn.disabled = true;
     const pibRaw = form.pib.value;
     const course = form.course.value.trim();
     const grade  = form.grade.value.trim();
     const date   = form.date.value; // YYYY-MM-DD
     if(!pibRaw||!course||!grade||!date){ return; }
+    if(hasHomoglyphRisk(pibRaw)){
+      alert('У ПІБ виявлено латинські символи T/O/C впереміш з кирилицею. Замініть їх на кириличні аналоги (Т/О/С).');
+      return;
+    }
     const pibNorm = normName(pibRaw);
     const salt = crypto.getRandomValues(new Uint8Array(32));
     const canonical = `v${VERSION}|${pibNorm}|${course}|${grade}|${date}`;
@@ -104,8 +125,7 @@
   qrPayloadEl.textContent = verifyUrl + "\n\n" + payloadStr;
     // Ensure onload handler is set BEFORE changing src to avoid race (cache instant load)
     currentData = {pib:pibRaw,cid:cid,grade:grade,course:course,date:date};
-    qrImg.onload = ()=>{ renderAll(); btnJpg.disabled=false; // auto-download in minimal mode
-      autoDownload(); };
+  qrImg.onload = ()=>{ renderAll(); autoDownload(); }; 
     qrImg.src = '/qr.php?data='+encodeURIComponent(verifyUrl);
     // If image was cached and already complete, trigger manually
     if(qrImg.complete){
@@ -113,7 +133,24 @@
       setTimeout(()=>{ if(qrImg.onload) qrImg.onload(); },0);
     }
   regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span style="font-family:monospace">${h}</span><br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
-  summary.innerHTML = `<div class="alert" style="background:#ecfdf5;border:1px solid #6ee7b7;margin:0 0 12px">Сертифікат створено. CID <strong>${cid}</strong>. Зображення завантажено. Збережіть його – ПІБ не відновлюється з бази.</div><div style="font-size:13px">Перевірка: <a href="${verifyUrl}" target="_blank" rel="noopener">${verifyUrl}</a></div>`;
+  summary.innerHTML = `<div class="alert" style="background:#ecfdf5;border:1px solid #6ee7b7;margin:0 0 12px">Сертифікат створено. CID <strong>${cid}</strong>. Зображення автоматично завантажено. <a href="#" id="reDownloadLink">Повторно завантажити JPG</a>. Збережіть файл – ПІБ не відновлюється з бази.</div><div style="font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">Перевірка: <a href="${verifyUrl}" target="_blank" rel="noopener">Відкрити сторінку перевірки</a><button type="button" class="btn btn-sm" id="copyLinkBtn" style="padding:4px 8px">Копіювати URL</button><span id="copyLinkStatus" style="font-size:11px;color:#15803d;display:none">Скопійовано</span></div>`;
+  const rd = document.getElementById('reDownloadLink');
+  if(rd){ rd.addEventListener('click', ev=>{ ev.preventDefault(); manualDownload(); }); }
+  const copyBtn = document.getElementById('copyLinkBtn');
+  const copyStatus = document.getElementById('copyLinkStatus');
+  if(copyBtn){
+    copyBtn.addEventListener('click', async ()=>{
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          await navigator.clipboard.writeText(verifyUrl);
+        } else {
+          const ta=document.createElement('textarea'); ta.value=verifyUrl; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+        }
+        if(copyStatus){ copyStatus.style.display='inline'; setTimeout(()=>{copyStatus.style.display='none';},1800); }
+      }catch(e){ alert('Не вдалося скопіювати'); }
+    });
+  }
+  if(genBtn) genBtn.disabled = false;
   toggleDetails.style.display='inline-block';
   resultWrap.style.display = '';
   }
@@ -121,14 +158,7 @@
   bgImage.onload = ()=>{ renderAll(); };
   bgImage.src = '/files/cert_template.jpg'; // may 404 if not present
   form.addEventListener('submit', handleSubmit);
-  btnJpg.addEventListener('click', ()=>{
-    const link = document.createElement('a');
-    link.download = 'certificate.jpg';
-    link.href = canvas.toDataURL('image/jpeg',0.92);
-    link.click();
-  });
-  function autoDownload(){
-    // Avoid multiple triggers if user regenerates quickly
+  function manualDownload(){
     if(!canvas) return;
     const link = document.createElement('a');
     link.download = 'certificate.jpg';
@@ -137,9 +167,14 @@
     link.click();
     setTimeout(()=>{ if(link.parentNode) link.parentNode.removeChild(link); }, 100);
   }
+  function autoDownload(){
+    // Avoid multiple triggers if user regenerates quickly
+    if(!canvas) return;
+  manualDownload();
+  }
   toggleDetails && toggleDetails.addEventListener('click',()=>{
     if(advancedBlock.style.display==='none'){ advancedBlock.style.display='block'; toggleDetails.textContent='Сховати технічні деталі'; }
     else { advancedBlock.style.display='none'; toggleDetails.textContent='Показати технічні деталі'; }
   });
-  resetBtn.addEventListener('click', ()=>{ form.reset(); resultWrap.style.display='none'; btnJpg.disabled=true; });
+  resetBtn.addEventListener('click', ()=>{ form.reset(); resultWrap.style.display='none'; });
 })();

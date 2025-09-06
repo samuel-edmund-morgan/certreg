@@ -54,7 +54,7 @@ $csrf = csrf_token();
       <tbody>
       <?php foreach($rows as $r): ?>
         <tr class="<?= $r['revoked_at'] ? 'row-revoked':'' ?>">
-          <td style="font-family:monospace;font-size:12px"><?= htmlspecialchars($r['cid']) ?></td>
+          <td style="font-family:monospace;font-size:12px"><a href="/token.php?cid=<?= urlencode($r['cid']) ?>" style="text-decoration:none;"><?= htmlspecialchars($r['cid']) ?></a></td>
           <td><?= (int)$r['version'] ?></td>
           <td><?= htmlspecialchars($r['course'] ?? '') ?></td>
           <td><?= htmlspecialchars($r['grade'] ?? '') ?></td>

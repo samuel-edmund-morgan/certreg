@@ -43,13 +43,15 @@
   </div>
 </header>
 
-<div class="alert-banner" role="alert" aria-live="polite">
-  <div class="alert-banner__marquee">
-    <div class="alert-banner__track">
-      <span class="alert-banner__text">Увага! Якщо дані у вікні 'Технічні дані' не збігаються з даними роздрукованого сертифіката, це свідчить про підробку документа.</span>
-      <span class="alert-banner__text">Увага! Якщо дані у вікні 'Технічні дані' не збігаються з даними роздрукованого сертифіката, це свідчить про підробку документа.</span>
+<?php if(empty($hideAlertBanner)): ?>
+  <div class="alert-banner" role="alert" aria-live="polite">
+    <div class="alert-banner__marquee">
+      <div class="alert-banner__track">
+        <span class="alert-banner__text">Увага! Якщо дані у вікні 'Технічні дані' не збігаються з даними роздрукованого сертифіката, це свідчить про підробку документа.</span>
+        <span class="alert-banner__text">Увага! Якщо дані у вікні 'Технічні дані' не збігаються з даними роздрукованого сертифіката, це свідчить про підробку документа.</span>
+      </div>
     </div>
   </div>
-</div>
+<?php endif; ?>
 
 <main class="container">

@@ -61,7 +61,10 @@ require __DIR__.'/header.php';
         courseOut.textContent = payload.course || '';
         gradeOut.textContent = payload.grade || '';
         dateOut.textContent = payload.date || '';
-        function normName(s){return s.normalize('NFC').replace(/[\u2019'`’]/g,'').replace(/\s+/g,' ').trim().toUpperCase();}
+  function normName(s){return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();}
+  const HOMO_LATIN=/[TOCtoc]/; const CYR=/[\u0400-\u04FF]/;
+  function hasHomoglyphRisk(raw){ if(!HOMO_LATIN.test(raw)) return false; if(!CYR.test(raw)) return false; for(const ch of raw){ if('TOCtoc'.includes(ch) && ch.charCodeAt(0)<128) return true; } return false; }
+  const mismatchAttempts=[]; // локальний журнал невдалих спроб (не відправляється)
         function b64urlToBytes(b64){b64=b64.replace(/-/g,'+').replace(/_/g,'/');const pad=b64.length%4;if(pad)b64+='='.repeat(4-pad);const bin=atob(b64);const out=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);return out;}
         async function hmac(keyBytes,msg){const key=await crypto.subtle.importKey('raw',keyBytes,{name:'HMAC',hash:'SHA-256'},false,['sign']);const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(msg));return new Uint8Array(sig);} 
         function toHex(bytes){return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('');}
@@ -70,10 +73,20 @@ require __DIR__.'/header.php';
           hashOut.textContent = js.h;
           if(js.revoked){
             existBox.className='alert alert-error';
-            existBox.textContent='Запис існує, але СЕРТИФІКАТ ВІДКЛИКАНО.' + (js.revoke_reason? (' Причина: '+js.revoke_reason):'');
+            let txt='Запис існує, але СЕРТИФІКАТ ВІДКЛИКАНО.';
+            if(js.revoked_at){ txt += ' (дата: '+js.revoked_at+')'; }
+            if(js.revoke_reason){ txt += ' Причина: '+js.revoke_reason; }
+            existBox.textContent = txt;
+            // Не показуємо форму перевірки імені для відкликаних
+            ownForm.style.display='none';
           }
-          else { existBox.className='alert'; existBox.style.background='#ecfdf5'; existBox.style.border='1px solid #6ee7b7'; existBox.textContent='Реєстраційний номер існує, сертифікат чинний.'; }
-          ownForm.style.display='block';
+          else {
+            existBox.className='alert';
+            existBox.style.background='#ecfdf5';
+            existBox.style.border='1px solid #6ee7b7';
+            existBox.textContent='Реєстраційний номер існує, сертифікат чинний.';
+            ownForm.style.display='block';
+          }
           ownForm.addEventListener('submit', async ev=>{
             ev.preventDefault(); ownResult.textContent='';
             const pib = normName(ownForm.pib.value); if(!pib) return;
@@ -81,8 +94,15 @@ require __DIR__.'/header.php';
             try {
               const calc = await hmac(b64urlToBytes(payload.s), canonical);
               const cmp = toHex(calc);
+              if(hasHomoglyphRisk(ownForm.pib.value)){
+                ownResult.innerHTML='<div class="alert alert-error">Можливі латинські символи T/O/C у поєднанні з кирилицею. Перевірте, що використано кириличні Т/О/С.</div>';
+                return;
+              }
               if(cmp===js.h){ ownResult.innerHTML='<div class="alert" style="background:#ecfdf5;border:1px solid #6ee7b7">Так, сертифікат належить зазначеній особі.</div>'; }
-              else { ownResult.innerHTML='<div class="alert alert-error">Не збігається. Імʼя/формат не відповідає сертифікату.</div>'; }
+              else {
+                mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
+                ownResult.innerHTML='<div class="alert alert-error">Не збігається. Імʼя/формат не відповідає сертифікату.<br><small>Нормалізований варіант: <code>'+pib+'</code></small></div>';
+              }
             } catch(e){ ownResult.innerHTML='<div class="alert alert-error">Помилка обчислення.</div>'; }
           });
         }).catch(()=>{ existBox.className='alert alert-error'; existBox.textContent='Помилка запиту.'; });

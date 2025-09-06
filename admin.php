@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/auth.php';
 if(!is_admin_logged()){
+  $hideAlertBanner = true;
   require_once __DIR__.'/header.php';
   ?>
   <section class="centered">

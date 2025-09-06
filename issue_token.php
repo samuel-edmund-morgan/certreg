@@ -24,8 +24,7 @@ $coords = $cfg['coords'] ?? [];
       <input type="date" name="date" required>
     </label>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-success" type="submit">Згенерувати</button>
-      <button class="btn" type="button" id="downloadJpg" disabled>Завантажити JPG</button>
+      <button class="btn btn-success" type="submit" id="generateBtn">Згенерувати</button>
       <button class="btn" type="button" id="toggleDetails" style="display:none">Показати технічні деталі</button>
       <button class="btn" type="button" id="resetBtn">Новий</button>
     </div>
