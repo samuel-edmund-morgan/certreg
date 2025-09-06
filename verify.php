@@ -80,7 +80,10 @@ if($p){
       fetch(statusUrl).then(r=>r.json()).then(js=>{
         if(!js.exists){ existBox.className='status-box status-bad'; existBox.textContent='Реєстраційний номер не знайдено.'; return; }
         hashOut.textContent = js.h;
-        if(js.revoked){ existBox.className='status-box status-bad'; existBox.textContent='Запис існує, але СЕРТИФІКАТ ВІДКЛИКАНО.'; }
+        if(js.revoked){
+          existBox.className='status-box status-bad';
+          existBox.textContent='Запис існує, але СЕРТИФІКАТ ВІДКЛИКАНО.' + (js.revoke_reason? (' Причина: '+js.revoke_reason):'');
+        }
         else { existBox.className='status-box status-ok'; existBox.textContent='Реєстраційний номер існує, сертифікат чинний.'; }
         ownForm.style.display='flex';
         ownForm.addEventListener('submit', async ev=>{
