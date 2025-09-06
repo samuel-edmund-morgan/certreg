@@ -18,7 +18,69 @@ HMAC h   | ✔ | ✖ | (опційно фрагмент)
 
 Перевірка працює так: QR → `verify.php?p=...` → сторінка зчитує JSON (v,cid,s,course,grade,date) → запитує `/api/status?cid=` щоб отримати `h` та `revoked` → користувач вводить ПІБ → HMAC(s, canonical) порівнюється з серверним h.
 
-Canonical рядок (v1): `v1|NAME|COURSE|GRADE|DATE` де NAME нормалізований (NFC, без апострофів, collapse spaces, UPPERCASE).
+Canonical рядок (v1): `v1|NAME|COURSE|GRADE|DATE` де NAME нормалізований (див. розділ «Канонічний рядок і нормалізація»).
+
+## Канонічний рядок і нормалізація (v1)
+Цей розділ формалізує те, що робить клієнт під час видачі та перевірки.
+
+### Поля
+v (number) – версія формату (поточна 1)
+NAME – нормалізоване ПІБ (НЕ зберігається на сервері)
+COURSE – як введено (trim) без додаткової нормалізації окрім обрізання пробілів по краях
+GRADE – як введено (trim)
+DATE – ISO `YYYY-MM-DD` (браузерна value з type=date)
+
+### Алгоритм нормалізації NAME (v1)
+1. Вхід: сирий рядок, який ввів оператор (приблизно «Прізвище Ім'я По-батькові»)
+2. Unicode NFC: `s.normalize('NFC')`
+3. Видалення апострофів / схожих символів: усуваємо `['\u2019', "'", '`', '’', '\u02BC']`
+4. Згортання пробілів: заміна усіх блоків пробілів на один пробіл (RegExp `/\s+/g -> ' '`)
+5. Обрізання країв: `trim()`
+6. Перетворення у верхній регістр (Unicode-aware у JS): `toUpperCase()`
+7. Перевірка на ризик гомогліфів (поточний мінімальний набір): якщо одночасно зустрічається кирилиця й латинські символи `T O C` (`TOCtoc`) — блокувати (показати alert). Це превентивний захист від підміни латинських літер у кириличному тексті.
+
+Результат кроку (7) використовується як NAME у canonical string. Жодна проміжна форма не надсилається на сервер.
+
+### Формування canonical string (v1)
+Шаблон: `v1|<NAME>|<COURSE>|<GRADE>|<DATE>`
+
+### Криптографічні кроки (клієнт)
+1. Генеруємо 32 байти випадкової солі: `crypto.getRandomValues(new Uint8Array(32))`
+2. HMAC-SHA256 (key = salt, message = canonical UTF-8)
+3. Отримуємо hex-представлення підпису (h)
+4. Генеруємо CID (формат `C<timestamp_base36>-<4hex>`)
+5. Відправляємо на сервер JSON: `{cid, v:1, h, course, grade, date}`
+6. Формуємо QR payload: `{v,cid,s,course,grade,date}` де `s` = base64url(salt)
+7. Payload JSON кодуємо в base64url і додаємо як параметр `p` у `/verify.php?p=...`
+
+### Перевірка (браузер користувача)
+1. Розпаковує JSON з параметра `p`
+2. Витягає `v,cid,s,course,grade,date`
+3. Запитує `/api/status.php?cid=...` щоб отримати `{h, revoked_at, revoke_reason}` (без ПІБ)
+4. Користувач вводить своє ПІБ → нормалізація так само, як при видачі
+5. Реконструюється canonical string і рахується HMAC(salt, canonical)
+6. Порівняння отриманого hex з серверним h (строге)
+7. Якщо співпадає і не відкликано — сертифікат чинний
+
+### Причини саме такого дизайну
+* Zero-PII на сервері – компрометація БД не розкриває імена
+* salt у QR не дає змогу підібрати ПІБ (бо простір імен великий, а значення HMAC недоступне без звернення до сервера)
+* Локальна нормалізація + одна версія формату запобігають розсинхрону між клієнтами
+* В майбутньому можна додати `template_version`, `issuer`, `expires_at` – тоді буде v2
+
+### Майбутнє (v2 – план)
+Формат (можливий приклад):
+`v2|NAME|COURSE|GRADE|DATE|ISSUER|EXPIRES|TEMPLATE_VER`
+Правила нормалізації NAME лишаються стабільними (беккомпат). Можна розширити детекцію гомогліфів (додати A, E, K, M, H, O, P, C, T, X, Y, B). Для цього варіанта НЕ потрібно міняти v1 сертифікати – просто нові випуски позначені `v:2`.
+
+### Мінімальна специфікація для незалежної імплементації
+Input: (NAME_raw, COURSE, GRADE, DATE, SALT[32])
+Output: h = HMAC_SHA256(SALT, canonical_v1(NAME_norm, COURSE, GRADE, DATE)) (hex 64 chars)
+Failure modes: mismatched h, revoked, malformed payload, unsupported version
+
+Edge cases покриті нормалізацією: надлишкові пробіли, різні види апострофів, змішаний регістр. Не покриває: подвійні пробіли всередині після очистки (бо згортаються), невидимі керівні символи (поки що — опціонально можна додати фільтр на `\p{C}`).
+
+---
 
 ## Розгортання (скорочено)
 1. Клонування коду, налаштування `config.php`.
@@ -202,302 +264,31 @@ INSERT INTO creds (username, passhash) VALUES ('admin', 'вставте_сюди
 ```
 Примітка: Логін можете змінити.
 
-## 3. Клонування і конфігурація
-```bash
-cd /var/www
-sudo git clone https://github.com/samuel-edmund-morgan/certreg.git
-cd certreg
-```
-```bash
-sudo cp config.php.example config.php
-sudo nano config.php
-```
-Налаштуйте в config.php:
-* DB доступ (db_host, db_name, db_user, db_pass)
-* Домен (site_domain)
-* Секретну сіль (hash_salt)
-* Шаблон і шрифт (template_path, font_path)
+## Мінімальне розгортання (актуальна версія)
+1. Створити БД + користувача.
+2. Скопіювати `config.php.example` → `config.php`, налаштувати `db_*`, `site_name`, `logo_path`, `coords`.
+3. Запустити міграцію `php migrations/004_create_tokens_table.php`.
+4. (Необов'язково) Запустити `php migrations/005_drop_legacy.php --archive` для прибирання старих таблиць.
+5. Виставити nginx whitelist тільки на: `issue_token.php`, `tokens.php`, `token.php`, `verify.php`, `qr.php`, `api/*.php`.
+6. Додати rate-limit на `/api/status.php` при потребі.
 
-Генерація солі:
-```bash
+## API (коротко)
+POST /api/register.php {cid,v,h,course,grade,date} -> {ok:1}
+GET  /api/status.php?cid=... -> {ok:1,h,revoked_at?,revoke_reason?}
+POST /api/revoke.php {cid,reason}
+POST /api/unrevoke.php {cid}
+POST /api/delete_token.php {cid,_csrf}
+
+## Права доступу (рекомендація)
+- Заборонити всі *.php окрім білого списку.
+- Admin сторінки за IP + сесія.
+- `config.php` chmod 640.
+
+## Ліцензія
+MIT
 openssl rand -hex 32
+
 ```
+
 Переконайтесь у наявності `files/cert_template.jpg` та `fonts/Montserrat-Light.ttf`.
-
-## 4. Права доступу
-Код лише для читання веб-сервером:
-```bash
-sudo chown -R root:root /var/www/certreg
-sudo find /var/www/certreg -type d -exec chmod 755 {} +
-sudo find /var/www/certreg -type f -exec chmod 644 {} +
-```
-Каталог для сертифікатів (запис веб-сервером):
-```bash
-sudo chown -R www-data:www-data /var/www/certreg/files/certs
-sudo chmod 755 /var/www/certreg/files /var/www/certreg/files/certs
-```
-Захист `config.php`:
-```bash
-sudo chown root:www-data /var/www/certreg/config.php
-sudo chmod 640 /var/www/certreg/config.php
-```
-
-## 5. Налаштування nginx
-`/etc/nginx/sites-available/certreg.conf`:
-```nginx
-server {
-    server_name certificates.example.com;  # ваш домен
-    root /var/www/certreg;
-    index index.php;
-
-    client_max_body_size 10m;
-    add_header X-Frame-Options SAMEORIGIN always;
-    add_header X-Content-Type-Options nosniff always;
-    add_header Referrer-Policy no-referrer-when-downgrade always;
-
-    location = / { return 403; }
-
-    location = /checkCert { rewrite ^ /checkCert.php last; }
-
-    location = /admin.php {
-        allow 94.45.140.194;
-        allow 94.45.140.195;
-        allow 203.0.113.5;
-        deny all;
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-    }
-
-    location = /delete_record.php {
-        allow 94.45.140.194;
-        allow 94.45.140.195;
-        allow 203.0.113.5;
-        deny all;
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-    }
-
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-    }
-
-    location ~* \.(?:css|js|png|jpg|jpeg|gif|svg|ico|ttf|woff2?)$ {
-        expires 7d;
-        access_log off;
-        add_header Cache-Control "public";
-    }
-
-    listen 80;
-    listen [::]:80;
-}
-```
-Активація:
-```bash
-sudo ln -s /etc/nginx/sites-available/certreg.conf /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-## 6. TLS (Certbot)
-```bash
-sudo certbot --nginx -d certificates.example.com -m admin@example.com --agree-tos --redirect
-```
-HSTS (в HTTPS-блоці):
-```nginx
-add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-```
-
-## 7. Безпека PHP
-```ini
-date.timezone = Europe/Kyiv
-expose_php = Off
-session.use_strict_mode = 1
-session.cookie_httponly = 1
-session.cookie_samesite = Lax
-memory_limit = 256M
-opcache.enable = 1
-opcache.validate_timestamps = 1
-opcache.max_accelerated_files = 10000
-```
-```bash
-sudo systemctl restart php8.3-fpm
-```
-
-## 8. Обфускація адмін-панелі
-Перейменування:
-```bash
-sudo mv /var/www/certreg/admin.php /var/www/certreg/admin_portal.php
-```
-Basic Auth:
-```bash
-sudo apt install -y apache2-utils
-sudo htpasswd -c /etc/nginx/.htpasswd_certreg admin_portal_user
-```
-Прихований шлях:
-```nginx
-location = /butterfly {
-    allow 203.0.113.5;
-    deny all;
-    include snippets/fastcgi-php.conf;
-    fastcgi_param SCRIPT_FILENAME /var/www/certreg/admin_portal.php;
-    fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-    auth_basic "Restricted Area";
-    auth_basic_user_file /etc/nginx/.htpasswd_certreg;
-}
-```
-Блок службових викликів:
-```nginx
-location = /generate_cert.php { return 404; }
-```
-
-## 9. Захист SSH та HTTP
-SSH (`/etc/ssh/sshd_config`):
-```
-PermitRootLogin no
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-ChallengeResponseAuthentication no
-PubkeyAuthentication yes
-AllowUsers youradminuser
-```
-Перезапуск:
-```bash
-sudo sshd -t && sudo systemctl restart ssh
-```
-Ключ:
-```bash
-ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_certreg -C "admin@certreg"
-```
-Fail2Ban:
-```bash
-sudo apt install -y fail2ban
-```
-UFW:
-```bash
-sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
-sudo ufw --force enable
-sudo ufw status
-```
-Звуження SSH (опц.):
-```bash
-sudo ufw allow from 203.0.113.0/24 to any port 22 proto tcp
-sudo ufw delete allow OpenSSH
-```
-Обмеження інших PHP:
-```nginx
-location ~ ^/(?!checkCert$).*\.php$ { return 403; }
-```
-Rate limit:
-```nginx
-limit_req_zone $binary_remote_addr zone=chkcert:10m rate=30r/m;
-# у location = /checkCert додати:
-limit_req zone=chkcert burst=10 nodelay;
-```
-
-### Повний приклад фінального `/etc/nginx/sites-available/certreg.conf`
-Нижче зведений кінцевий варіант файлу (після усіх кроків 5–9). Замініть `certificates.example.com` та IP-адреси на свої. `limit_req_zone` можна залишити нагорі файлу (в Ubuntu/Debian ці файли інклудяться всередині `http{}` і директива валідна).
-```nginx
-# Ліміт запитів (зона — 30 запитів за хвилину на IP)
-limit_req_zone $binary_remote_addr zone=chkcert:10m rate=30r/m;
-
-# HTTP -> HTTPS редирект
-server {
-    server_name certificates.example.com;
-    listen 80;
-    listen [::]:80;
-    return 301 https://$host$request_uri;
-}
-
-# Основний HTTPS сервер
-server {
-    server_name certificates.example.com;
-
-    root /var/www/certreg;
-    index index.php;
-
-    # Безпека та політики
-    client_max_body_size 10m;
-    add_header X-Frame-Options SAMEORIGIN always;
-    add_header X-Content-Type-Options nosniff always;
-    add_header Referrer-Policy no-referrer-when-downgrade always;
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-
-    # Забороняємо корінь
-    location = / { return 403; }
-
-    # Публічна перевірка сертифіката + rate limit
-    location = /checkCert {
-        rewrite ^ /checkCert.php last;
-        limit_req zone=chkcert burst=10 nodelay;
-    }
-
-    # Прихований шлях до адмін-панелі (файл admin_portal.php)
-    location = /butterfly {
-        allow 203.0.113.5;   # <-- ваш(і) довірений(ні) IP / мережа
-        deny all;
-        include snippets/fastcgi-php.conf;
-        fastcgi_param SCRIPT_FILENAME /var/www/certreg/admin_portal.php;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-        auth_basic "Restricted Area";
-        auth_basic_user_file /etc/nginx/.htpasswd_certreg;
-    }
-
-    # Видалення запису (захищено так само; можна прибрати якщо інтегровано в панель)
-    location = /delete_record.php {
-        allow 203.0.113.5;
-        deny all;
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-        auth_basic "Restricted Area";
-        auth_basic_user_file /etc/nginx/.htpasswd_certreg;
-    }
-
-    # Забороняємо прямий виклик генератора
-    location = /generate_cert.php { return 404; }
-
-    # Забороняємо ВСІ інші .php окрім явно дозволених (/checkCert через rewrite і /butterfly через окрему локацію)
-    location ~ ^/(?!checkCert$).*\.php$ { return 403; }
-
-    # Загальний PHP (спрацює для checkCert.php після rewrite)
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-    }
-
-    # Статика
-    location ~* \.(?:css|js|png|jpg|jpeg|gif|svg|ico|ttf|woff2?)$ {
-        expires 7d;
-        access_log off;
-        add_header Cache-Control "public";
-    }
-
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-
-    # (Шляхи додасть certbot — наведіть тут після випуску сертифікату)
-    ssl_certificate /etc/letsencrypt/live/certificates.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/certificates.example.com/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-}
-```
-> Після змін: `sudo nginx -t && sudo systemctl reload nginx`
-
-## 10. Перевірка і запуск
-1. Зайдіть в адмінку (прихований шлях) через HTTPS + Basic Auth.
-2. Створіть запис і згенеруйте сертифікат.
-3. Перевірте через `/checkCert?id=<ID>&hash=<HASH>` (обидва параметри обов'язкові).
-
-Типові проблеми:
-* 502 – перевірити `fastcgi_pass`.
-* 500 – перевірити шаблон/шрифт і memory_limit.
-* Hash не знаходиться – перевірити URL та наявність запису; не змінювати salt.
-
-Логи: `/var/log/nginx/access.log`, `/var/log/nginx/error.log`, логи PHP-FPM.
-
-Готово: застосунок certreg розгорнутий із базовими заходами безпеки.
-
-
 

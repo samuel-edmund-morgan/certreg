@@ -1,14 +1,14 @@
 <?php
 return [
+    // Minimal config for privacy-first certificate registry
     'db_host' => '127.0.0.1',
     'db_name' => 'enter-db-name',
     'db_user' => 'enter-db-username',
-    'db_pass' => 'enter-db-username-pass',
-    'site_domain' => 'certs.domain.name',
-    'hash_salt' => 'here-enter-random-salt',
-    'template_path' => __DIR__.'/files/cert_template.jpg',
-    'output_dir'    => __DIR__.'/files/certs',
-    'font_path'     => __DIR__.'/fonts/Montserrat-Light.ttf',
+    'db_pass' => 'enter-db-password',
+
+    'site_name' => 'Glorious Site Name',
+    'logo_path' => '/assets/logo.png',
+
     'coords' => [
         'name'   => ['x'=>600, 'y'=>420, 'size'=>28, 'angle'=>0],
         'id'     => ['x'=>600, 'y'=>445, 'size'=>20, 'angle'=>0],
@@ -17,7 +17,6 @@ return [
         'date'   => ['x'=>600, 'y'=>570, 'size'=>24, 'angle'=>0],
         'qr'     => ['x'=>150, 'y'=>420, 'size'=>220],
     ],
-    'site_name' => "Glorious Site Name",
-    'logo_path' => '/assets/logo.png',
-    'hash_version' => 1, // 1 = name|score|course|date (v2 додамо пізніше)
+
+    // Legacy keys removed: site_domain, hash_salt, template_path, output_dir, font_path, hash_version.
 ];
