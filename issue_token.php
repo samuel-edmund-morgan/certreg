@@ -23,14 +23,17 @@ $coords = $cfg['coords'] ?? [];
     <label>Дата проходження
       <input type="date" name="date" required>
     </label>
-    <div class="flex gap-12 align-center">
-      <label class="flex-grow mb-0">Дійсний до
-        <input type="date" name="valid_until" disabled>
-      </label>
-      <label class="flex mb-0 gap-6 align-center nowrap fs-13" id="infiniteWrap" style="gap:8px">
-        <input type="checkbox" name="infinite" checked>
-        <span class="nowrap">Безтерміновий</span>
-      </label>
+    <div class="mb-12" id="expiryBlock">
+      <div class="fw-600 fs-14 mb-4">Дійсний до</div>
+      <div class="expiry-row" id="expiryRow">
+        <label class="flex mb-0 gap-6 align-center nowrap fs-13" id="infiniteWrap">
+          <input type="checkbox" name="infinite" checked>
+          <span class="nowrap">Безтерміновий</span>
+        </label>
+        <div id="validUntilWrap" class="expiry-slot hidden-slot">
+          <input type="date" name="valid_until" placeholder="YYYY-MM-DD" disabled>
+        </div>
+      </div>
     </div>
     <div class="flex flex-wrap gap-10">
       <button class="btn btn-success" type="submit" id="generateBtn">Згенерувати</button>

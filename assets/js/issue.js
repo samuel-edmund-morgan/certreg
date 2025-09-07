@@ -195,13 +195,19 @@
     // Toggle expiry input
     const infiniteCb = form.querySelector('input[name="infinite"]');
     const validUntilInput = form.querySelector('input[name="valid_until"]');
-    if(infiniteCb && validUntilInput){
-      infiniteCb.addEventListener('change', ()=>{
-        if(infiniteCb.checked){
-          validUntilInput.disabled = true; validUntilInput.value='';
-        } else { validUntilInput.disabled = false; }
-      });
+    const validWrap = document.getElementById('validUntilWrap');
+    function syncExpiryVisibility(){
+      if(!infiniteCb || !validUntilInput) return;
+      if(infiniteCb.checked){
+        if(validWrap) validWrap.classList.add('d-none');
+        validUntilInput.disabled = true; validUntilInput.value='';
+      } else {
+        if(validWrap) validWrap.classList.remove('d-none');
+        validUntilInput.disabled = false;
+        validUntilInput.focus();
+      }
     }
+    if(infiniteCb){ infiniteCb.addEventListener('change', syncExpiryVisibility); syncExpiryVisibility(); }
   function manualDownload(){
     if(!canvas) return;
     const link = document.createElement('a');
