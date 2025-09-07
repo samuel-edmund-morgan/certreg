@@ -10,6 +10,8 @@ $whitelist = [
   'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php',
+  // Infrastructure helpers
+  'rate_limit.php',
   // Legacy stubs kept for compatibility (410/redirect)
   // Legacy stubs removed
 ];
