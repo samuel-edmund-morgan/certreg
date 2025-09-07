@@ -41,8 +41,8 @@ $pages = max(1,(int)ceil($total/$perPage));
 $csrf = csrf_token();
 ?>
 <section class="section">
-  <h2 style="margin-top:0">Токени (анонімні сертифікати)</h2>
-  <form id="filterForm" class="form form-inline" method="get" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+  <h2 class="mt-0">Токени (анонімні сертифікати)</h2>
+  <form id="filterForm" class="form filter-form" method="get">
     <input type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Пошук CID / курс / оцінка">
     <select name="state">
       <option value="" <?= $state===''?'selected':'' ?>>Усі</option>
@@ -72,7 +72,7 @@ $csrf = csrf_token();
       <tbody>
       <?php foreach($rows as $r): ?>
         <tr class="<?= $r['revoked_at'] ? 'row-revoked':'' ?>">
-          <td style="font-family:monospace;font-size:12px"><a href="/token.php?cid=<?= urlencode($r['cid']) ?>" style="text-decoration:none;"><?= htmlspecialchars($r['cid']) ?></a></td>
+          <td class="mono fs-12"><a class="link-plain" href="/token.php?cid=<?= urlencode($r['cid']) ?>"><?= htmlspecialchars($r['cid']) ?></a></td>
           <td><?= (int)$r['version'] ?></td>
           <td><?= htmlspecialchars($r['course'] ?? '') ?></td>
           <td><?= htmlspecialchars($r['grade'] ?? '') ?></td>
@@ -85,12 +85,12 @@ $csrf = csrf_token();
               <span class="badge badge-success">Активний</span>
             <?php endif; ?>
           </td>
-          <td style="font-size:11px;white-space:nowrap">
+          <td class="fs-11 nowrap">
             <?= (int)($r['lookup_count'] ?? 0) ?>
             <?php if(!empty($r['last_lookup_at'])): ?>
-              <br><span style="color:#475569" title="Остання перевірка (UTC)"><?= htmlspecialchars(substr($r['last_lookup_at'],0,19)) ?></span>
+              <br><span class="text-muted" title="Остання перевірка (UTC)"><?= htmlspecialchars(substr($r['last_lookup_at'],0,19)) ?></span>
             <?php else: ?>
-              <br><span style="color:#94a3b8">—</span>
+              <br><span class="text-muted">—</span>
             <?php endif; ?>
           </td>
           <td><a class="btn btn-light btn-sm" href="/token.php?cid=<?= urlencode($r['cid']) ?>">Деталі</a></td>

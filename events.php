@@ -29,12 +29,12 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 require_once __DIR__.'/header.php';
 ?>
 <section class="section">
-  <h2 style="margin-top:0">Аудит подій токенів</h2>
-  <form class="form form-inline" method="get" style="margin-bottom:12px">
-    <input type="text" name="cid" placeholder="CID" value="<?= htmlspecialchars($cid) ?>" style="min-width:280px">
+  <h2 class="mt-0">Аудит подій токенів</h2>
+  <form class="form filter-form" method="get">
+    <input type="text" name="cid" placeholder="CID" value="<?= htmlspecialchars($cid) ?>" class="minw-280">
     <button class="btn" type="submit">Фільтр</button>
-    <?php if($cid!==''): ?><a class="btn" href="/events.php" style="margin-left:6px">Скинути</a><?php endif; ?>
-    <a class="btn" href="/tokens.php" style="margin-left:6px">← Токени</a>
+    <?php if($cid!==''): ?><a class="btn ml-6" href="/events.php">Скинути</a><?php endif; ?>
+    <a class="btn ml-6" href="/tokens.php">← Токени</a>
   </form>
   <div class="table-wrap">
     <table class="table">
@@ -54,12 +54,12 @@ require_once __DIR__.'/header.php';
       <?php foreach($rows as $r): ?>
         <tr>
           <td><?= (int)$r['id'] ?></td>
-          <td style="font-family:monospace;font-size:12px"><a href="/token.php?cid=<?= urlencode($r['cid']) ?>" style="text-decoration:none;"><?= htmlspecialchars($r['cid']) ?></a></td>
+          <td class="mono fs-12"><a class="link-plain" href="/token.php?cid=<?= urlencode($r['cid']) ?>"><?= htmlspecialchars($r['cid']) ?></a></td>
           <td><?= htmlspecialchars($r['event_type']) ?></td>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="<?= htmlspecialchars($r['reason'] ?? '') ?>"><?= htmlspecialchars($r['reason'] ?? '') ?></td>
+          <td class="ellipsis" title="<?= htmlspecialchars($r['reason'] ?? '') ?>"><?= htmlspecialchars($r['reason'] ?? '') ?></td>
           <td><?= htmlspecialchars($r['admin_user'] ?? '') ?></td>
           <td><?= htmlspecialchars($r['prev_revoked_at'] ?? '') ?></td>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="<?= htmlspecialchars($r['prev_revoke_reason'] ?? '') ?>"><?= htmlspecialchars($r['prev_revoke_reason'] ?? '') ?></td>
+          <td class="ellipsis" title="<?= htmlspecialchars($r['prev_revoke_reason'] ?? '') ?>"><?= htmlspecialchars($r['prev_revoke_reason'] ?? '') ?></td>
           <td><?= htmlspecialchars($r['created_at']) ?></td>
         </tr>
       <?php endforeach; ?>

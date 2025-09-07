@@ -147,8 +147,8 @@
       setTimeout(()=>{ if(qrImg.onload) qrImg.onload(); },0);
     }
   const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
-  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span style="font-family:monospace">${h}</span><br><strong>INT:</strong> <span style="font-family:monospace">${shortCode}</span><br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
-  summary.innerHTML = `<div class="alert" style="background:#ecfdf5;border:1px solid #6ee7b7;margin:0 0 12px">Сертифікат створено. CID <strong>${cid}</strong>. Зображення автоматично завантажено. <a href="#" id="reDownloadLink">Повторно завантажити JPG</a>. Збережіть файл – ПІБ не відновлюється з бази.</div><div style="font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">Перевірка: <a href="${verifyUrl}" target="_blank" rel="noopener">Відкрити сторінку перевірки</a><button type="button" class="btn btn-sm" id="copyLinkBtn" style="padding:4px 8px">Копіювати URL</button><span id="copyLinkStatus" style="font-size:11px;color:#15803d;display:none">Скопійовано</span></div>`;
+  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
+  summary.innerHTML = `<div class=\"alert alert-ok\" style=\"margin:0 0 12px\">Сертифікат створено. CID <strong>${cid}</strong>. Зображення автоматично завантажено. <a href=\"#\" id=\"reDownloadLink\">Повторно завантажити JPG</a>. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;
   const rd = document.getElementById('reDownloadLink');
   if(rd){ rd.addEventListener('click', ev=>{ ev.preventDefault(); manualDownload(); }); }
   const copyBtn = document.getElementById('copyLinkBtn');
@@ -166,8 +166,8 @@
     });
   }
   if(genBtn) genBtn.disabled = false;
-  toggleDetails.style.display='inline-block';
-  resultWrap.style.display = '';
+  toggleDetails.classList.remove('d-none');
+  resultWrap.classList.remove('d-none');
   }
   let bgImage = new Image();
   bgImage.onload = ()=>{ renderAll(); };
@@ -188,8 +188,13 @@
   manualDownload();
   }
   toggleDetails && toggleDetails.addEventListener('click',()=>{
-    if(advancedBlock.style.display==='none'){ advancedBlock.style.display='block'; toggleDetails.textContent='Сховати технічні деталі'; }
-    else { advancedBlock.style.display='none'; toggleDetails.textContent='Показати технічні деталі'; }
+    if(advancedBlock.classList.contains('d-none')){
+      advancedBlock.classList.remove('d-none');
+      toggleDetails.textContent='Сховати технічні деталі';
+    } else {
+      advancedBlock.classList.add('d-none');
+      toggleDetails.textContent='Показати технічні деталі';
+    }
   });
-  resetBtn.addEventListener('click', ()=>{ form.reset(); resultWrap.style.display='none'; });
+  resetBtn.addEventListener('click', ()=>{ form.reset(); resultWrap.classList.add('d-none'); advancedBlock.classList.add('d-none'); toggleDetails.classList.add('d-none'); toggleDetails.textContent='Показати технічні деталі'; });
 })();

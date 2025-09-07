@@ -62,15 +62,8 @@ main{flex:1}
   padding:0 28px
 }
 .brand{display:flex;align-items:center;gap:16px}
-.logo{
-  width:clamp(36px, 8vw, var(--logo-max));
-  aspect-ratio: 1 / 1;
-  margin:0;
-  max-height: var(--logo-max);
-  max-width: var(--logo-max);
-  background: center/contain no-repeat;
-  border-radius:8px;
-}
+.logo{width:clamp(36px, 8vw, var(--logo-max));aspect-ratio:1/1;margin:0;max-height:var(--logo-max);max-width:var(--logo-max);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.logo img{width:100%;height:100%;object-fit:contain;display:block;border-radius:8px}
 .title{font-weight:800;font-size:20px;line-height:1.05;white-space:pre-line;text-transform:uppercase}
 
 /* Layout */
@@ -275,3 +268,38 @@ main{flex:1}
   .table th a:active{ text-decoration:underline dotted; color:inherit !important; }
   /* In case browser applies default focus outline, keep accessibility */
   .table th a:focus-visible{ outline:2px solid #94a3b8; outline-offset:2px; }
+
+  /* === Utility classes (CSP inline-style cleanup) === */
+  .mt-0{margin-top:0}
+  .mb-12{margin-bottom:12px}
+  .mt-14{margin-top:14px}
+  .mt-24{margin-top:24px}
+  .mr-8{margin-right:8px}
+  .flex{display:flex}
+  .flex-wrap{flex-wrap:wrap}
+  .gap-6{gap:6px}
+  .gap-8{gap:8px}
+  .align-start{align-items:flex-start}
+  .align-center{align-items:center}
+  .d-inline{display:inline-block}
+  .d-none{display:none}
+  .mono{font-family:monospace}
+  .fs-11{font-size:11px}
+  .fs-12{font-size:12px}
+  .fs-13{font-size:13px}
+  .fs-14{font-size:14px}
+  .minw-200{min-width:200px}
+  .maxw-760{max-width:760px}
+  .link-plain{text-decoration:none;color:inherit}
+  .filter-form{margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .details-grid{display:grid;grid-template-columns:160px 1fr;gap:12px;font-size:14px}
+  .actions-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+  .flex-1{flex:1}
+  .btn-ghost-danger{background:#64748b;color:#fff;border-color:#64748b}
+  .alert-ok{background:#ecfdf5;border:1px solid #6ee7b7}
+  .ellipsis{max-width:200px;overflow:hidden;text-overflow:ellipsis}
+  .badge-int{font-size:13px;user-select:all}
+  .text-muted{color:var(--muted)}
+  .text-success{color:#15803d}
+  .my-18{margin:18px 0}
+  .mt-10{margin-top:10px}

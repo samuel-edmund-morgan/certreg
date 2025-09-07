@@ -2,7 +2,7 @@
 $cfg = require __DIR__.'/config.php';
 // --- Security headers (no inline scripts) ---
 if (!headers_sent()) {
-  $csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
+  $csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
   header('Content-Security-Policy: ' . $csp);
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: DENY');
@@ -28,23 +28,23 @@ $coordsJson = htmlspecialchars(json_encode($cfg['coords'] ?? [], JSON_UNESCAPED_
   <div class="topbar__inner">
     <?php require_once __DIR__.'/auth.php'; ?>
     <?php if (is_admin_logged()): ?>
-      <a href="/admin.php" class="brand" style="text-decoration:none;color:inherit">
-        <div class="logo" style="background-image:url('<?= htmlspecialchars($cfg['logo_path']) ?>')" aria-label="Адмін панель"></div>
+      <a href="/admin.php" class="brand link-plain">
+        <div class="logo"><img src="<?= htmlspecialchars($cfg['logo_path']) ?>" alt="Логотип"></div>
         <div class="title"><?= htmlspecialchars($cfg['site_name']) ?></div>
       </a>
     <?php else: ?>
       <div class="brand">
-        <div class="logo" style="background-image:url('<?= htmlspecialchars($cfg['logo_path']) ?>')"></div>
+        <div class="logo"><img src="<?= htmlspecialchars($cfg['logo_path']) ?>" alt="Логотип"></div>
         <div class="title"><?= htmlspecialchars($cfg['site_name']) ?></div>
       </div>
     <?php endif; ?>
     <nav class="topbar__actions">
   <?php // auth already required above ?>
     <?php if (is_admin_logged()): ?>
-  <a class="btn btn-light" href="/issue_token.php" style="margin-right:8px">Видача</a>
-  <a class="btn btn-light" href="/tokens.php" style="margin-right:8px">Токени</a>
-  <a class="btn btn-light" href="/events.php" style="margin-right:8px">Аудит</a>
-        <form action="/logout.php" method="post" style="display:inline-block">
+  <a class="btn btn-light mr-8" href="/issue_token.php">Видача</a>
+  <a class="btn btn-light mr-8" href="/tokens.php">Токени</a>
+  <a class="btn btn-light mr-8" href="/events.php">Аудит</a>
+        <form action="/logout.php" method="post" class="d-inline">
           <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
           <button class="btn btn-light" type="submit">Вийти</button>
         </form>

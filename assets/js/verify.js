@@ -67,12 +67,10 @@
       }
       const dateLine = js.revoked_at ? `<p><strong>Дата відкликання:</strong> ${fmtDate(js.revoked_at)}</p>` : '';
       const reasonLine = `<p><strong>Причина:</strong> ${js.revoke_reason ? escapeHtml(js.revoke_reason) : '<em>(не вказано)</em>'}</p>`;
-      existBox.innerHTML = `<p>Сертифікат існує, але <strong style="color:#b91c1c">ВІДКЛИКАНО</strong>.</p>${dateLine}${reasonLine}`;
+    existBox.innerHTML = `<p>Сертифікат існує, але <strong class="text-danger">ВІДКЛИКАНО</strong>.</p>${dateLine}${reasonLine}`;
       if(ownForm) ownForm.style.display='none';
     } else {
       existBox.className='alert';
-      existBox.style.background='#ecfdf5';
-      existBox.style.border='1px solid #6ee7b7';
       existBox.textContent='Реєстраційний номер існує, сертифікат чинний. INT '+shortCode;
       if(ownForm) ownForm.style.display='block';
     }
@@ -90,6 +88,7 @@
               return;
             }
             if(cmp===js.h){ ownResult.innerHTML='<div class="alert" style="background:#ecfdf5;border:1px solid #6ee7b7">Так, сертифікат належить зазначеній особі.</div>'; }
+            if(cmp===js.h){ ownResult.innerHTML='<div class="alert alert-ok">Так, сертифікат належить зазначеній особі.</div>'; }
             else {
               mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
               ownResult.innerHTML='<div class="alert alert-error">Не збігається. Імʼя/формат не відповідає сертифікату.<br><small>Нормалізований варіант: <code>'+pib+'</code></small></div>';

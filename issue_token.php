@@ -9,8 +9,8 @@ $coords = $cfg['coords'] ?? [];
 ?>
 <section class="section">
   <h2>Видача (анонімна модель без ПІБ у БД)</h2>
-  <p style="max-width:720px;font-size:14px;line-height:1.4">ПІБ не зберігається на сервері. Після створення зображення сертифікат автоматично завантажиться. За потреби можна відкрити технічні деталі (CID, hash, QR payload) для аудиту.</p>
-  <form id="issueForm" class="form" autocomplete="off" style="max-width:520px;display:flex;flex-direction:column;gap:12px">
+  <p class="maxw-720 fs-14 lh-14">ПІБ не зберігається на сервері. Після створення зображення сертифікат автоматично завантажиться. За потреби можна відкрити технічні деталі (CID, hash, QR payload) для аудиту.</p>
+  <form id="issueForm" class="form flex-col gap-12" autocomplete="off" style="max-width:520px">
     <label>ПІБ (тільки в зображенні)
       <input type="text" name="pib" required placeholder="Прізвище Ім'я" autocomplete="off">
     </label>
@@ -23,27 +23,27 @@ $coords = $cfg['coords'] ?? [];
     <label>Дата проходження
       <input type="date" name="date" required>
     </label>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="flex flex-wrap gap-10">
       <button class="btn btn-success" type="submit" id="generateBtn">Згенерувати</button>
-      <button class="btn" type="button" id="toggleDetails" style="display:none">Показати технічні деталі</button>
+      <button class="btn d-none" type="button" id="toggleDetails">Показати технічні деталі</button>
       <button class="btn" type="button" id="resetBtn">Новий</button>
     </div>
   </form>
-  <div id="result" style="margin-top:24px;display:none">
-    <div id="summary" style="font-size:14px"></div>
-    <div id="advanced" style="display:none;margin-top:18px">
-      <h3 style="margin-top:0">Технічні деталі</h3>
-      <div id="regMeta" style="font-size:13px;line-height:1.4;margin-bottom:12px"></div>
-      <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+  <div id="result" class="mt-24 d-none">
+    <div id="summary" class="fs-14"></div>
+    <div id="advanced" class="d-none mt-18">
+      <h3 class="mt-0">Технічні деталі</h3>
+      <div id="regMeta" class="fs-13 lh-14 mb-12"></div>
+      <div class="flex flex-wrap gap-32 align-start">
         <div>
-          <canvas id="certCanvas" width="1000" height="700" style="border:1px solid #e2e8f0;border-radius:8px;max-width:100%;height:auto"></canvas>
-          <p style="font-size:12px;color:#475569;margin-top:4px">Попередній перегляд (локально сформовано)</p>
+          <canvas id="certCanvas" width="1000" height="700" class="canvas-preview"></canvas>
+          <p class="fs-12 text-muted mt-4">Попередній перегляд (локально сформовано)</p>
         </div>
         <div>
-          <h4 style="margin:0 0 6px">QR payload</h4>
-          <code id="qrPayload" style="display:block;max-width:340px;white-space:pre-wrap;word-break:break-all;font-size:11px;background:#f1f5f9;padding:8px;border-radius:6px"></code>
-          <h4 style="margin:16px 0 6px">QR</h4>
-          <img id="qrImg" alt="QR" style="width:220px;height:220px;border:1px solid #e2e8f0;border-radius:8px;object-fit:contain" />
+          <h4 class="mt-0 mb-12">QR payload</h4>
+          <code id="qrPayload" class="code-box"></code>
+          <h4 class="mt-18 mb-12">QR</h4>
+          <img id="qrImg" alt="QR" class="qr-img" />
         </div>
       </div>
     </div>

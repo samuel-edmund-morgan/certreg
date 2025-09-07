@@ -18,29 +18,29 @@ require __DIR__.'/header.php';
 ?>
 <section class="centered">
   <div class="card card--narrow">
-    <h1 class="card__title" style="margin:0 0 8px;font-size:22px">Перевірка сертифіката</h1>
+  <h1 class="card__title mt-0 fs-22">Перевірка сертифіката</h1>
     <?php if($err): ?>
-      <div class="alert alert-error" style="margin-top:4px;margin-bottom:0"><?= htmlspecialchars($err) ?></div>
+      <div class="alert alert-error mt-4" style="margin-bottom:0"><?= htmlspecialchars($err) ?></div>
     <?php else: ?>
-      <div id="existBox" class="alert" style="background:#f1f5f9;border:1px solid #e2e8f0">Перевірка реєстраційного номера…</div>
-      <form id="ownForm" class="form" autocomplete="off" style="display:none;margin-top:14px">
-        <label style="margin-bottom:12px">ПІБ для підтвердження
+      <div id="existBox" class="alert alert-info">Перевірка реєстраційного номера…</div>
+      <form id="ownForm" class="form d-none mt-14" autocomplete="off">
+        <label class="mb-12">ПІБ для підтвердження
           <input type="text" name="pib" placeholder="Введіть ПІБ як на сертифікаті" required autocomplete="off">
         </label>
         <div class="text-right"><button class="btn btn-primary" type="submit">Перевірити належність</button></div>
       </form>
-      <div id="ownResult" style="margin-top:12px"></div>
-      <details style="margin-top:18px">
-        <summary style="cursor:pointer;font-weight:600">Технічні дані</summary>
-        <div style="font-size:13px;line-height:1.4;margin-top:.5rem">
+      <div id="ownResult" class="mt-12"></div>
+      <details class="mt-18">
+  <summary class="pointer" style="font-weight:600">Технічні дані</summary>
+        <div class="fs-13 lh-14 mt-8">
           <strong>CID:</strong> <span id="cidOut"></span><br>
           <strong>Версія:</strong> <span id="verOut"></span><br>
-          <strong>Сіль (base64url):</strong> <code style="font-size:11px;word-break:break-all;display:block;margin-top:2px" id="saltOut"></code>
+          <strong>Сіль (base64url):</strong> <code class="code-box mt-2" id="saltOut"></code>
           <strong>Курс:</strong> <span id="courseOut"></span><br>
           <strong>Оцінка:</strong> <span id="gradeOut"></span><br>
           <strong>Дата:</strong> <span id="dateOut"></span><br>
-          <strong>H (з сервера):</strong> <code style="font-size:11px;word-break:break-all;display:block;margin-top:2px" id="hashOut"></code>
-          <strong>Integrity (INT):</strong> <span id="intOut" style="font-family:monospace"></span>
+          <strong>H (з сервера):</strong> <code class="code-box mt-2" id="hashOut"></code>
+          <strong>Integrity (INT):</strong> <span id="intOut" class="mono"></span>
         </div>
       </details>
   <script src="/assets/js/verify.js"></script>
