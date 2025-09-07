@@ -288,6 +288,13 @@ main{flex:1}
   .align-center{align-items:center}
   .align-self-end{align-self:flex-end}
   .nowrap{white-space:nowrap}
+  /* Expiry block layout */
+  .expiry-row{display:flex;align-items:center;gap:14px;min-height:38px;flex-wrap:nowrap}
+  .expiry-row .expiry-slot{transition:opacity .18s ease, visibility .18s ease;}
+  .hidden-slot{opacity:0;visibility:hidden;pointer-events:none;position:relative}
+  /* Reserve width so layout doesn't shift when showing date input */
+  #validUntilWrap{width:170px}
+  #validUntilWrap input[type=date]{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:14px}
   .d-inline{display:inline-block}
   .d-none{display:none}
   .mono{font-family:monospace}

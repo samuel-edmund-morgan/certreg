@@ -196,13 +196,13 @@
     const infiniteCb = form.querySelector('input[name="infinite"]');
     const validUntilInput = form.querySelector('input[name="valid_until"]');
     const validWrap = document.getElementById('validUntilWrap');
-    function syncExpiryVisibility(){
+  function syncExpiryVisibility(){
       if(!infiniteCb || !validUntilInput) return;
       if(infiniteCb.checked){
-        if(validWrap) validWrap.classList.add('d-none');
+    if(validWrap){ validWrap.classList.add('hidden-slot'); }
         validUntilInput.disabled = true; validUntilInput.value='';
       } else {
-        if(validWrap) validWrap.classList.remove('d-none');
+    if(validWrap){ validWrap.classList.remove('hidden-slot'); }
         validUntilInput.disabled = false;
         validUntilInput.focus();
       }
