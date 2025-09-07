@@ -42,6 +42,8 @@
   text(courseOut, payload.course || '');
   text(gradeOut, payload.grade || '');
   text(dateOut, payload.date || '');
+  const ORG = document.body && document.body.dataset.org ? document.body.dataset.org : 'ORG-CERT';
+  const INFINITE_SENTINEL = document.body && document.body.dataset.inf ? document.body.dataset.inf : '4000-01-01';
   function normName(s){return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();}
   const HOMO_LATIN=/[ABCEHIKMOPTXYOabcehikmoptxyo]/; const CYR=/[\u0400-\u04FF]/;
   const RISK_SET=new Set('ABCEHIKMOPTXYOabcehikmoptxyo'.split(''));
@@ -56,6 +58,11 @@
     hashOut.textContent = js.h;
     const shortCode = js.h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
     intOut.textContent = shortCode;
+    let expired = false;
+    if(js.version===2 && js.valid_until && js.valid_until !== INFINITE_SENTINEL){
+      const today = new Date().toISOString().slice(0,10);
+      if(js.valid_until < today) expired = true;
+    }
     if(js.revoked){
       existBox.className='alert alert-error';
       function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;","\">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
@@ -69,16 +76,29 @@
       const reasonLine = `<p><strong>Причина:</strong> ${js.revoke_reason ? escapeHtml(js.revoke_reason) : '<em>(не вказано)</em>'}</p>`;
     existBox.innerHTML = `<p>Сертифікат існує, але <strong class="text-danger">ВІДКЛИКАНО</strong>.</p>${dateLine}${reasonLine}`;
       if(ownForm) ownForm.style.display='none';
+    } else if(expired){
+      existBox.className='alert alert-error';
+      existBox.textContent='Реєстраційний номер існує, але строк дії минув.';
+      if(ownForm) ownForm.style.display='block';
     } else {
       existBox.className='alert';
-      existBox.textContent='Реєстраційний номер існує, сертифікат чинний. INT '+shortCode;
+      existBox.textContent='Реєстраційний номер існує, сертифікат чинний. INT '+shortCode + (js.version===2 && js.valid_until ? (js.valid_until===INFINITE_SENTINEL?' (безтерміновий)':' (дійсний до '+js.valid_until+')') : '');
       if(ownForm) ownForm.style.display='block';
     }
     if(ownForm){
       ownForm.addEventListener('submit', async ev=>{
         ev.preventDefault(); ownResult.textContent='';
         const pib = normName(ownForm.pib.value); if(!pib) return;
-        const canonical = `v${payload.v}|${pib}|${payload.course}|${payload.grade}|${payload.date}`;
+        let canonical;
+        if(payload.v===1){
+          canonical = `v1|${pib}|${payload.course}|${payload.grade}|${payload.date}`;
+        } else if(payload.v===2){
+          const vu = payload.valid_until || INFINITE_SENTINEL;
+          canonical = `v2|${pib}|${ORG}|${payload.cid}|${payload.course}|${payload.grade}|${payload.date}|${vu}`;
+        } else {
+          ownResult.innerHTML='<div class="alert alert-error">Невідома версія формату.</div>';
+          return;
+        }
         try {
           const calc = await hmac(b64urlToBytes(payload.s), canonical);
             const cmp = toHex(calc);

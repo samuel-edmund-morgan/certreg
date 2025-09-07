@@ -64,13 +64,26 @@ try {
   $pdo->query("EXPLAIN SELECT h FROM tokens LIMIT 1");
   echo "[OK] SELECT privilege confirmed.\n";
 } catch(Throwable $e){ echo "[FAIL] Cannot SELECT from tokens.\n"; $fail=true; }
+// Load config early for later checks
+$cfg = require __DIR__.'/config.php';
 // Attempt metadata check for columns
 $cols = $pdo->query("SHOW COLUMNS FROM tokens")->fetchAll(PDO::FETCH_COLUMN);
 foreach(['cid','h','version','lookup_count','last_lookup_at'] as $col){
   if(!in_array($col,$cols,true)){ echo "[WARN] Column $col missing in tokens.\n"; }
 }
+// M1 expiry column check
+if(!in_array('valid_until',$cols,true)){
+  echo "[WARN] Column valid_until missing (M1 expiry not applied).\n";
+} else {
+  $cfgLocal = $cfg; $sentinel = $cfgLocal['infinite_sentinel'] ?? '4000-01-01';
+  try {
+    $cInf = $pdo->query("SELECT COUNT(*) FROM tokens WHERE version=2 AND valid_until IS NULL")->fetchColumn();
+    if($cInf>0) echo "[WARN] Found $cInf v2 tokens with NULL valid_until.\n"; else echo "[OK] v2 tokens have valid_until set (or none exist).\n";
+    $cSent = $pdo->query("SELECT COUNT(*) FROM tokens WHERE valid_until=".$pdo->quote($sentinel))->fetchColumn();
+    echo "[INFO] Tokens with sentinel ($sentinel): $cSent\n";
+  } catch(Throwable $e){ echo "[WARN] Could not run expiry checks: ".$e->getMessage()."\n"; }
+}
 // Warn if public DB user not configured
-$cfg = require __DIR__.'/config.php';
 if(empty($cfg['db_public_user']) || empty($cfg['db_public_pass'])){
   echo "[WARN] db_public_user / db_public_pass not set – status API runs with full DB user. Consider least privilege.\n";
 } else {

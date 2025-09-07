@@ -24,7 +24,9 @@
   const canvas = document.getElementById('certCanvas');
   const ctx = canvas.getContext('2d');
   const coords = window.__CERT_COORDS || {};
-  const VERSION = 1;
+  const VERSION = 2; // canonical v2 with expiry & org
+  const ORG = window.__ORG_CODE || 'ORG-CERT';
+  const INFINITE_SENTINEL = window.__INFINITE_SENTINEL || '4000-01-01';
 
   function normName(s){
     return s.normalize('NFC')
@@ -105,9 +107,14 @@
   const genBtn = document.getElementById('generateBtn');
   if(genBtn) genBtn.disabled = true;
     const pibRaw = form.pib.value;
-    const course = form.course.value.trim();
-    const grade  = form.grade.value.trim();
-    const date   = form.date.value; // YYYY-MM-DD
+  const course = form.course.value.trim();
+  const grade  = form.grade.value.trim();
+  const date   = form.date.value; // issued_date YYYY-MM-DD
+  const infinite = form.infinite.checked;
+  let validUntil = form.valid_until.value;
+  if(infinite){ validUntil = INFINITE_SENTINEL; }
+  if(!infinite && !validUntil){ alert('Вкажіть дату "Дійсний до" або позначте Безтерміновий.'); return; }
+  if(!infinite && validUntil < date){ alert('Дата закінчення не може бути раніше дати проходження.'); return; }
     if(!pibRaw||!course||!grade||!date){ return; }
     if(hasHomoglyphRisk(pibRaw)){
       const risk = homoglyphLatinLetters(pibRaw).join(', ');
@@ -116,12 +123,13 @@
     }
   const pibNorm = normName(pibRaw); // normalized (uppercase) used in canonical
     const salt = crypto.getRandomValues(new Uint8Array(32));
-    const canonical = `v${VERSION}|${pibNorm}|${course}|${grade}|${date}`;
+  // canonical v2: v2|NAME|ORG|CID|COURSE|GRADE|ISSUED_DATE|VALID_UNTIL built after CID known
+  const cid = genCid();
+  const canonical = `v${VERSION}|${pibNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
   const sig = await hmacSha256(salt, canonical);
   const h = toHex(sig);
-    const cid = genCid();
     // Register (no PII)
-    const res = await fetch('/api/register.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cid:cid, v:VERSION, h:h, course:course, grade:grade, date:date})});
+  const res = await fetch('/api/register.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cid:cid, v:VERSION, h:h, course:course, grade:grade, date:date, valid_until:validUntil})});
     if(!res.ok){
       alert('Помилка реєстрації: '+res.status);
       return;
@@ -129,7 +137,7 @@
     const js = await res.json();
     if(!js.ok){ alert('Не вдалося створити запис'); return; }
     // Build QR payload (JSON) then embed as base64url in verification URL
-    const payloadObj = {v:VERSION,cid:cid,s:b64url(salt),course:course,grade:grade,date:date};
+  const payloadObj = {v:VERSION,cid:cid,s:b64url(salt),course:course,grade:grade,date:date,valid_until:validUntil};
     const payloadStr = JSON.stringify(payloadObj);
     function b64urlStr(str){
       return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -138,7 +146,7 @@
     const verifyUrl = window.location.origin + '/verify.php?p=' + packed;
   qrPayloadEl.textContent = verifyUrl + "\n\n" + payloadStr;
     // Ensure onload handler is set BEFORE changing src to avoid race (cache instant load)
-  currentData = {pib:pibNorm,cid:cid,grade:grade,course:course,date:date,h:h}; // draw normalized to avoid visual/canonical mismatch
+  currentData = {pib:pibNorm,cid:cid,grade:grade,course:course,date:date,h:h,valid_until:validUntil}; // draw normalized
   qrImg.onload = ()=>{ renderAll(); autoDownload(); }; 
     qrImg.src = '/qr.php?data='+encodeURIComponent(verifyUrl);
     // If image was cached and already complete, trigger manually
@@ -147,7 +155,7 @@
       setTimeout(()=>{ if(qrImg.onload) qrImg.onload(); },0);
     }
   const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
-  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
+  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${validUntil===INFINITE_SENTINEL?'∞':validUntil}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
   summary.innerHTML = `<div class=\"alert alert-ok\" style=\"margin:0 0 12px\">Сертифікат створено. CID <strong>${cid}</strong>. Зображення автоматично завантажено. <a href=\"#\" id=\"reDownloadLink\">Повторно завантажити JPG</a>. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;
   const rd = document.getElementById('reDownloadLink');
   if(rd){ rd.addEventListener('click', ev=>{ ev.preventDefault(); manualDownload(); }); }
@@ -173,6 +181,16 @@
   bgImage.onload = ()=>{ renderAll(); };
   bgImage.src = '/files/cert_template.jpg'; // may 404 if not present
   form.addEventListener('submit', handleSubmit);
+    // Toggle expiry input
+    const infiniteCb = form.querySelector('input[name="infinite"]');
+    const validUntilInput = form.querySelector('input[name="valid_until"]');
+    if(infiniteCb && validUntilInput){
+      infiniteCb.addEventListener('change', ()=>{
+        if(infiniteCb.checked){
+          validUntilInput.disabled = true; validUntilInput.value='';
+        } else { validUntilInput.disabled = false; }
+      });
+    }
   function manualDownload(){
     if(!canvas) return;
     const link = document.createElement('a');

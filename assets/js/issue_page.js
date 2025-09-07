@@ -5,6 +5,10 @@
     if(body && body.dataset && body.dataset.coords){
       window.__CERT_COORDS = JSON.parse(body.dataset.coords);
     }
+    if(body && body.dataset){
+      window.__ORG_CODE = body.dataset.org;
+      window.__INFINITE_SENTINEL = body.dataset.inf;
+    }
   } catch(e){ /* ignore */ }
 })();
 // Main logic separated (import existing issue.js logic)
