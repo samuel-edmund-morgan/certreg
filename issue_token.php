@@ -49,8 +49,5 @@ $coords = $cfg['coords'] ?? [];
     </div>
   </div>
 </section>
-<script>
-window.__CERT_COORDS = <?= json_encode($coords, JSON_UNESCAPED_UNICODE) ?>;
-</script>
-<script src="/assets/js/issue.js"></script>
+<script src="/assets/js/issue_page.js"></script>
 <?php require_once __DIR__.'/footer.php'; ?>

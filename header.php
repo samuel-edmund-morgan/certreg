@@ -1,4 +1,19 @@
-<?php $cfg = require __DIR__.'/config.php'; ?>
+<?php
+$cfg = require __DIR__.'/config.php';
+// --- Security headers (no inline scripts) ---
+if (!headers_sent()) {
+  $csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
+  header('Content-Security-Policy: ' . $csp);
+  header('X-Content-Type-Options: nosniff');
+  header('X-Frame-Options: DENY');
+  header('Referrer-Policy: no-referrer');
+  header('Permissions-Policy: geolocation=(), microphone=(), camera=(), interest-cohort=()');
+  header('X-XSS-Protection: 0');
+  // Strong HSTS should be set at nginx after stable HTTPS:
+  // header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+}
+$coordsJson = htmlspecialchars(json_encode($cfg['coords'] ?? [], JSON_UNESCAPED_UNICODE), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+?>
 <!doctype html>
 <html lang="uk">
 <head>
@@ -8,7 +23,7 @@
   <title><?= htmlspecialchars($cfg['site_name']) ?></title>
   <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
-<body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?>>
+<body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>'>
 <header class="topbar">
   <div class="topbar__inner">
     <?php require_once __DIR__.'/auth.php'; ?>
