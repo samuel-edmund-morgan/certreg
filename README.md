@@ -400,6 +400,37 @@ POST /api/revoke.php {cid,reason}
 POST /api/unrevoke.php {cid}
 POST /api/delete_token.php {cid,_csrf}
 
+### Публічні vs адміністративні точки
+Публічні (можна відкрити в Інтернет):
+* `verify.php` (HTML сторінка перевірки; сама нічого не пише в БД)
+* `api/status.php` (читає токен, інкрементує лічильник + пише подію lookup)
+* `qr.php` (генерує зображення QR – вхідні дані не містять ПІБ)
+
+Адмінські (за сесією / IP / VPN):
+* `issue_token.php`, `api/register.php`
+* `tokens.php`, `api/revoke.php`, `api/unrevoke.php`, `api/delete_token.php`
+* `events.php`, `api/events.php`
+
+### Least privilege (окремий користувач БД для status API)
+Щоб зменшити ризик при витоку публічних креденшалів – створіть користувача з мінімальними правами:
+```sql
+CREATE USER 'certro'@'localhost' IDENTIFIED BY 'VERY-STRONG-PASS';
+GRANT SELECT (cid,version,h,revoked_at,revoke_reason) ON certreg.tokens TO 'certro'@'localhost';
+GRANT UPDATE (lookup_count,last_lookup_at) ON certreg.tokens TO 'certro'@'localhost';
+GRANT INSERT (cid,event_type) ON certreg.token_events TO 'certro'@'localhost';
+FLUSH PRIVILEGES;
+```
+Якщо не хочете логувати перегляди – пропустіть останній GRANT (INSERT у `token_events`), тоді в коді можна умовно відключити запис lookup подій.
+
+У `config.php` задайте:
+```php
+'db_public_user' => 'certro',
+'db_public_pass' => 'VERY-STRONG-PASS',
+```
+`api/status.php` автоматично вмикає `USE_PUBLIC_DB` і при наявності цих значень підключиться від імені обмеженого користувача. Всі інші скрипти продовжують використовувати основного (`db_user`).
+
+Перевірка self-check (CLI) покаже попередження, якщо публічний користувач не налаштований.
+
 ## Права доступу (рекомендація)
 - Заборонити всі *.php окрім білого списку.
 - Admin сторінки за IP + сесія.

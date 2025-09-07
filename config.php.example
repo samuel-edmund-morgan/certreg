@@ -5,6 +5,14 @@ return [
     'db_name' => 'enter-db-name',
     'db_user' => 'enter-db-username',
     'db_pass' => 'enter-db-password',
+    // Optional restricted (read or limited update) user for public endpoints (e.g. api/status.php)
+    // Leave null to reuse main user. Create in MySQL with only needed privileges:
+    //   CREATE USER 'certro'@'localhost' IDENTIFIED BY 'strong-pass';
+    //   GRANT SELECT, UPDATE(lookup_count,last_lookup_at) ON yourdb.tokens TO 'certro'@'localhost';
+    //   GRANT INSERT(cid,event_type) ON yourdb.token_events TO 'certro'@'localhost';
+    //   FLUSH PRIVILEGES;
+    'db_public_user' => null,
+    'db_public_pass' => null,
 
     'site_name' => 'Glorious Site Name',
     'logo_path' => '/assets/logo.png',
