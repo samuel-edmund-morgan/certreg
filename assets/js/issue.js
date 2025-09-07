@@ -111,7 +111,7 @@
       alert('У ПІБ виявлено латинські символи T/O/C впереміш з кирилицею. Замініть їх на кириличні аналоги (Т/О/С).');
       return;
     }
-    const pibNorm = normName(pibRaw);
+  const pibNorm = normName(pibRaw); // normalized (uppercase) used in canonical
     const salt = crypto.getRandomValues(new Uint8Array(32));
     const canonical = `v${VERSION}|${pibNorm}|${course}|${grade}|${date}`;
   const sig = await hmacSha256(salt, canonical);
@@ -135,7 +135,7 @@
     const verifyUrl = window.location.origin + '/verify.php?p=' + packed;
   qrPayloadEl.textContent = verifyUrl + "\n\n" + payloadStr;
     // Ensure onload handler is set BEFORE changing src to avoid race (cache instant load)
-  currentData = {pib:pibRaw,cid:cid,grade:grade,course:course,date:date,h:h};
+  currentData = {pib:pibNorm,cid:cid,grade:grade,course:course,date:date,h:h}; // draw normalized to avoid visual/canonical mismatch
   qrImg.onload = ()=>{ renderAll(); autoDownload(); }; 
     qrImg.src = '/qr.php?data='+encodeURIComponent(verifyUrl);
     // If image was cached and already complete, trigger manually

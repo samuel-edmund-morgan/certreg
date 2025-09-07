@@ -50,4 +50,5 @@ $coords = $cfg['coords'] ?? [];
   </div>
 </section>
 <script src="/assets/js/issue_page.js"></script>
+<script src="/assets/js/issue.js"></script>
 <?php require_once __DIR__.'/footer.php'; ?>

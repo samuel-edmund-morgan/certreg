@@ -1,19 +1,28 @@
 (function(){
-  const payloadScriptData = (function(){
-    // Extract payload from PHP-rendered JSON embedded as data attribute if added later.
-    // Fallback: parse from URL parameter p here (defensive) to avoid inline JSON.
+  // Robust UTF-8 aware base64url decode (original encoding used btoa(unescape(encodeURIComponent(str))))
+  function decodePayloadParam(){
     const params = new URLSearchParams(location.search);
-    const p = params.get('p');
-    if(!p) return null;
-    function base64url_decode(d){
-      d = d.replace(/-/g,'+').replace(/_/g,'/');
-      const pad = d.length % 4; if(pad) d += '='.repeat(4-pad);
-      try { return JSON.parse(atob(d)); } catch(e){ return null; }
-    }
-    return base64url_decode(p);
-  })();
-  if(!payloadScriptData) return; // page already shows error server-side if needed
-  const payload = payloadScriptData;
+    const p = params.get('p'); if(!p) return null;
+    let b64 = p.replace(/-/g,'+').replace(/_/g,'/');
+    const pad = b64.length % 4; if(pad) b64 += '='.repeat(4-pad);
+    try {
+      const bin = atob(b64);
+      // Convert binary string to Uint8Array then UTF-8 decode
+      const bytes = new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+      // Support browsers without TextDecoder (very old) by fallback to legacy unescape path
+      let jsonStr;
+      if(typeof TextDecoder !== 'undefined'){
+        jsonStr = new TextDecoder('utf-8').decode(bytes);
+      } else {
+        // Fallback reversing btoa(unescape(encodeURIComponent())) pipeline
+        jsonStr = decodeURIComponent(escape(bin));
+      }
+      return JSON.parse(jsonStr);
+    } catch(e){ return null; }
+  }
+  const payload = decodePayloadParam();
+  if(!payload) return; // server HTML already shows error block
   const statusUrl = '/api/status.php?cid=' + encodeURIComponent(payload.cid);
   const existBox = document.getElementById('existBox');
   const ownForm = document.getElementById('ownForm');
