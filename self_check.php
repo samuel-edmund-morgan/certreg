@@ -30,8 +30,8 @@ if($bad){
 }
 echo "[OK] No unexpected PHP entrypoints.\n";
 // Classify (info only): public vs admin (for operator awareness)
-echo "[INFO] Public endpoints expected: verify.php, api/status.php, qr.php\n";
-echo "[INFO] Admin endpoints expected: issue_token.php, tokens.php, token.php, events.php + related api/*.php writes\n";
+echo "[INFO] Public endpoints expected: verify.php, api/status.php\n";
+echo "[INFO] Admin endpoints expected: issue_token.php, tokens.php, token.php, events.php, qr.php + related api/*.php writes\n";
 
 // Simple perms check: config.php should not be world-readable
 $cfgPath = $root.'/config.php';

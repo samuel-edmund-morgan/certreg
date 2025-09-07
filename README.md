@@ -404,12 +404,12 @@ POST /api/delete_token.php {cid,_csrf}
 Публічні (можна відкрити в Інтернет):
 * `verify.php` (HTML сторінка перевірки; сама нічого не пише в БД)
 * `api/status.php` (читає токен, інкрементує лічильник + пише подію lookup)
-* `qr.php` (генерує зображення QR – вхідні дані не містять ПІБ)
 
 Адмінські (за сесією / IP / VPN):
 * `issue_token.php`, `api/register.php`
 * `tokens.php`, `api/revoke.php`, `api/unrevoke.php`, `api/delete_token.php`
 * `events.php`, `api/events.php`
+* `qr.php` (генерація QR для видачі – не потрібен публічно)
 
 ### Least privilege (окремий користувач БД для status API)
 Щоб зменшити ризик при витоку публічних креденшалів – створіть користувача з мінімальними правами:
