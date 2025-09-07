@@ -74,3 +74,52 @@ if(empty($cfg['db_public_user']) || empty($cfg['db_public_pass'])){
   echo "[OK] Public DB user configured (least privilege).\n";
 }
 echo "Self-check complete.\n";
+// === H2 Extension: filesystem & privilege audit ===
+echo "[SECTION] Filesystem audit (H2)\n";
+$base = realpath(__DIR__);
+$critDirs = [
+  $base => 'root',
+  $base.'/assets' => 'assets',
+  $base.'/files' => 'files',
+  $base.'/fonts' => 'fonts',
+  $base.'/lib' => 'lib'
+];
+foreach($critDirs as $path=>$label){
+  if(!is_dir($path)) { echo "[WARN] Missing directory: $label ($path)\n"; continue; }
+  $st = @stat($path);
+  if(!$st){ echo "[WARN] Cannot stat $label ($path)\n"; continue; }
+  $perm = substr(sprintf('%o', $st['mode']), -3);
+  $owner = function_exists('posix_getpwuid') ? (posix_getpwuid($st['uid'])['name'] ?? $st['uid']) : $st['uid'];
+  $group = function_exists('posix_getgrgid') ? (posix_getgrgid($st['gid'])['name'] ?? $st['gid']) : $st['gid'];
+  $issues = [];
+  if((int)$perm > 775) $issues[] = 'too-open';
+  if($perm[2] >= '6') $issues[] = 'world-writable';
+  if($label==='files' && $perm[2] === '0'){ /* 770/750 fine */ } 
+  $tag = empty($issues)?'OK':'WARN '.implode(',',$issues);
+  echo "[DIR] $label perms=$perm owner=$owner:$group $tag\n";
+}
+
+// Suspicious / extraneous artifacts
+$suspPatterns = '/\.(bak|old|tmp|swp|swo|sql|dump|tar|tgz|gz|zip|7z|log)$/i';
+$susp = [];$unexpectedPhpStatic=[];$worldWritable=[];
+$rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base, FilesystemIterator::SKIP_DOTS));
+foreach($rii as $f){
+  $rel = substr($f->getPathname(), strlen($base)+1);
+  if($rel==='self_check.php') continue;
+  if($f->isFile()){
+    $name = $f->getFilename();
+    if(preg_match($suspPatterns,$name)) $susp[] = $rel;
+    $perm = substr(sprintf('%o', $f->getPerms()), -3);
+    if($perm[2] >= '6') $worldWritable[] = $rel.'('.$perm.')';
+    // PHP inside static dirs
+    if(preg_match('#^(assets|files|fonts)/#',$rel) && str_ends_with($rel,'.php')) $unexpectedPhpStatic[] = $rel;
+  }
+}
+if($susp){ echo "[WARN] Suspicious/backup artifacts:\n - ".implode("\n - ",$susp)."\n"; }
+else echo "[OK] No obvious backup/temp artifacts found.\n";
+if($unexpectedPhpStatic){ echo "[FAIL] PHP files inside static dirs:\n - ".implode("\n - ",$unexpectedPhpStatic)."\n"; }
+else echo "[OK] No PHP in assets/files/fonts.\n";
+if($worldWritable){ echo "[WARN] World-writable files detected:\n - ".implode("\n - ",$worldWritable)."\n"; }
+else echo "[OK] No world-writable files.\n";
+
+echo "[H2] Filesystem audit done.\n";
