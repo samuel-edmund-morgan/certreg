@@ -7,14 +7,23 @@ require_once __DIR__.'/header.php';
 require_once __DIR__.'/db.php';
 
 $q = trim($_GET['q'] ?? '');
+$state = $_GET['state'] ?? '';
 $page = max(1,(int)($_GET['page'] ?? 1));
 $perPage = 50;
 $offset = ($page-1)*$perPage;
 
-$where = '';$params=[];
+$where = '';$params=[];$conds=[];
 if($q!==''){
-  $where = "WHERE (cid LIKE :q OR course LIKE :q OR grade LIKE :q)";
+  $conds[] = "(cid LIKE :q OR course LIKE :q OR grade LIKE :q)";
   $params[':q'] = "%$q%";
+}
+if($state==='active'){
+  $conds[] = "revoked_at IS NULL";
+} elseif($state==='revoked') {
+  $conds[] = "revoked_at IS NOT NULL";
+}
+if($conds){
+  $where = 'WHERE '.implode(' AND ',$conds);
 }
 
 $totalSt = $pdo->prepare("SELECT COUNT(*) FROM tokens $where");
@@ -33,9 +42,17 @@ $csrf = csrf_token();
 ?>
 <section class="section">
   <h2 style="margin-top:0">Токени (анонімні сертифікати)</h2>
-  <form class="form form-inline" method="get" style="margin-bottom:12px">
+  <form id="filterForm" class="form form-inline" method="get" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <input type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Пошук CID / курс / оцінка">
-    <button class="btn" type="submit">Пошук</button>
+    <select name="state">
+      <option value="" <?= $state===''?'selected':'' ?>>Усі</option>
+      <option value="active" <?= $state==='active'?'selected':'' ?>>Активні</option>
+      <option value="revoked" <?= $state==='revoked'?'selected':'' ?>>Відкликані</option>
+    </select>
+    <button class="btn" type="submit">Фільтр</button>
+    <?php if($q!=='' || $state!==''): ?>
+      <a class="btn btn-light" href="/tokens.php">Скинути</a>
+    <?php endif; ?>
   </form>
   <div class="table-wrap">
     <table class="table">
@@ -76,7 +93,7 @@ $csrf = csrf_token();
   <?php if($pages>1): ?>
     <nav class="pagination">
       <?php for($p=1;$p<=$pages;$p++): ?>
-        <a class="page <?= $p===$page?'active':'' ?>" href="?<?= http_build_query(['q'=>$q,'page'=>$p]) ?>"><?= $p ?></a>
+  <a class="page <?= $p===$page?'active':'' ?>" href="?<?= http_build_query(['q'=>$q,'state'=>$state,'page'=>$p]) ?>"><?= $p ?></a>
       <?php endfor; ?>
     </nav>
   <?php endif; ?>

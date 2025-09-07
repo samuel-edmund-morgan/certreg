@@ -14,4 +14,15 @@
   }
   bindAjax('.revoke-form','Відкликати цей токен?');
   bindAjax('.unrevoke-form','Скасувати відкликання і зробити активним?');
+  // Авто-сабміт зміни фільтра стану
+  const filterForm = document.getElementById('filterForm');
+  if(filterForm){
+    const stateSel = filterForm.querySelector('select[name=state]');
+    if(stateSel){
+      stateSel.addEventListener('change', ()=>{
+        filterForm.querySelector('input[name=page]')?.remove();
+        filterForm.submit();
+      });
+    }
+  }
 })();
