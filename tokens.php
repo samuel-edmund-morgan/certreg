@@ -31,7 +31,7 @@ foreach($params as $k=>$v) $totalSt->bindValue($k,$v);
 $totalSt->execute();
 $total = (int)$totalSt->fetchColumn();
 
-$st = $pdo->prepare("SELECT cid, version, course, grade, issued_date, revoked_at, revoke_reason, created_at FROM tokens $where ORDER BY id DESC LIMIT :lim OFFSET :off");
+$st = $pdo->prepare("SELECT cid, version, course, grade, issued_date, revoked_at, revoke_reason, created_at, lookup_count, last_lookup_at FROM tokens $where ORDER BY id DESC LIMIT :lim OFFSET :off");
 foreach($params as $k=>$v) $st->bindValue($k,$v);
 $st->bindValue(':lim',$perPage,PDO::PARAM_INT);
 $st->bindValue(':off',$offset,PDO::PARAM_INT);
@@ -65,6 +65,7 @@ $csrf = csrf_token();
           <th>Дата</th>
           <th>Створено</th>
           <th>Статус</th>
+          <th title="К-сть перевірок / остання">Переглядів</th>
           <th></th>
         </tr>
       </thead>
@@ -82,6 +83,14 @@ $csrf = csrf_token();
               <span class="badge badge-danger" title="<?= htmlspecialchars($r['revoke_reason'] ?? '') ?>">Відкликано</span>
             <?php else: ?>
               <span class="badge badge-success">Активний</span>
+            <?php endif; ?>
+          </td>
+          <td style="font-size:11px;white-space:nowrap">
+            <?= (int)($r['lookup_count'] ?? 0) ?>
+            <?php if(!empty($r['last_lookup_at'])): ?>
+              <br><span style="color:#475569" title="Остання перевірка (UTC)"><?= htmlspecialchars(substr($r['last_lookup_at'],0,19)) ?></span>
+            <?php else: ?>
+              <br><span style="color:#94a3b8">—</span>
             <?php endif; ?>
           </td>
           <td><a class="btn btn-light btn-sm" href="/token.php?cid=<?= urlencode($r['cid']) ?>">Деталі</a></td>

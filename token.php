@@ -31,6 +31,8 @@ $csrf = csrf_token();
           <span class="badge badge-success">Активний</span>
         <?php endif; ?>
       </div>
+  <div><strong>Lookup count</strong></div><div><?= (int)($row['lookup_count'] ?? 0) ?></div>
+  <div><strong>Last lookup</strong></div><div><?= $row['last_lookup_at'] ? htmlspecialchars($row['last_lookup_at']) : '—' ?></div>
     </div>
     <hr style="margin:18px 0">
     <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start">
