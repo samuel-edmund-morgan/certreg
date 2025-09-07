@@ -3,6 +3,8 @@ require_once __DIR__.'/../auth.php';
 require_admin(); // only admin/operator issues certificates
 require_once __DIR__.'/../db.php';
 header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__.'/../rate_limit.php';
+rate_limit('register');
 
 // Expect JSON: {cid, v, h, course, grade, date}
 $raw = file_get_contents('php://input');

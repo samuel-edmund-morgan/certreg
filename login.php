@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__.'/auth.php';
+require_once __DIR__.'/rate_limit.php';
+rate_limit('login');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   http_response_code(405); exit('Метод не дозволено');

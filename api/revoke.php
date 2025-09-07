@@ -4,6 +4,8 @@ require_admin();
 require_once __DIR__.'/../db.php';
 require_csrf();
 header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__.'/../rate_limit.php';
+rate_limit('revoke');
 
 $cid = trim($_POST['cid'] ?? '');
 $reasonRaw = $_POST['reason'] ?? '';

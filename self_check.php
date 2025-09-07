@@ -136,3 +136,11 @@ try {
     echo "[OK] Argon2id functional (test hash).\n";
   }
 } catch(Throwable $e){ echo "[FAIL] Argon2id hashing failed: ".$e->getMessage()."\n"; }
+// === Rate limiter directory check (H9) ===
+$rlDir = sys_get_temp_dir().'/certreg_rl';
+if(is_dir($rlDir)){
+  $st = @stat($rlDir); $perm = $st?substr(sprintf('%o',$st['mode']),-3):'???';
+  if($perm > '750') echo "[WARN] rate-limit dir perms=$perm (consider 700).\n"; else echo "[OK] rate-limit dir present (perms $perm).\n";
+} else {
+  echo "[INFO] rate-limit dir not yet created (will appear after first limited action).\n";
+}

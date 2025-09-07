@@ -5,6 +5,8 @@ require_once __DIR__.'/../db.php';
 require_csrf();
 header('Content-Type: application/json; charset=utf-8');
 if($_SERVER['REQUEST_METHOD']!=='POST'){ http_response_code(405); echo json_encode(['error'=>'method']); exit; }
+require_once __DIR__.'/../rate_limit.php';
+rate_limit('delete');
 
 $cid = trim($_POST['cid'] ?? '');
 if($cid===''){ http_response_code(400); echo json_encode(['error'=>'missing_cid']); exit; }
