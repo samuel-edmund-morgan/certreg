@@ -4,9 +4,9 @@ require_admin();
 require_once __DIR__.'/../db.php';
 require_csrf();
 header('Content-Type: application/json; charset=utf-8');
+// Apply centralized rate limiting early to avoid unnecessary DB work when over limit
 require_once __DIR__.'/../rate_limit.php';
 rate_limit('revoke');
-
 $cid = trim($_POST['cid'] ?? '');
 $reasonRaw = $_POST['reason'] ?? '';
 $reason = preg_replace('/\s+/u',' ', trim($reasonRaw));
@@ -37,5 +37,4 @@ try {
   $log = $pdo->prepare("INSERT INTO token_events (cid,event_type,reason,admin_id,admin_user,prev_revoked_at,prev_revoke_reason) VALUES (?,?,?,?,?,?,?)");
   $log->execute([$cid,'revoke', mb_substr($reason,0,255), $adminId, $adminUser, null, null]);
 } catch(Throwable $e){ /* swallow logging errors */ }
-
 echo json_encode(['ok'=>true,'revoked_at'=>$revokedAt]);
