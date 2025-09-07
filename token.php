@@ -13,8 +13,23 @@ require_once __DIR__.'/header.php';
 if(!$row){ echo '<section class="section"><div class="alert alert-error">Не знайдено</div></section>'; require_once __DIR__.'/footer.php'; exit; }
 $csrf = csrf_token();
 ?>
+<?php
+// Derive short integrity code (first 10 hex of h) if available without extra query
+$intShort = null;
+if(!empty($row['h'] ?? null)){
+  $intShort = strtoupper(substr($row['h'],0,10));
+  $intShort = substr($intShort,0,5).'-'.substr($intShort,5);
+}
+?>
 <section class="section">
-  <h2 style="margin-top:0">CID: <span style="font-family:monospace;"><?= htmlspecialchars($row['cid']) ?></span></h2>
+  <h2 style="margin-top:0;display:flex;flex-wrap:wrap;gap:12px;align-items:center">CID: <span style="font-family:monospace;"><?= htmlspecialchars($row['cid']) ?></span>
+    <button type="button" class="btn btn-sm" id="copyCidBtn" title="Копіювати CID" style="padding:4px 8px">Копіювати CID</button>
+    <?php if($intShort): ?>
+      <span style="font-size:14px;color:#475569">INT <code id="intCode" style="font-size:13px;user-select:all;"><?= htmlspecialchars($intShort) ?></code></span>
+  <button type="button" class="btn btn-sm" id="copyIntBtn" title="Копіювати INT" style="padding:4px 8px">Копіювати INT</button>
+    <?php endif; ?>
+    <span id="copyStatus" style="font-size:11px;color:#15803d;display:none">Скопійовано</span>
+  </h2>
   <div class="card" style="max-width:760px">
     <div style="display:grid;grid-template-columns:160px 1fr;gap:12px;font-size:14px">
       <div><strong>Версія</strong></div><div><?= (int)$row['version'] ?></div>

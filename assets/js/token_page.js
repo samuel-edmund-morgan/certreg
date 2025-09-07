@@ -40,4 +40,22 @@
       } catch(err){ btn && (btn.disabled=false); alert('Помилка мережі'); }
     });
   });
+  // Copy buttons
+  function flashStatus(){
+    const st=document.getElementById('copyStatus'); if(!st) return; st.style.display='inline';
+    clearTimeout(window.__copyStatusT);
+    window.__copyStatusT=setTimeout(()=>{st.style.display='none';},1800);
+  }
+  function copyText(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(flashStatus).catch(()=>fallback());
+    } else fallback();
+    function fallback(){
+      const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); flashStatus();
+    }
+  }
+  const cidBtn=document.getElementById('copyCidBtn');
+  if(cidBtn){ cidBtn.addEventListener('click',()=>{ const cid=cidBtn.previousElementSibling?.textContent || cidBtn.parentElement.querySelector('span[style*="monospace"]')?.textContent; if(cid) copyText(cid.trim()); }); }
+  const intBtn=document.getElementById('copyIntBtn');
+  if(intBtn){ intBtn.addEventListener('click',()=>{ const intCode=document.getElementById('intCode'); if(intCode) copyText(intCode.textContent.trim()); }); }
 })();
