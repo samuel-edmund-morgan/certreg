@@ -123,3 +123,16 @@ if($worldWritable){ echo "[WARN] World-writable files detected:\n - ".implode("\
 else echo "[OK] No world-writable files.\n";
 
 echo "[H2] Filesystem audit done.\n";
+// === Password hashing capability (H8 prep) ===
+if(defined('PASSWORD_ARGON2ID')){
+  echo "[OK] Argon2id supported by PHP build.\n";
+} else {
+  echo "[WARN] Argon2id not supported; fallback to PASSWORD_DEFAULT (bcrypt).\n";
+}
+// Quick probe: generate dummy hash (not stored)
+try {
+  if(defined('PASSWORD_ARGON2ID')){
+    password_hash('test', PASSWORD_ARGON2ID, ['memory_cost'=>1<<15,'time_cost'=>2,'threads'=>1]);
+    echo "[OK] Argon2id functional (test hash).\n";
+  }
+} catch(Throwable $e){ echo "[FAIL] Argon2id hashing failed: ".$e->getMessage()."\n"; }

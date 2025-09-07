@@ -36,11 +36,33 @@ function login_admin(string $u, string $p): bool {
     $st->execute([$u]);
     $row = $st->fetch();
     if ($row && password_verify($p, $row['passhash'])) {
-    // prevent session fixation
-    if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
-    session_regenerate_id(true);
-    $_SESSION['admin_id'] = (int)$row['id'];
-    $_SESSION['admin_user'] = $u;
+        // Check if we should rehash (upgrade to Argon2id if supported)
+        $rehashNeeded = password_needs_rehash($row['passhash'],
+            defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_DEFAULT,
+            defined('PASSWORD_ARGON2ID') ? [
+                'memory_cost' => 1<<17, // 131072 KB (~128MB)
+                'time_cost'   => 3,
+                'threads'     => 1,
+            ] : []
+        );
+        if($rehashNeeded){
+            try {
+                $algo = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_DEFAULT;
+                $opts = $algo === PASSWORD_ARGON2ID ? [
+                    'memory_cost' => 1<<17,
+                    'time_cost'   => 3,
+                    'threads'     => 1,
+                ] : ['cost'=>12];
+                $newHash = password_hash($p, $algo, $opts);
+                $up = $pdo->prepare('UPDATE creds SET passhash=? WHERE id=? LIMIT 1');
+                $up->execute([$newHash, (int)$row['id']]);
+            } catch(Throwable $e){ /* ignore upgrade failure; continue login */ }
+        }
+        // prevent session fixation
+        if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+        session_regenerate_id(true);
+        $_SESSION['admin_id'] = (int)$row['id'];
+        $_SESSION['admin_user'] = $u;
         return true;
     }
     return false;
