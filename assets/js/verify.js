@@ -43,8 +43,10 @@
   text(gradeOut, payload.grade || '');
   text(dateOut, payload.date || '');
   function normName(s){return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();}
-  const HOMO_LATIN=/[TOCtoc]/; const CYR=/[\u0400-\u04FF]/;
-  function hasHomoglyphRisk(raw){ if(!HOMO_LATIN.test(raw)) return false; if(!CYR.test(raw)) return false; for(const ch of raw){ if('TOCtoc'.includes(ch) && ch.charCodeAt(0)<128) return true; } return false; }
+  const HOMO_LATIN=/[ABCEHIKMOPTXYOabcehikmoptxyo]/; const CYR=/[\u0400-\u04FF]/;
+  const RISK_SET=new Set('ABCEHIKMOPTXYOabcehikmoptxyo'.split(''));
+  function homoglyphLatinLetters(raw){ const seen=new Set(); for(const ch of raw){ if(ch.charCodeAt(0)<128 && RISK_SET.has(ch)) seen.add(ch.toUpperCase()); } return Array.from(seen).sort(); }
+  function hasHomoglyphRisk(raw){ if(!HOMO_LATIN.test(raw)) return false; if(!CYR.test(raw)) return false; return homoglyphLatinLetters(raw).length>0; }
   const mismatchAttempts=[];
   function b64urlToBytes(b64){b64=b64.replace(/-/g,'+').replace(/_/g,'/');const pad=b64.length%4;if(pad)b64+='='.repeat(4-pad);const bin=atob(b64);const out=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);return out;}
   async function hmac(keyBytes,msg){const key=await crypto.subtle.importKey('raw',keyBytes,{name:'HMAC',hash:'SHA-256'},false,['sign']);const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(msg));return new Uint8Array(sig);} 
@@ -83,7 +85,8 @@
           const calc = await hmac(b64urlToBytes(payload.s), canonical);
             const cmp = toHex(calc);
             if(hasHomoglyphRisk(ownForm.pib.value)){
-              ownResult.innerHTML='<div class="alert alert-error">Можливі латинські символи T/O/C у поєднанні з кирилицею. Перевірте, що використано кириличні Т/О/С.</div>';
+              const risk = homoglyphLatinLetters(ownForm.pib.value).join(', ');
+              ownResult.innerHTML='<div class="alert alert-error">Можливі латинські символи: '+risk+' разом із кирилицею. Переконайтесь, що ці літери введені кирилицею (А, В, С, Е, Н, І, К, М, О, Р, Т, Х, У).</div>';
               return;
             }
             if(cmp===js.h){ ownResult.innerHTML='<div class="alert" style="background:#ecfdf5;border:1px solid #6ee7b7">Так, сертифікат належить зазначеній особі.</div>'; }

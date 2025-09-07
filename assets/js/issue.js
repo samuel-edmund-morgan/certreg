@@ -33,20 +33,22 @@
       .trim()
       .toUpperCase();
   }
-  const HOMO_LATIN = /[TOCtoc]/; // мінімальний набір, який просили
+  // Розширений набір латинських символів, що мають візуальних «двійників» у кирилиці
+  // A B C E H I K M O P T X Y (та відповідні малі: a c e h i k m o p t x y) + попередні T/O/C
+  const HOMO_LATIN = /[ABCEHIKMOPTXYOabcehikmoptxyo]/; 
   const CYRILLIC_LETTER = /[\u0400-\u04FF]/; // базовий діапазон кирилиці
+  const RISK_SET = new Set('ABCEHIKMOPTXYOabcehikmoptxyo'.split(''));
+  function homoglyphLatinLetters(raw){
+    const seen = new Set();
+    for(const ch of raw){
+      if(ch.charCodeAt(0) < 128 && RISK_SET.has(ch)) seen.add(ch.toUpperCase());
+    }
+    return Array.from(seen).sort();
+  }
   function hasHomoglyphRisk(raw){
     if(!HOMO_LATIN.test(raw)) return false;
-    // якщо змішано латиницю з кирилицею — ризик
-    let hasCyr = CYRILLIC_LETTER.test(raw);
-    if(!hasCyr) return false;
-    // Перевіряємо чи є латинські T/O/C
-    for(const ch of raw){
-      if('TOCtoc'.includes(ch) && ch.charCodeAt(0) < 128){
-        return true;
-      }
-    }
-    return false;
+    if(!CYRILLIC_LETTER.test(raw)) return false; // потрібне змішування
+    return homoglyphLatinLetters(raw).length>0;
   }
   function toHex(bytes){ return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(''); }
   function b64url(bytes){
@@ -108,7 +110,8 @@
     const date   = form.date.value; // YYYY-MM-DD
     if(!pibRaw||!course||!grade||!date){ return; }
     if(hasHomoglyphRisk(pibRaw)){
-      alert('У ПІБ виявлено латинські символи T/O/C впереміш з кирилицею. Замініть їх на кириличні аналоги (Т/О/С).');
+      const risk = homoglyphLatinLetters(pibRaw).join(', ');
+      alert('У ПІБ виявлено можливі латинські символи: '+risk+' разом із кирилицею. Замініть їх кириличними аналогами (А, В, С, Е, Н, І, К, М, О, Р, Т, Х, У).');
       return;
     }
   const pibNorm = normName(pibRaw); // normalized (uppercase) used in canonical
