@@ -11,7 +11,7 @@ $whitelist = [
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php',
   // Legacy stubs kept for compatibility (410/redirect)
-  'checkCert.php','add_record.php','delete_record.php','generate_cert.php','logs.php'
+  'checkCert.php','add_record.php','delete_record.php','generate_cert.php'
 ];
 
 $rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));

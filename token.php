@@ -48,7 +48,7 @@ $csrf = csrf_token();
           <button class="btn btn-light btn-sm" type="submit">Відновити</button>
         </form>
       <?php endif; ?>
-      <form id="deleteForm" method="post" action="/api/delete_token.php" onsubmit="return confirm('Видалити токен без можливості відновлення?')">
+  <form id="deleteForm" method="post" action="/api/delete_token.php">
         <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
         <input type="hidden" name="cid" value="<?= htmlspecialchars($row['cid']) ?>">
         <button class="btn btn-sm" type="submit" style="background:#64748b;color:#fff;border-color:#64748b">Видалити</button>

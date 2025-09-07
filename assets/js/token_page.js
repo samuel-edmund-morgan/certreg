@@ -3,6 +3,9 @@
     const f=document.getElementById(id); if(!f) return;
     f.addEventListener('submit', async e=>{
       e.preventDefault();
+      if(id==='deleteForm'){
+        if(!confirm('Видалити токен без можливості відновлення?')) return;
+      }
       if(id==='revokeForm'){
         const reasonInput = f.querySelector('input[name="reason"]');
         const valRaw = reasonInput.value;
@@ -16,10 +19,16 @@
       if(btn) btn.disabled = true;
       try {
         const fd=new FormData(f);
-        const res=await fetch(f.action,{method:'POST',body:fd});
+  const res=await fetch(f.action,{method:'POST',body:fd,credentials:'same-origin'});
         if(!res.ok){ btn && (btn.disabled=false); alert('Помилка запиту'); return; }
         const js=await res.json();
-        if(js.ok){ location.reload(); } else {
+        if(js.ok){
+          if(id==='deleteForm'){
+            window.location.href = '/tokens.php';
+          } else {
+            location.reload();
+          }
+        } else {
           btn && (btn.disabled=false);
           switch(js.error){
             case 'empty_reason': alert('Причина порожня'); break;
