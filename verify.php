@@ -32,9 +32,10 @@ require __DIR__.'/header.php';
       <div id="ownResult" class="mt-14"></div>
       <details class="mt-18">
         <summary class="pointer fw-600">Технічні дані</summary>
-        <div class="fs-13 lh-14 mt-8">
+  <div class="fs-13 lh-14 mt-8" id="techData">
           <strong>CID:</strong> <span id="cidOut"></span><br>
           <strong>Версія:</strong> <span id="verOut"></span><br>
+          <strong>Організація:</strong> <span id="orgOut"></span><br>
           <strong>Сіль (base64url):</strong> <code class="code-box mt-2" id="saltOut"></code>
           <strong>Курс:</strong> <span id="courseOut"></span><br>
           <strong>Оцінка:</strong> <span id="gradeOut"></span><br>

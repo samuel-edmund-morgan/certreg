@@ -276,9 +276,9 @@
             $startTime = 0;
             $p = 0;
 
-            echo '<table cellpadding="3" cellspacing="1">
-                    <thead><tr style="border-bottom:1px solid silver"><td colspan="2" style="text-align:center">BENCHMARK</td></tr></thead>
-                    <tbody>';
+        echo '<table cellpadding="3" cellspacing="1">
+            <thead><tr style="border-bottom:1px solid silver"><td colspan="2" style="text-align:center">BENCHMARK</td></tr></thead>
+            <tbody>';
 
             foreach($GLOBALS['qr_time_bench'] as $markerId=>$thisTime) {
                 if ($p > 0) {
@@ -806,11 +806,7 @@
                         $frameLine = join('&#9608;&#9608;', explode('1', $frameLine));
                     }
                     
-                    ?>
-                <style>
-                    .m { background-color: white; }
-                </style>
-                <?php
+                    // Inline <style> removed for CSP compliance; classes styled globally.
                     echo '<pre><tt><br/ ><br/ ><br/ >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
                     echo join("<br/ >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;", $frame);
                     echo '</tt></pre><br/ ><br/ ><br/ ><br/ ><br/ ><br/ >';
@@ -833,16 +829,7 @@
                     $frameLine = join('&#8901;', explode("\0", $frameLine));
                 }
                 
-                ?>
-                <style>
-                    .p { background-color: yellow; }
-                    .m { background-color: #00FF00; }
-                    .s { background-color: #FF0000; }
-                    .c { background-color: aqua; }
-                    .x { background-color: pink; }
-                    .f { background-color: gold; }
-                </style>
-                <?php
+                // Inline <style> removed for CSP compliance; classes styled globally.
                 echo "<pre><tt>";
                 echo join("<br/ >", $frame);
                 echo "</tt></pre>";

@@ -79,13 +79,24 @@
     const cId   = coords.id   || {x:600,y:445};
     const cScore= coords.score|| {x:600,y:470};
     const cCourse=coords.course||{x:600,y:520};
-    const cDate = coords.date || {x:600,y:570};
+  const cDate = coords.date || {x:600,y:570};
+  const cExp  = coords.expires || {x:600,y:600};
     const cQR   = coords.qr   || {x:150,y:420,size:220};
     ctx.fillText(currentData.pib, cName.x, cName.y);
     ctx.font = '20px sans-serif'; ctx.fillText(currentData.cid, cId.x, cId.y);
     ctx.font = '24px sans-serif'; ctx.fillText('Оцінка: '+currentData.grade, cScore.x, cScore.y);
     ctx.fillText('Курс: '+currentData.course, cCourse.x, cCourse.y);
     ctx.fillText('Дата: '+currentData.date, cDate.x, cDate.y);
+    // Expiry line (uses sentinel for infinite)
+    const expLabel = currentData.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : currentData.valid_until;
+    ctx.font = (cExp.size?cExp.size:20)+'px sans-serif';
+    if(cExp.angle){
+      ctx.save(); ctx.translate(cExp.x, cExp.y); ctx.rotate((cExp.angle*Math.PI)/180);
+      ctx.fillText('Термін дії до: '+expLabel, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.fillText('Термін дії до: '+expLabel, cExp.x, cExp.y);
+    }
     if(qrImg.complete){
       ctx.drawImage(qrImg, cQR.x, cQR.y, cQR.size, cQR.size);
     }
@@ -137,7 +148,7 @@
     const js = await res.json();
     if(!js.ok){ alert('Не вдалося створити запис'); return; }
     // Build QR payload (JSON) then embed as base64url in verification URL
-  const payloadObj = {v:VERSION,cid:cid,s:b64url(salt),course:course,grade:grade,date:date,valid_until:validUntil};
+  const payloadObj = {v:VERSION,cid:cid,s:b64url(salt),org:ORG,course:course,grade:grade,date:date,valid_until:validUntil};
     const payloadStr = JSON.stringify(payloadObj);
     function b64urlStr(str){
       return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -155,7 +166,7 @@
       setTimeout(()=>{ if(qrImg.onload) qrImg.onload(); },0);
     }
   const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
-  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${validUntil===INFINITE_SENTINEL?'∞':validUntil}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
+    regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>ORG:</strong> ${ORG}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${validUntil===INFINITE_SENTINEL?'∞':validUntil}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
   summary.innerHTML = `<div class=\"alert alert-ok\" style=\"margin:0 0 12px\">Сертифікат створено. CID <strong>${cid}</strong>. Зображення автоматично завантажено. <a href=\"#\" id=\"reDownloadLink\">Повторно завантажити JPG</a>. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;
   const rd = document.getElementById('reDownloadLink');
   if(rd){ rd.addEventListener('click', ev=>{ ev.preventDefault(); manualDownload(); }); }

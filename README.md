@@ -1,3 +1,29 @@
+> ОНОВЛЕННЯ (v2): Додано канонічний формат v2 із полями ORG, CID та датою закінчення (valid_until) із sentinel `4000-01-01` для безстрокових сертифікатів. QR payload тепер (у нових випусках) включає поле `org`. Перевірка сумісна зі старими v2 QR без `org`.
+
+## Canonical v1 vs v2
+
+v1: `v1|NAME|COURSE|GRADE|DATE`
+
+v2: `v2|NAME|ORG|CID|COURSE|GRADE|ISSUED_DATE|VALID_UNTIL`
+
+ORG береться з `config.php` (`org_code`). Воно не зберігається у таблиці `tokens`, але входить у canonical рядок (впливає на HMAC). Це означає, що зміна `org_code` ретроспективно зламає валідацію старих сертифікатів якщо QR не містить `org`. Тому після старту продуктивної видачі значення фіксуйте. Для нових (після оновлення генератора) сертифікатів у QR payload присутнє поле `org`, що дозволяє перевірячу пробувати спершу payload org, а потім поточне конфігураційне.
+
+`VALID_UNTIL` = або реальна дата, або sentinel (`4000-01-01`) яка означає «безстроковий». Протерміновані сертифікати (valid_until < today, не sentinel) показують червоний статус. Sentinel обрано замість окремого boolean для спрощення логіки та індексів.
+
+Приклад поточного QR payload v2:
+```
+{
+    "v":2,
+    "cid":"C1ABC..",
+    "s":"<base64url salt>",
+    "org":"ORG-CERT",
+    "course":"Назва",
+    "grade":"100",
+    "date":"2024-07-01",
+    "valid_until":"4000-01-01"
+}
+```
+
 GET  /api/events.php?cid=CID&limit=50 -> аудит подій (revoke/unrevoke/delete/create/lookup)
 | Audit trail подій (revoke/unrevoke/delete/create/lookup) зі збереженням старих значень для revoke/unrevoke.
 

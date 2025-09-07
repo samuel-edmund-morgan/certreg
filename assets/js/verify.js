@@ -35,6 +35,7 @@
   const dateOut = document.getElementById('dateOut');
   const hashOut = document.getElementById('hashOut');
   const intOut = document.getElementById('intOut');
+  const orgOut = document.getElementById('orgOut');
   function text(el, v){ if(el) el.textContent = v; }
   text(cidOut, payload.cid);
   text(verOut, payload.v);
@@ -44,6 +45,23 @@
   text(dateOut, payload.date || '');
   const ORG = document.body && document.body.dataset.org ? document.body.dataset.org : 'ORG-CERT';
   const INFINITE_SENTINEL = document.body && document.body.dataset.inf ? document.body.dataset.inf : '4000-01-01';
+  // Show ORG (payload may start including org field in newer certificates)
+  const resolvedOrg = payload.org || ORG;
+  if(orgOut) orgOut.textContent = resolvedOrg;
+  const tech = document.getElementById('techData');
+  if(payload.v === 2){
+    if(payload.org && payload.org !== ORG){
+      const warn = document.createElement('div');
+      warn.className='alert alert-error fs-12';
+      warn.textContent='Попередження: ORG у QR не збігається із серверною конфігурацією.';
+      if(tech) tech.prepend(warn);
+    } else if(!payload.org){
+      const info = document.createElement('div');
+      info.className='alert alert-warn fs-12';
+      info.textContent='ORG відсутній у QR (старіший генератор). Використано локальний ORG.';
+      if(tech) tech.prepend(info);
+    }
+  }
   function normName(s){return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();}
   const HOMO_LATIN=/[ABCEHIKMOPTXYOabcehikmoptxyo]/; const CYR=/[\u0400-\u04FF]/;
   const RISK_SET=new Set('ABCEHIKMOPTXYOabcehikmoptxyo'.split(''));
@@ -92,27 +110,51 @@
         let canonical;
         if(payload.v===1){
           canonical = `v1|${pib}|${payload.course}|${payload.grade}|${payload.date}`;
-        } else if(payload.v===2){
-          const vu = payload.valid_until || INFINITE_SENTINEL;
-          canonical = `v2|${pib}|${ORG}|${payload.cid}|${payload.course}|${payload.grade}|${payload.date}|${vu}`;
-        } else {
-          ownResult.innerHTML='<div class="alert alert-error">Невідома версія формату.</div>';
-          return;
-        }
-        try {
-          const calc = await hmac(b64urlToBytes(payload.s), canonical);
+          try {
+            const calc = await hmac(b64urlToBytes(payload.s), canonical);
             const cmp = toHex(calc);
             if(hasHomoglyphRisk(ownForm.pib.value)){
               const risk = homoglyphLatinLetters(ownForm.pib.value).join(', ');
               ownResult.innerHTML='<div class="alert alert-error">Можливі латинські символи: '+risk+' разом із кирилицею. Переконайтесь, що ці літери введені кирилицею (А, В, С, Е, Н, І, К, М, О, Р, Т, Х, У).</div>';
               return;
             }
-            if(cmp===js.h){ ownResult.innerHTML='<div class="alert alert-ok">Так, сертифікат належить зазначеній особі.</div>'; }
-            else {
+            if(cmp===js.h){ ownResult.innerHTML='<div class="alert alert-ok">Так, сертифікат належить зазначеній особі.</div>'; } else {
               mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
               ownResult.innerHTML='<div class="alert alert-error">Не збігається. Імʼя/формат не відповідає сертифікату.<br><small>Нормалізований варіант: <code>'+pib+'</code></small></div>';
             }
-        } catch(e){ ownResult.innerHTML='<div class="alert alert-error">Помилка обчислення.</div>'; }
+          } catch(e){ ownResult.innerHTML='<div class="alert alert-error">Помилка обчислення.</div>'; }
+          return;
+        } else if(payload.v===2){
+          const vu = payload.valid_until || INFINITE_SENTINEL;
+          // Try with possible org candidates (payload.org first if present, then server ORG if different)
+          const orgCandidates = [];
+          if(payload.org) orgCandidates.push(payload.org);
+          if(!payload.org || payload.org !== ORG) orgCandidates.push(ORG);
+          let matched = false;
+          for(const orgCandidate of orgCandidates){
+            const can = `v2|${pib}|${orgCandidate}|${payload.cid}|${payload.course}|${payload.grade}|${payload.date}|${vu}`;
+            try {
+              const calc = await hmac(b64urlToBytes(payload.s), can);
+              const cmp = toHex(calc);
+              if(cmp===js.h){ canonical = can; matched = true; break; }
+            } catch(_){}
+          }
+          if(hasHomoglyphRisk(ownForm.pib.value)){
+            const risk = homoglyphLatinLetters(ownForm.pib.value).join(', ');
+            ownResult.innerHTML='<div class="alert alert-error">Можливі латинські символи: '+risk+' разом із кирилицею. Переконайтесь, що ці літери введені кирилицею (А, В, С, Е, Н, І, К, М, О, Р, Т, Х, У).</div>';
+            return;
+          }
+          if(matched){
+            ownResult.innerHTML='<div class="alert alert-ok">Так, сертифікат належить зазначеній особі.</div>';
+          } else {
+            mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
+            ownResult.innerHTML='<div class="alert alert-error">Не збігається. Імʼя/формат не відповідає сертифікату.<br><small>Нормалізований варіант: <code>'+pib+'</code></small></div>';
+          }
+          return;
+        } else {
+          ownResult.innerHTML='<div class="alert alert-error">Невідома версія формату.</div>';
+          return;
+        }
       });
     }
   }).catch(()=>{ existBox.className='alert alert-error'; existBox.textContent='Помилка запиту.'; });
