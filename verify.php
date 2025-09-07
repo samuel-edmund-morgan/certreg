@@ -16,22 +16,22 @@ if($p){
 } else { $err='Відсутній параметр.'; }
 require __DIR__.'/header.php';
 ?>
-<section class="centered">
+<section class="centered centered--top">
   <div class="card card--narrow">
   <h1 class="card__title mt-0 fs-22">Перевірка сертифіката</h1>
     <?php if($err): ?>
-      <div class="alert alert-error mt-4" style="margin-bottom:0"><?= htmlspecialchars($err) ?></div>
+      <div class="alert alert-error mt-4 mb-0"><?= htmlspecialchars($err) ?></div>
     <?php else: ?>
       <div id="existBox" class="alert alert-info">Перевірка реєстраційного номера…</div>
       <form id="ownForm" class="form d-none mt-14" autocomplete="off">
         <label class="mb-12">ПІБ для підтвердження
           <input type="text" name="pib" placeholder="Введіть ПІБ як на сертифікаті" required autocomplete="off">
         </label>
-        <div class="text-right"><button class="btn btn-primary" type="submit">Перевірити належність</button></div>
+        <div class="text-center mb-8"><button class="btn btn-primary" type="submit">Перевірити належність</button></div>
       </form>
-      <div id="ownResult" class="mt-12"></div>
+      <div id="ownResult" class="mt-14"></div>
       <details class="mt-18">
-  <summary class="pointer" style="font-weight:600">Технічні дані</summary>
+        <summary class="pointer fw-600">Технічні дані</summary>
         <div class="fs-13 lh-14 mt-8">
           <strong>CID:</strong> <span id="cidOut"></span><br>
           <strong>Версія:</strong> <span id="verOut"></span><br>

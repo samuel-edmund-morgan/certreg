@@ -87,7 +87,6 @@
               ownResult.innerHTML='<div class="alert alert-error">Можливі латинські символи: '+risk+' разом із кирилицею. Переконайтесь, що ці літери введені кирилицею (А, В, С, Е, Н, І, К, М, О, Р, Т, Х, У).</div>';
               return;
             }
-            if(cmp===js.h){ ownResult.innerHTML='<div class="alert" style="background:#ecfdf5;border:1px solid #6ee7b7">Так, сертифікат належить зазначеній особі.</div>'; }
             if(cmp===js.h){ ownResult.innerHTML='<div class="alert alert-ok">Так, сертифікат належить зазначеній особі.</div>'; }
             else {
               mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});

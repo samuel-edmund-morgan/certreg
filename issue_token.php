@@ -10,7 +10,7 @@ $coords = $cfg['coords'] ?? [];
 <section class="section">
   <h2>Видача (анонімна модель без ПІБ у БД)</h2>
   <p class="maxw-720 fs-14 lh-14">ПІБ не зберігається на сервері. Після створення зображення сертифікат автоматично завантажиться. За потреби можна відкрити технічні деталі (CID, hash, QR payload) для аудиту.</p>
-  <form id="issueForm" class="form flex-col gap-12" autocomplete="off" style="max-width:520px">
+  <form id="issueForm" class="form flex-col gap-12 maxw-520" autocomplete="off">
     <label>ПІБ (тільки в зображенні)
       <input type="text" name="pib" required placeholder="Прізвище Ім'я" autocomplete="off">
     </label>
