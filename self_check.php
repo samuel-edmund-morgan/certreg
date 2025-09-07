@@ -11,7 +11,7 @@ $whitelist = [
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php',
   // Legacy stubs kept for compatibility (410/redirect)
-  'checkCert.php','add_record.php','delete_record.php','generate_cert.php'
+  // Legacy stubs removed
 ];
 
 $rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root));
@@ -20,9 +20,8 @@ foreach($rii as $file){
   if($file->isDir()) continue;
   $rel = substr($file->getPathname(), strlen($root)+1);
   if(substr($rel, -4) === '.php'){
-    // skip migrations & vendor-like or cli tools
   if(str_starts_with($rel,'migrations/') || $rel==='self_check.php' || str_starts_with($rel,'lib/') ) continue;
-    if(!in_array($rel,$whitelist,true)) $bad[] = $rel;
+  if(!in_array($rel,$whitelist,true)) $bad[] = $rel;
   }
 }
 if($bad){
