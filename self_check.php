@@ -168,7 +168,19 @@ try {
   $tokensRows = $pdo->query("SELECT cid, revoked_at FROM tokens")->fetchAll(PDO::FETCH_ASSOC);
   $tokenMap = [];
   foreach($tokensRows as $r){ $tokenMap[$r['cid']] = $r; }
-  $eventsStmt = $pdo->query("SELECT id,cid,event_type FROM token_events ORDER BY id ASC");
+  // Fetch events in true chronological order when created_at column exists; fall back to id order if not.
+  try {
+    $hasCreatedAt = false;
+    try {
+      $colsEv = $pdo->query("SHOW COLUMNS FROM token_events")->fetchAll(PDO::FETCH_COLUMN);
+      $hasCreatedAt = in_array('created_at',$colsEv,true);
+    } catch(Throwable $e){ /* ignore */ }
+    if($hasCreatedAt){
+      $eventsStmt = $pdo->query("SELECT id,cid,event_type,created_at FROM token_events ORDER BY created_at IS NULL, created_at ASC, id ASC");
+    } else {
+      $eventsStmt = $pdo->query("SELECT id,cid,event_type,NULL AS created_at FROM token_events ORDER BY id ASC");
+    }
+  } catch(Throwable $e){ throw $e; }
   $eventsByCid = [];
   $createCount=0; $revokeCount=0; $unrevokeCount=0; $deleteCount=0; $lookupCount=0; $otherCount=0;
   while($e = $eventsStmt->fetch(PDO::FETCH_ASSOC)){
@@ -205,7 +217,11 @@ try {
     if(count($createEvents) > 1){ $an_multiCreate[] = $cid; }
     if($elist){
       $first = $elist[0]['event_type'];
-      if($first !== 'create'){ $an_firstNotCreate[] = $cid; }
+      if($first !== 'create'){
+        // Defensive re-check: if chronological ordering (by created_at) differs from id ordering and earliest chronological is create, suppress warning.
+        // $elist is already chronologically ordered when created_at exists (see query above). Still, if created_at missing we retain original behavior.
+        $an_firstNotCreate[] = $cid; // tentatively flag; we'll prune below if conditions allow.
+      }
     }
     // Revocation sequence checks
     $revSeq = array_values(array_filter($elist, fn($x)=>$x['event_type']==='revoke' || $x['event_type']==='unrevoke'));
@@ -235,6 +251,17 @@ try {
   $an_stateMismatch = $dedupe($an_stateMismatch);
   $an_unknownCidNoDelete = $dedupe($an_unknownCidNoDelete);
   $an_firstNotCreate = $dedupe($an_firstNotCreate);
+  // If we have created_at column and the earliest chronological event is create, remove from anomaly list (handles retroactive synthetic create events with higher id).
+  if(!empty($hasCreatedAt) && $an_firstNotCreate){
+    $retain = [];
+    foreach($an_firstNotCreate as $cid){
+      $elist = $eventsByCid[$cid] ?? [];
+      if(!$elist) continue; // safety
+      $earliest = $elist[0]; // already chronological
+      if(($earliest['event_type'] ?? null) !== 'create') $retain[] = $cid; // keep only true anomalies
+    }
+    $an_firstNotCreate = $retain;
+  }
 
   echo "[INFO] Events summary: create=$createCount revoke=$revokeCount unrevoke=$unrevokeCount delete=$deleteCount lookup=$lookupCount other=$otherCount\n";
   $anyH10Fail = false;
