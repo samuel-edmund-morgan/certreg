@@ -9,6 +9,15 @@ $st->execute([$cid]);
 $row = $st->fetch();
 if (!$row) { echo json_encode(['exists'=>false]); exit; }
 
+// Increment lookup counters (best-effort, ignore race conditions) and audit lookup
+try {
+  $upd = $pdo->prepare("UPDATE tokens SET lookup_count = lookup_count + 1, last_lookup_at=NOW() WHERE cid=? LIMIT 1");
+  $upd->execute([$cid]);
+  // Log lookup event (no user id, public endpoint)
+  $elog = $pdo->prepare("INSERT INTO token_events (cid,event_type) VALUES (?,?)");
+  $elog->execute([$cid,'lookup']);
+} catch (PDOException $e) { /* ignore to avoid impacting public availability */ }
+
 echo json_encode([
   'exists'=>true,
   'h'=>$row['h'],

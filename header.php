@@ -43,6 +43,7 @@ $coordsJson = htmlspecialchars(json_encode($cfg['coords'] ?? [], JSON_UNESCAPED_
     <?php if (is_admin_logged()): ?>
   <a class="btn btn-light" href="/issue_token.php" style="margin-right:8px">Видача</a>
   <a class="btn btn-light" href="/tokens.php" style="margin-right:8px">Токени</a>
+  <a class="btn btn-light" href="/events.php" style="margin-right:8px">Аудит</a>
         <form action="/logout.php" method="post" style="display:inline-block">
           <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
           <button class="btn btn-light" type="submit">Вийти</button>

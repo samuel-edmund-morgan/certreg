@@ -1,5 +1,5 @@
-GET  /api/events.php?cid=CID&limit=50 -> аудит подій (revoke/unrevoke/delete)
-| Audit trail подій (revoke/unrevoke/delete) зі збереженням старих значень.
+GET  /api/events.php?cid=CID&limit=50 -> аудит подій (revoke/unrevoke/delete/create/lookup)
+| Audit trail подій (revoke/unrevoke/delete/create/lookup) зі збереженням старих значень для revoke/unrevoke.
 
 1. Додати nginx rate limiting (`limit_req_zone $binary_remote_addr zone=certreg:10m rate=60r/m;`).
 2. Налаштувати HSTS, OCSP stapling, регулярний автоматичний renew TLS.
@@ -26,6 +26,13 @@ date   | ✔ | ✔ | ✔
 salt (s) | ✖ | ✔ | (імпліцитно в QR)
 cid      | ✔ | ✔ | ✔ (за бажанням можна додати)
 HMAC h   | ✔ | ✖ | (опційно фрагмент)
+
+### Лічильники звернень (lookup)
+Починаючи з міграції 007 додано агреговані поля у таблицю `tokens`:
+* `lookup_count` – кількість звернень до публічного `/api/status.php` для цього CID (інкремент одиночним `UPDATE`, без блокувань).
+* `last_lookup_at` – останній час звернення.
+
+Також у `token_events` додаються події типу `create` (реєстрація нового токена) та `lookup` (факт звернення до статусу). Подія `lookup` не містить IP, User-Agent або інших ідентифікаторів – лише `cid` та час. Це дає мінімально необхідний аудит активності без ризику відновлення ПІБ.
 
 Перевірка працює так: QR → `verify.php?p=...` → сторінка зчитує JSON (v,cid,s,course,grade,date) → запитує `/api/status?cid=` щоб отримати `h` та `revoked` → користувач вводить ПІБ → HMAC(s, canonical) порівнюється з серверним h.
 
@@ -142,6 +149,7 @@ location ~ ^/(?!verify\.php|issue_token\.php|tokens\.php|api/|qr\.php).+\.php$ {
 - Read-only MySQL користувач для SELECT + окремий для write (мін-привілеї).
 - Внутрішній документ «Положення про сервіс (класифікація як не-ДІР)».
 - Audit trail подій (revoke/unrevoke/delete) зі збереженням старих значень.
+    - Реалізовано: сторінка `events.php` + API `/api/events.php`.
 - Підтримка PDF експорту (serverless, генерується у браузері).
 - Переведення пароля адміна на Argon2id (якщо доступний у PHP build).
 

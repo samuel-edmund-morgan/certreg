@@ -31,7 +31,19 @@ if ($date && !preg_match('/^\d{4}-\d{2}-\d{2}$/',$date)) { $date=null; }
 try {
   $st = $pdo->prepare("INSERT INTO tokens (cid, version, h, course, grade, issued_date) VALUES (?,?,?,?,?,?)");
   $st->execute([$cid,$v,$h,$course,$grade,$date]);
-  echo json_encode(['ok'=>true,'id'=>$pdo->lastInsertId()]);
+  $tokenId = $pdo->lastInsertId();
+  // Audit: creation event (no PII)
+  try {
+    if (isset($_SESSION['admin_id'])) {
+      $log = $pdo->prepare("INSERT INTO token_events (cid,event_type,admin_id,admin_user) VALUES (?,?,?,?)");
+      $log->execute([$cid,'create',$_SESSION['admin_id'] ?? null,$_SESSION['admin_user'] ?? null]);
+    } else {
+      // Fallback if session naming differs
+      $log = $pdo->prepare("INSERT INTO token_events (cid,event_type) VALUES (?,?)");
+      $log->execute([$cid,'create']);
+    }
+  } catch (PDOException $le) { /* ignore audit failure */ }
+  echo json_encode(['ok'=>true,'id'=>$tokenId]);
 } catch (PDOException $e) {
   if ($e->getCode()==='23000') { http_response_code(409); echo json_encode(['error'=>'conflict']); } else { throw $e; }
 }

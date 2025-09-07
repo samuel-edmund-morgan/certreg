@@ -5,7 +5,7 @@ if (php_sapi_name() !== 'cli') { http_response_code(403); exit; }
 $root = __DIR__;
 $whitelist = [
   // Public / functional entrypoints
-  'index.php','admin.php','login.php','logout.php','issue_token.php','tokens.php','token.php','verify.php','qr.php',
+  'index.php','admin.php','login.php','logout.php','issue_token.php','tokens.php','token.php','verify.php','qr.php','events.php',
   // API endpoints
   'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
