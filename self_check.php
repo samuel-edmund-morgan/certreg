@@ -12,6 +12,7 @@ $whitelist = [
   'header.php','footer.php','auth.php','db.php','config.php',
   // Infrastructure helpers
   'rate_limit.php',
+  'h10_cleanup.php',
   // Legacy stubs kept for compatibility (410/redirect)
   // Legacy stubs removed
 ];
@@ -145,4 +146,139 @@ if(is_dir($rlDir)){
   if($perm > '750') echo "[WARN] rate-limit dir perms=$perm (consider 700).\n"; else echo "[OK] rate-limit dir present (perms $perm).\n";
 } else {
   echo "[INFO] rate-limit dir not yet created (will appear after first limited action).\n";
+}
+
+// === Audit trail integrity (H10) ===
+echo "[SECTION] Audit integrity (H10)\n";
+echo "[INFO] H10 validates token_events consistency: each token should start with create; revocation/unrevocation must alternate; DB revoked_at must match last revoke/unrevoke state; orphan events flagged.\n";
+try {
+  $tokensRows = $pdo->query("SELECT cid, revoked_at FROM tokens")->fetchAll(PDO::FETCH_ASSOC);
+  $tokenMap = [];
+  foreach($tokensRows as $r){ $tokenMap[$r['cid']] = $r; }
+  $eventsStmt = $pdo->query("SELECT id,cid,event_type FROM token_events ORDER BY id ASC");
+  $eventsByCid = [];
+  $createCount=0; $revokeCount=0; $unrevokeCount=0; $deleteCount=0; $lookupCount=0; $otherCount=0;
+  while($e = $eventsStmt->fetch(PDO::FETCH_ASSOC)){
+    $cid = $e['cid'];
+    if(!isset($eventsByCid[$cid])) $eventsByCid[$cid]=[];
+    $eventsByCid[$cid][] = $e;
+    switch($e['event_type']){
+      case 'create': $createCount++; break;
+      case 'revoke': $revokeCount++; break;
+      case 'unrevoke': $unrevokeCount++; break;
+      case 'delete': $deleteCount++; break;
+      case 'lookup': $lookupCount++; break;
+      default: $otherCount++; break;
+    }
+  }
+  $an_missingCreate=[]; $an_multiCreate=[]; $an_badOrder=[]; $an_doubleRevoke=[]; $an_doubleUnrevoke=[]; $an_stateMismatch=[]; $an_unrevokeWithoutRevoke=[]; $an_unknownCidNoDelete=[]; $an_firstNotCreate=[];
+
+  // Build set of cids that ever had delete
+  $deletedCids = [];
+  foreach($eventsByCid as $cid=>$elist){
+    foreach($elist as $ev){ if($ev['event_type']==='delete') { $deletedCids[$cid]=true; break; } }
+  }
+
+  // Detect unknown cids (only in events)
+  foreach($eventsByCid as $cid=>$elist){
+    if(!isset($tokenMap[$cid]) && empty($deletedCids[$cid])){ $an_unknownCidNoDelete[] = $cid; }
+  }
+
+  foreach($tokenMap as $cid=>$trow){
+    $elist = $eventsByCid[$cid] ?? [];
+    // Must have at least one create
+    $createEvents = array_values(array_filter($elist, fn($x)=>$x['event_type']==='create'));
+    if(!$createEvents){ $an_missingCreate[] = $cid; }
+    if(count($createEvents) > 1){ $an_multiCreate[] = $cid; }
+    if($elist){
+      $first = $elist[0]['event_type'];
+      if($first !== 'create'){ $an_firstNotCreate[] = $cid; }
+    }
+    // Revocation sequence checks
+    $revSeq = array_values(array_filter($elist, fn($x)=>$x['event_type']==='revoke' || $x['event_type']==='unrevoke'));
+    $seenRevoke=false; $lastType=null; $currentExpected=false;
+    foreach($revSeq as $ev){
+      if($ev['event_type']==='revoke'){
+        if($lastType==='revoke') $an_doubleRevoke[] = $cid;
+        $seenRevoke=true; $currentExpected=true; $lastType='revoke';
+      } elseif($ev['event_type']==='unrevoke') {
+        if(!$seenRevoke) $an_unrevokeWithoutRevoke[] = $cid; // unrevoke before any revoke
+        if($lastType==='unrevoke') $an_doubleUnrevoke[] = $cid;
+        $currentExpected=false; $lastType='unrevoke';
+      }
+    }
+    $dbRev = !empty($trow['revoked_at']);
+    if($dbRev !== $currentExpected){ $an_stateMismatch[] = $cid; }
+  }
+
+  // De-duplicate anomaly lists
+  $dedupe = function(array $a){ return array_values(array_unique($a)); };
+  $an_missingCreate = $dedupe($an_missingCreate);
+  $an_multiCreate = $dedupe($an_multiCreate);
+  $an_badOrder = $dedupe($an_badOrder);
+  $an_doubleRevoke = $dedupe($an_doubleRevoke);
+  $an_doubleUnrevoke = $dedupe($an_doubleUnrevoke);
+  $an_unrevokeWithoutRevoke = $dedupe($an_unrevokeWithoutRevoke);
+  $an_stateMismatch = $dedupe($an_stateMismatch);
+  $an_unknownCidNoDelete = $dedupe($an_unknownCidNoDelete);
+  $an_firstNotCreate = $dedupe($an_firstNotCreate);
+
+  echo "[INFO] Events summary: create=$createCount revoke=$revokeCount unrevoke=$unrevokeCount delete=$deleteCount lookup=$lookupCount other=$otherCount\n";
+  $anyH10Fail = false;
+  $report = function($label,$arr,$severity) use (&$anyH10Fail){
+    if(!$arr) { echo "[OK] $label\n"; return; }
+    $prefix = $severity==='fail' ? '[FAIL]' : '[WARN]';
+    if($severity==='fail') $anyH10Fail = true;
+    $sample = implode(', ', array_slice($arr,0,10));
+    $extra = count($arr)>10 ? ' (+' . (count($arr)-10) . ' more)' : '';
+    echo "$prefix $label: $sample$extra\n";
+  };
+  $report('Tokens missing create event',$an_missingCreate,'fail');
+  $report('Tokens with multiple create events',$an_multiCreate,'fail');
+  $report('First event not create',$an_firstNotCreate,'warn');
+  $report('Consecutive revoke events',$an_doubleRevoke,'warn');
+  $report('Consecutive unrevoke events',$an_doubleUnrevoke,'warn');
+  $report('Unrevoke without prior revoke',$an_unrevokeWithoutRevoke,'warn');
+  $report('Revocation state mismatch (DB vs event sequence)',$an_stateMismatch,'fail');
+  $report('Events referencing unknown cid without delete',$an_unknownCidNoDelete,'fail');
+  if($anyH10Fail){ echo "[H10] One or more FAIL conditions detected.\n"; } else { echo "[H10] Audit integrity checks passed (no FAIL).\n"; }
+
+  // Optional remediation suggestions
+  if(in_array('--suggest-fixes', $argv, true)){
+    echo "[H10] --- Suggested SQL remediation (review before executing) ---\n";
+    if($an_missingCreate){
+      echo "-- Insert missing create events (uses NOW(); adjust if you have original issue times)\n";
+      foreach($an_missingCreate as $cid){
+        echo "INSERT INTO token_events (cid,event_type) VALUES ('".addslashes($cid)."','create');\n";
+      }
+    }
+    if($an_stateMismatch){
+      echo "-- Fix revocation state mismatches (derive state from last revoke/unrevoke event)\n";
+      foreach($an_stateMismatch as $cid){
+        $elist = $eventsByCid[$cid] ?? [];
+        $revState=false; foreach($elist as $ev){ if($ev['event_type']==='revoke') $revState=true; elseif($ev['event_type']==='unrevoke') $revState=false; }
+        if($revState){
+          echo "-- Token $cid is revoked per events but DB shows not revoked\n";
+          echo "UPDATE tokens SET revoked_at=IFNULL(revoked_at,NOW()), revoke_reason=COALESCE(revoke_reason,'(restored)') WHERE cid='".addslashes($cid)."' LIMIT 1;\n";
+        } else {
+          echo "-- Token $cid is NOT revoked per events but DB shows revoked\n";
+          echo "UPDATE tokens SET revoked_at=NULL, revoke_reason=NULL WHERE cid='".addslashes($cid)."' LIMIT 1;\n";
+        }
+      }
+    }
+    if($an_unrevokeWithoutRevoke){
+      echo "-- Unrevoke without prior revoke (decide: either add synthetic revoke or delete orphan unrevoke). Example adds synthetic revoke BEFORE first unrevoke: \n";
+      foreach($an_unrevokeWithoutRevoke as $cid){
+        echo "-- Example (choose timestamp): INSERT INTO token_events (cid,event_type) VALUES ('".addslashes($cid)."','revoke');\n";
+      }
+    }
+    if($an_firstNotCreate){
+      echo "-- First event not create: consider inserting synthetic create at sequence start.\n";
+    }
+    if(!$an_missingCreate && !$an_stateMismatch && !$an_unrevokeWithoutRevoke && !$an_firstNotCreate){
+      echo "-- No automatic fix suggestions necessary.\n";
+    }
+  }
+} catch(Throwable $e){
+  echo "[WARN] H10 audit section error: ".$e->getMessage()."\n";
 }
