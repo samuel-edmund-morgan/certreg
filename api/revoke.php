@@ -28,4 +28,12 @@ if($row['revoked_at']){
 $revokedAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 $st = $pdo->prepare("UPDATE tokens SET revoked_at=?, revoke_reason=? WHERE id=? LIMIT 1");
 $st->execute([$revokedAt, mb_substr($reason,0,255), $row['id']]);
+
+// Audit event
+try {
+  $adminId = $_SESSION['admin_id'] ?? null; $adminUser = $_SESSION['admin_user'] ?? null;
+  $log = $pdo->prepare("INSERT INTO token_events (cid,event_type,reason,admin_id,admin_user,prev_revoked_at,prev_revoke_reason) VALUES (?,?,?,?,?,?,?)");
+  $log->execute([$cid,'revoke', mb_substr($reason,0,255), $adminId, $adminUser, null, null]);
+} catch(Throwable $e){ /* swallow logging errors */ }
+
 echo json_encode(['ok'=>true,'revoked_at'=>$revokedAt]);

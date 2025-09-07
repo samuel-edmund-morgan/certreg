@@ -18,6 +18,14 @@ if(!$row['revoked_at']){
   exit;
 }
 
+$prev = $pdo->prepare("SELECT revoke_reason, revoked_at FROM tokens WHERE id=?");
+$prev->execute([$row['id']]);
+$prevRow = $prev->fetch();
 $st = $pdo->prepare("UPDATE tokens SET revoked_at=NULL, revoke_reason=NULL WHERE id=? LIMIT 1");
 $st->execute([$row['id']]);
+try {
+  $adminId = $_SESSION['admin_id'] ?? null; $adminUser = $_SESSION['admin_user'] ?? null;
+  $log = $pdo->prepare("INSERT INTO token_events (cid,event_type,reason,admin_id,admin_user,prev_revoked_at,prev_revoke_reason) VALUES (?,?,?,?,?,?,?)");
+  $log->execute([$cid,'unrevoke', null, $adminId, $adminUser, $prevRow['revoked_at'] ?? null, $prevRow['revoke_reason'] ?? null]);
+} catch(Throwable $e){ }
 echo json_encode(['ok'=>true]);

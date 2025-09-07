@@ -1,3 +1,14 @@
+GET  /api/events.php?cid=CID&limit=50 -> аудит подій (revoke/unrevoke/delete)
+| Audit trail подій (revoke/unrevoke/delete) зі збереженням старих значень.
+
+1. Додати nginx rate limiting (`limit_req_zone $binary_remote_addr zone=certreg:10m rate=60r/m;`).
+2. Налаштувати HSTS, OCSP stapling, регулярний автоматичний renew TLS.
+3. Створити користувача `certreg_app` з SELECT/INSERT/UPDATE; заборонити DDL у runtime.
+4. Аргонізація паролів: перевірити `PASSWORD_DEFAULT` – якщо bcrypt, оцінити cost >= 12; якщо доступний Argon2id, задати через `password_hash(..., PASSWORD_ARGON2ID, [...])`.
+5. Заборонити логування параметра `p` (map_regex у nginx або custom `log_format` без `$request_uri`).
+6. Документ «Положення про сервіс» – модель даних, відсутність персональних даних, класифікація ризиків.
+7. Пілотний аудит: спроба підробки (підміна QR) і перевірка виявлення через невідповідність INT.
+8. Розширити self-check (перевірка CSP, версія PHP, відсутність debug-файлів).
 <!--
 Оригінальний зміст README було замінено інструкцією розгортання згідно запиту користувача.
 -->
