@@ -71,7 +71,9 @@ if(!empty($row['h'] ?? null)){
       </form>
     </div>
     <p class="fs-11 text-muted mt-14">Видалення безповоротне. Сервер не зберігає ПІБ, тому повторно привʼязати особу буде неможливо.</p>
-    <p class="mt-10"><a href="/tokens.php" class="btn btn-sm">← До списку</a></p>
+    <p class="mt-10 flex gap-8 flex-wrap">
+      <a href="/tokens.php" class="btn btn-sm">← До списку</a>
+    </p>
   </div>
 </section>
 <script src="/assets/js/token_page.js"></script>

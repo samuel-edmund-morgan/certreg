@@ -167,9 +167,7 @@
     }
   const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
     regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>ORG:</strong> ${ORG}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${validUntil===INFINITE_SENTINEL?'∞':validUntil}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
-  summary.innerHTML = `<div class=\"alert alert-ok\" style=\"margin:0 0 12px\">Сертифікат створено. CID <strong>${cid}</strong>. Зображення автоматично завантажено. <a href=\"#\" id=\"reDownloadLink\">Повторно завантажити JPG</a>. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;
-  const rd = document.getElementById('reDownloadLink');
-  if(rd){ rd.addEventListener('click', ev=>{ ev.preventDefault(); manualDownload(); }); }
+  summary.innerHTML = `<div class=\"alert alert-ok\" style=\"margin:0 0 12px\">Сертифікат створено. CID <strong>${cid}</strong>. PDF-файл сертифіката автоматично згенеровано та завантажено. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;
   const copyBtn = document.getElementById('copyLinkBtn');
   const copyStatus = document.getElementById('copyLinkStatus');
   if(copyBtn){
@@ -208,20 +206,60 @@
       }
     }
     if(infiniteCb){ infiniteCb.addEventListener('change', syncExpiryVisibility); syncExpiryVisibility(); }
-  function manualDownload(){
+  // Minimal PDF generator embedding the rendered JPEG (client-side, no PII leaves browser)
+  function generatePdfFromCanvas(){
     if(!canvas) return;
+    const jpegDataUrl = canvas.toDataURL('image/jpeg',0.92); // includes QR + text
+    const b64 = jpegDataUrl.split(',')[1];
+    const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+    const W = canvas.width; const H = canvas.height; // points (1:1)
+    // Content stream drawing image at full page
+    const contentStream = `q\n${W} 0 0 ${H} 0 0 cm\n/Im0 Do\nQ`;
+    const enc = (s)=> new TextEncoder().encode(s);
+    // Build objects incrementally collecting offsets
+    let parts = [];
+    const offsets = []; let position = 0;
+    function push(strOrBytes){
+      if(typeof strOrBytes === 'string') { const b = enc(strOrBytes); parts.push(b); position += b.length; }
+      else { parts.push(strOrBytes); position += strOrBytes.length; }
+    }
+    const header = '%PDF-1.4\n%âãÏÓ\n';
+    push(header);
+    function obj(n, body){ offsets[n]=position; push(`${n} 0 obj\n${body}\nendobj\n`); }
+    // Will insert image & content separately due to binary streams
+    obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+    obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    obj(3,`<< /Type /Page /Parent 2 0 R /Resources << /XObject << /Im0 4 0 R >> /ProcSet [/PDF /ImageC] >> /MediaBox [0 0 ${W} ${H}] /Contents 5 0 R >>`);
+    // Image object (4)
+    offsets[4]=position;
+    push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${W} /Height ${H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`);
+    push(bytes);
+    push(`\nendstream\nendobj\n`);
+    // Content object (5)
+    const contentBytes = enc(contentStream);
+    obj(5,`<< /Length ${contentBytes.length} >>\nstream\n${contentStream}\nendstream`);
+    // Xref table
+    const xrefOffset = position;
+    const objCount = 6; // 0..5
+    let xref = 'xref\n0 '+objCount+'\n';
+    xref += '0000000000 65535 f \n';
+    for(let i=1;i<objCount;i++){
+      const off = (offsets[i]||0).toString().padStart(10,'0');
+      xref += `${off} 00000 n \n`;
+    }
+    push(xref);
+    push(`trailer\n<< /Size ${objCount} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+    // Concatenate
+    let totalLen = parts.reduce((a,b)=>a+b.length,0);
+    const out = new Uint8Array(totalLen); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
+    const blob = new Blob([out], {type:'application/pdf'});
     const link = document.createElement('a');
-    link.download = 'certificate.jpg';
-    link.href = canvas.toDataURL('image/jpeg',0.92);
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(()=>{ if(link.parentNode) link.parentNode.removeChild(link); }, 100);
+    link.download = 'certificate_'+(currentData?currentData.cid:'')+'.pdf';
+    link.href = URL.createObjectURL(blob);
+    document.body.appendChild(link); link.click();
+    setTimeout(()=>{ URL.revokeObjectURL(link.href); link.remove(); }, 4000);
   }
-  function autoDownload(){
-    // Avoid multiple triggers if user regenerates quickly
-    if(!canvas) return;
-  manualDownload();
-  }
+  function autoDownload(){ generatePdfFromCanvas(); }
   toggleDetails && toggleDetails.addEventListener('click',()=>{
     if(advancedBlock.classList.contains('d-none')){
       advancedBlock.classList.remove('d-none');
