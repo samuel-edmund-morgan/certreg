@@ -16,6 +16,7 @@ return [
         'course' => ['x'=>600, 'y'=>520, 'size'=>24, 'angle'=>0],
         'date'   => ['x'=>600, 'y'=>570, 'size'=>24, 'angle'=>0],
         'qr'     => ['x'=>150, 'y'=>420, 'size'=>220],
+        'int'    => ['x'=>820, 'y'=>670, 'size'=>14, 'angle'=>0],
     ],
 
     // Legacy keys removed: site_domain, hash_salt, template_path, output_dir, font_path, hash_version.

@@ -6,8 +6,13 @@ require_csrf();
 header('Content-Type: application/json; charset=utf-8');
 
 $cid = trim($_POST['cid'] ?? '');
-$reason = trim($_POST['reason'] ?? '');
+$reasonRaw = $_POST['reason'] ?? '';
+$reason = preg_replace('/\s+/u',' ', trim($reasonRaw));
 if($cid===''){ http_response_code(400); echo json_encode(['error'=>'missing_cid']); exit; }
+// Validation: required, min length 5, must contain at least one letter or digit
+if($reason===''){ http_response_code(422); echo json_encode(['error'=>'empty_reason']); exit; }
+if(mb_strlen($reason) < 5){ http_response_code(422); echo json_encode(['error'=>'too_short']); exit; }
+if(!preg_match('/[\p{L}\p{N}]/u',$reason)){ http_response_code(422); echo json_encode(['error'=>'bad_chars']); exit; }
 
 // Check existing status
 $st = $pdo->prepare("SELECT id, revoked_at FROM tokens WHERE cid=? LIMIT 1");
@@ -22,5 +27,5 @@ if($row['revoked_at']){
 
 $revokedAt = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 $st = $pdo->prepare("UPDATE tokens SET revoked_at=?, revoke_reason=? WHERE id=? LIMIT 1");
-$st->execute([$revokedAt, $reason!==''? mb_substr($reason,0,255):null, $row['id']]);
+$st->execute([$revokedAt, mb_substr($reason,0,255), $row['id']]);
 echo json_encode(['ok'=>true,'revoked_at'=>$revokedAt]);

@@ -85,6 +85,17 @@
     if(qrImg.complete){
       ctx.drawImage(qrImg, cQR.x, cQR.y, cQR.size, cQR.size);
     }
+    // Integrity short code (first 10 hex chars of H) if available
+    if(currentData.h){
+      const short = (currentData.h.slice(0,10).toUpperCase()).replace(/(.{5})(.{5})/, '$1-$2');
+      const cInt = coords.int || {x: canvas.width - 180, y: canvas.height - 30, size:14};
+      ctx.save();
+      ctx.font = (cInt.size||14) + 'px monospace';
+      ctx.fillStyle = '#111';
+      if(cInt.angle){ ctx.translate(cInt.x, cInt.y); ctx.rotate(cInt.angle * Math.PI/180); ctx.fillText('INT '+short, 0, 0); }
+      else { ctx.fillText('INT '+short, cInt.x, cInt.y); }
+      ctx.restore();
+    }
   }
   async function handleSubmit(e){
     e.preventDefault();
@@ -103,8 +114,8 @@
     const pibNorm = normName(pibRaw);
     const salt = crypto.getRandomValues(new Uint8Array(32));
     const canonical = `v${VERSION}|${pibNorm}|${course}|${grade}|${date}`;
-    const sig = await hmacSha256(salt, canonical);
-    const h = toHex(sig);
+  const sig = await hmacSha256(salt, canonical);
+  const h = toHex(sig);
     const cid = genCid();
     // Register (no PII)
     const res = await fetch('/api/register.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cid:cid, v:VERSION, h:h, course:course, grade:grade, date:date})});
@@ -124,7 +135,7 @@
     const verifyUrl = window.location.origin + '/verify.php?p=' + packed;
   qrPayloadEl.textContent = verifyUrl + "\n\n" + payloadStr;
     // Ensure onload handler is set BEFORE changing src to avoid race (cache instant load)
-    currentData = {pib:pibRaw,cid:cid,grade:grade,course:course,date:date};
+  currentData = {pib:pibRaw,cid:cid,grade:grade,course:course,date:date,h:h};
   qrImg.onload = ()=>{ renderAll(); autoDownload(); }; 
     qrImg.src = '/qr.php?data='+encodeURIComponent(verifyUrl);
     // If image was cached and already complete, trigger manually
@@ -132,7 +143,8 @@
       // Use microtask to keep async behavior consistent
       setTimeout(()=>{ if(qrImg.onload) qrImg.onload(); },0);
     }
-  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span style="font-family:monospace">${h}</span><br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
+  const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
+  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>H:</strong> <span style="font-family:monospace">${h}</span><br><strong>INT:</strong> <span style="font-family:monospace">${shortCode}</span><br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
   summary.innerHTML = `<div class="alert" style="background:#ecfdf5;border:1px solid #6ee7b7;margin:0 0 12px">Сертифікат створено. CID <strong>${cid}</strong>. Зображення автоматично завантажено. <a href="#" id="reDownloadLink">Повторно завантажити JPG</a>. Збережіть файл – ПІБ не відновлюється з бази.</div><div style="font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">Перевірка: <a href="${verifyUrl}" target="_blank" rel="noopener">Відкрити сторінку перевірки</a><button type="button" class="btn btn-sm" id="copyLinkBtn" style="padding:4px 8px">Копіювати URL</button><span id="copyLinkStatus" style="font-size:11px;color:#15803d;display:none">Скопійовано</span></div>`;
   const rd = document.getElementById('reDownloadLink');
   if(rd){ rd.addEventListener('click', ev=>{ ev.preventDefault(); manualDownload(); }); }

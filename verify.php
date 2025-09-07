@@ -40,6 +40,7 @@ require __DIR__.'/header.php';
           <strong>Оцінка:</strong> <span id="gradeOut"></span><br>
           <strong>Дата:</strong> <span id="dateOut"></span><br>
           <strong>H (з сервера):</strong> <code style="font-size:11px;word-break:break-all;display:block;margin-top:2px" id="hashOut"></code>
+          <strong>Integrity (INT):</strong> <span id="intOut" style="font-family:monospace"></span>
         </div>
       </details>
       <script>
@@ -54,7 +55,8 @@ require __DIR__.'/header.php';
         const courseOut = document.getElementById('courseOut');
         const gradeOut = document.getElementById('gradeOut');
         const dateOut = document.getElementById('dateOut');
-        const hashOut = document.getElementById('hashOut');
+  const hashOut = document.getElementById('hashOut');
+  const intOut = document.getElementById('intOut');
         cidOut.textContent = payload.cid;
         verOut.textContent = payload.v;
         saltOut.textContent = payload.s;
@@ -71,6 +73,8 @@ require __DIR__.'/header.php';
         fetch(statusUrl).then(r=>r.json()).then(js=>{
           if(!js.exists){ existBox.className='alert alert-error'; existBox.textContent='Реєстраційний номер не знайдено.'; return; }
           hashOut.textContent = js.h;
+          const shortCode = js.h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
+          intOut.textContent = shortCode;
           if(js.revoked){
             existBox.className='alert alert-error';
             function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
@@ -89,7 +93,7 @@ require __DIR__.'/header.php';
             existBox.className='alert';
             existBox.style.background='#ecfdf5';
             existBox.style.border='1px solid #6ee7b7';
-            existBox.textContent='Реєстраційний номер існує, сертифікат чинний.';
+            existBox.textContent='Реєстраційний номер існує, сертифікат чинний. INT '+shortCode;
             ownForm.style.display='block';
           }
           ownForm.addEventListener('submit', async ev=>{
