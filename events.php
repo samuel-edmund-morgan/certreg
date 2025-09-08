@@ -45,7 +45,7 @@ require_once __DIR__.'/header.php';
           <th>Подія</th>
           <th>Причина</th>
           <th>Адмін</th>
-          <th>Попереднє revoked_at</th>
+          <th>Попередній час відкликання</th>
           <th>Попередня причина</th>
           <th>Час</th>
         </tr>
