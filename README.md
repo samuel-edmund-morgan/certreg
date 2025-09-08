@@ -11,12 +11,20 @@
 - [Ліцензія](#ліцензія)
 
 ## Установка
-1. Створіть БД і користувача.
-2. Скопіюйте `config.php.example` у `config.php` та налаштуйте параметри.
-3. Запустіть міграцію: `php migrations/004_create_tokens_table.php`.
-4. (Необов'язково) Приберіть спадкові таблиці: `php migrations/005_drop_legacy.php --archive`.
-5. Виставте whitelist Nginx на `issue_token.php`, `tokens.php`, `token.php`, `verify.php`, `qr.php` та `api/*.php`.
-6. Додайте rate‑limit на `/api/status.php` за потреби.
+1. Встановіть залежності:
+   ```bash
+   sudo apt update && sudo apt install nginx php-fpm php-mysql php-gd php-mbstring mysql-server git
+   ```
+2. Створіть БД та користувача в MySQL (SQL приклад у `config.php.example`).
+3. Клонуйте репозиторій у `/var/www/certreg` та виставте права власності на `www-data`.
+4. Скопіюйте `config.php.example` у `config.php` й заповніть `db_*`, `site_name`, `logo_path`, `org_code` тощо.
+5. Запустіть міграції `php migrations/004_create_tokens_table.php` та, за потреби, `php migrations/005_drop_legacy.php --archive`.
+6. Сконфігуруйте Nginx: скопіюйте `certreg.conf.example` у `/etc/nginx/sites-available/certreg`, відредагуйте `server_name`, увімкніть сайт (`ln -s` у `sites-enabled`), перевірте `nginx -t` і перезапустіть `sudo systemctl reload nginx`.
+7. Переконайтеся, що `php-fpm` працює (`sudo systemctl enable --now php8.1-fpm`) і сокет збігається з конфігурацією.
+8. Запустіть `php self_check.php` або відкрийте `https://<домен>/verify.php` для перевірки.
+9. (Опційно) Увімкніть `limit_req` для `/api/status.php`.
+10. (Опційно) Зробіть резервні копії конфігів.
+11. (Опційно) Використовуйте HTTPS через certbot.
 
 ## API
 - `POST /api/register.php` – створення токена `{cid,v,h,course,grade,date,valid_until}`.
