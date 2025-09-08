@@ -1,3 +1,73 @@
+> ОНОВЛЕННЯ (v2) – активна канонічна схема: додано ORG, CID, `valid_until` (sentinel `4000-01-01`). QR нових сертифікатів містить `org`; якщо відсутній (ранні v2) – fallback на поточний `org_code`.
+
+# certreg (privacy-first)
+
+Мінімалістична система перевірки сертифікатів без зберігання ПІБ. Імʼя нормалізується локально, входить у HMAC і не потрапляє в БД. Сервер зберігає лише анонімні токени, стани (revoked / expiry) та журнал подій.
+
+Докладні матеріали винесено:
+* Міграція v1→v2: `MIGRATION.md`
+* Модель загроз, заголовки, чеклісти: `SECURITY.md`
+
+## Canonical v2
+```
+v2|NAME|ORG|CID|COURSE|GRADE|ISSUED_DATE|VALID_UNTIL
+```
+NAME (нормалізоване ПІБ), ORG (`org_code`), CID (клієнт), COURSE, GRADE, ISSUED_DATE (ISO), VALID_UNTIL (дата або sentinel `4000-01-01`).
+
+QR payload (новий приклад):
+```json
+{"v":2,"cid":"C1ABC..","s":"<b64url salt>","org":"ORG-CERT","course":"Назва","grade":"100","date":"2024-07-01","valid_until":"4000-01-01"}
+```
+Expired якщо `valid_until` < today і не sentinel.
+
+### Порівняння з v1 (скорочено)
+| Аспект | v1 | v2 |
+|--------|----|----|
+| Canonical | v1|NAME|COURSE|GRADE|DATE | v2|NAME|ORG|CID|COURSE|GRADE|ISSUED_DATE|VALID_UNTIL |
+| ORG у HMAC | ✖ | ✔ |
+
+## API (скорочено)
+POST /api/register.php {cid,v,h,course,grade,date,valid_until}
+GET  /api/status.php?cid=... -> {h, revoked_at?, revoke_reason?}
+POST /api/bulk_action.php {action:[revoke|unrevoke|delete], cids[], reason?}
+GET  /api/events.php?cid=... -> журнал подій
+
+## Role separation (приклад public користувача)
+```sql
+CREATE USER 'certro'@'localhost' IDENTIFIED BY 'VERY-STRONG-PASS';
+GRANT SELECT (cid,version,h,revoked_at,revoke_reason,valid_until,course,grade,issued_date) ON certreg.tokens TO 'certro'@'localhost';
+GRANT UPDATE (lookup_count,last_lookup_at) ON certreg.tokens TO 'certro'@'localhost';
+GRANT INSERT (cid,event_type) ON certreg.token_events TO 'certro'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+## Roadmap (excerpt)
+1. Винести всі inline scripts → чистий CSP
+2. Batch PDF (M4)
+3. Nginx hardening + rate limiting (M6)
+4. QR refactor & caching (M7)
+5. Header diff self-check (M8)
+6. Розширена детекція гомогліфів
+
+## Харднінг (уривок)
+| Контроль | Статус | Примітка |
+|----------|--------|----------|
+| Whitelist entrypoints | ✓ | Nginx приклад вище |
+| CSP без inline | ▶ | Частково, перехідний nonce → повне винесення JS |
+| Rate-limit status API | ▶ | Nginx `limit_req` |
+| Read-only public DB user | ✓ | Приклад GRANT вище |
+| Argon2id для паролів | ▶ | Fallback bcrypt ≥ cost12 |
+
+Повні таблиці → `SECURITY.md`.
+
+## Legacy
+Старі генератори (generate_cert.php, checkCert.php) видалені; історія в Git.
+
+## License
+MIT
+
+---
+Повні деталі: `MIGRATION.md`, `SECURITY.md`.
 > ОНОВЛЕННЯ (v2): Додано канонічний формат v2 із полями ORG, CID та датою закінчення (valid_until) із sentinel `4000-01-01` для безстрокових сертифікатів. QR payload тепер (у нових випусках) включає поле `org`. Перевірка сумісна зі старими v2 QR без `org`.
 
 ## Canonical v1 vs v2
