@@ -49,17 +49,8 @@ blob-report/
 test-results/
 coverage/
 
-# Local environment overrides
-certreg.conf
-
-
-# Additional Playwright cache
+# Playwright internal cache (browsers, etc.)
 playwright/.cache/
-
-# Lockfiles (uncomment one if you want deterministic builds committed)
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
 
 # Patch / merge conflict artifacts
 *.orig
@@ -67,4 +58,7 @@ pnpm-lock.yaml
 
 # Editor backup suffix
 *~
+
+# Local environment overrides
+certreg.conf
 
