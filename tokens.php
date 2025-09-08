@@ -66,9 +66,9 @@ $csrf = csrf_token();
           <option value="unrevoke">Відновити</option>
           <option value="delete">Видалити</option>
         </select>
-  <input type="text" id="bulkReason" class="fs-13 hidden-slot minw-200" placeholder="Причина (для відкликання)" maxlength="255">
-        <button type="button" id="bulkExecute" class="btn btn-sm">Виконати</button>
-        <button type="button" id="bulkCancel" class="btn btn-sm btn-light">Скасувати</button>
+  <input type="text" id="bulkReason" class="fs-13 hidden-slot" placeholder="Причина (для відкликання)" maxlength="255" autocomplete="off">
+  <button type="button" id="bulkExecute" class="btn btn-sm btn-primary">Виконати</button>
+  <button type="button" id="bulkCancel" class="btn btn-sm btn-light">Скасувати</button>
         <span id="bulkStatus" class="fs-12"></span>
       </div>
     </div>

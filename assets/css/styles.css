@@ -329,3 +329,7 @@ main{flex:1}
   .code-box{display:block;max-width:340px;white-space:pre-wrap;word-break:break-all;font-size:11px;background:#f1f5f9;padding:8px;border-radius:6px}
   .canvas-preview{border:1px solid #e2e8f0;border-radius:8px;max-width:100%;height:auto;display:block}
   .qr-img{width:220px;height:220px;border:1px solid #e2e8f0;border-radius:8px;object-fit:contain}
+  /* Bulk bar reason field collapse logic */
+  #bulkBar{gap:8px}
+  #bulkReason{min-width:220px;transition:width .18s ease, padding .18s ease, opacity .18s ease;}
+  #bulkReason.hidden-slot{width:0 !important;min-width:0 !important;padding:0 !important;margin:0 !important;border:0 !important;opacity:0 !important}
