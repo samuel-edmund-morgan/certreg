@@ -3,7 +3,7 @@ require_once __DIR__.'/../auth.php';
 require_admin();
 require_csrf();
 require_once __DIR__.'/../db.php';
-header('Content-Type: application/json; charset=utf-8');
+if(!headers_sent()) header('Content-Type: application/json; charset=utf-8');
 // Apply centralized rate limiting early to avoid unnecessary DB work when over limit
 require_once __DIR__.'/../rate_limit.php';
 rate_limit('revoke');

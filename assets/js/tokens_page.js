@@ -48,7 +48,15 @@
   function selectedGlobal(){ return selected(); }
     function updateBar(){
       const count = selectedGlobal().length;
-  if(count>0){ bulkBar.classList.remove('d-none'); document.body.classList.add('has-bulk'); } else { bulkBar.classList.add('d-none'); document.body.classList.remove('has-bulk'); statusEl.textContent=''; }
+  if(count>0){
+        bulkBar.classList.remove('d-none');
+        document.body.classList.add('has-bulk');
+      } else {
+        bulkBar.classList.add('d-none');
+        document.body.classList.remove('has-bulk');
+        // Preserve final result message like 'Готово: ...' so user can read outcome
+        if(!/^Готово/.test(statusEl.textContent)) statusEl.textContent='';
+      }
       selCountEl.textContent = count;
       selSummary.innerHTML = 'Вибрано <strong>'+count+'</strong> із <strong>'+totalAll+'</strong> (сторінка '+pageNum+')';
       if(actionSel.value==='revoke'){

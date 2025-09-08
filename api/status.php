@@ -5,7 +5,7 @@ if(!defined('USE_PUBLIC_DB')) define('USE_PUBLIC_DB', true);
 require_once __DIR__.'/../db.php';
 require_once __DIR__.'/../rate_limit.php';
 rate_limit('status');
-header('Content-Type: application/json; charset=utf-8');
+if(!headers_sent()) header('Content-Type: application/json; charset=utf-8');
 $cid = trim($_GET['cid'] ?? '');
 if ($cid==='') { http_response_code(400); echo json_encode(['error'=>'missing_cid']); exit; }
 $st = $pdo->prepare("SELECT h, version, revoked_at, revoked_at IS NOT NULL AS revoked, revoke_reason, valid_until FROM tokens WHERE cid=? LIMIT 1");

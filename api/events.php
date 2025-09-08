@@ -3,7 +3,7 @@ require_once __DIR__.'/../auth.php';
 require_admin();
 require_csrf();
 require_once __DIR__.'/../db.php';
-header('Content-Type: application/json; charset=utf-8');
+if(!headers_sent()) header('Content-Type: application/json; charset=utf-8');
 
 $cid = trim($_GET['cid'] ?? '');
 $limit = (int)($_GET['limit'] ?? 50);
@@ -17,8 +17,8 @@ if($cid === ''){
   exit;
 }
 
-$st = $pdo->prepare("SELECT id,cid,event_type,reason,admin_user,prev_revoked_at,prev_revoke_reason,created_at FROM token_events WHERE cid=? ORDER BY id DESC LIMIT :lim");
-$st->bindValue(1,$cid);
+$st = $pdo->prepare("SELECT id,cid,event_type,reason,admin_user,prev_revoked_at,prev_revoke_reason,created_at FROM token_events WHERE cid=:cid ORDER BY id DESC LIMIT :lim");
+$st->bindValue(':cid',$cid);
 $st->bindValue(':lim',$limit,PDO::PARAM_INT);
 $st->execute();
 echo json_encode(['ok'=>1,'cid'=>$cid,'events'=>$st->fetchAll(PDO::FETCH_ASSOC)]);

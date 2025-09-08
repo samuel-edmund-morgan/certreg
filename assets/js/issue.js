@@ -168,7 +168,7 @@
     }
   const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
     regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>ORG:</strong> ${ORG}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${validUntil===INFINITE_SENTINEL?'∞':validUntil}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
-  summary.innerHTML = `<div class=\"alert alert-ok\" style=\"margin:0 0 12px\">Сертифікат створено. CID <strong>${cid}</strong>. PDF-файл сертифіката автоматично згенеровано та завантажено. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;
+  summary.innerHTML = `<div class=\"alert alert-ok mb-12\">Сертифікат створено. CID <strong>${cid}</strong>. PDF-файл сертифіката автоматично згенеровано та завантажено. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;
   const copyBtn = document.getElementById('copyLinkBtn');
   const copyStatus = document.getElementById('copyLinkStatus');
   if(copyBtn){

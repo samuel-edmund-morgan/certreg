@@ -9,6 +9,8 @@
 - [Безпека](#безпека)
 - [Дорожня карта](#дорожня-карта)
 - [Ліцензія](#ліцензія)
+- [Автоматичні тести](#автоматичні-тести)
+- [Ігноровані файли / артефакти](#ігноровані-файли--артефакти)
 
 ## Установка
 
@@ -218,3 +220,45 @@ v2|NAME|ORG|CID|COURSE|GRADE|ISSUED_DATE|VALID_UNTIL
 
 ## Ліцензія
 MIT
+
+## Автоматичні тести
+Front-end (UI) покриття реалізовано за допомогою Playwright (E2E) + PHP CLI тести (бекенд / API / CSP).
+
+Команди:
+
+```bash
+# Встановити Node залежності (один раз)
+npm install
+
+# Запуск лише PHP тестів
+php tests/run_tests.php
+
+# Повний UI набір (headless Chromium)
+CERTREG_TEST_MODE=1 npx playwright test
+
+# Окремий тест (приклад bulk)
+CERTREG_TEST_MODE=1 npx playwright test tests/ui/tokens_bulk.spec.js
+```
+
+CERTREG_TEST_MODE=1 відключає rate limiting для стабільності тестів.
+
+PDF завантаження та QR рендер перевіряються; bulk revoke/unrevoke/delete, сортування, гомогліфи та login UI – покриті.
+
+## Ігноровані файли / артефакти
+`.gitignore` включає:
+- `node_modules/`, Playwright звіти (`playwright-report/`, `blob-report/`, `test-results/`), тимчасові та кеш файли.
+- Секрети: `config.php`, `.env*`, ключі (`*.key`, `*.pem`, `*.crt`, ...).
+- Згенеровані сертифікати: `files/certs/*` (порожня `.gitkeep` зберігає директорію).
+- Локальна конфігурація веб-сервера: `certreg.conf`.
+
+Не коміть реальні приватні ключі / сертифікати. Для тестування використовуйте самопідписані.
+
+## self_check remediation
+`php self_check.php` виконує:
+1. Перевірку whitelist entrypoints.
+2. Перевірку прав `config.php`.
+3. Схему (`tokens`, `token_events`).
+4. Файлову безпеку (H2) та аудит подій (H10).
+
+Флаг `--suggest-fixes` показує SQL для виправлення аномалій журналу.
+Опціонально можна додати автоматичну вставку synthetic `create` подій (див. TODO в `self_check.php`).

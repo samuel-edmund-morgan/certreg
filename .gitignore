@@ -41,3 +41,14 @@ Icon?
 assets/logo.png
 assets/favicon.ico
 files/cert_template.jpg
+
+# Node / Playwright test artifacts
+node_modules/
+playwright-report/
+blob-report/
+test-results/
+coverage/
+
+# Local environment overrides
+certreg.conf
+

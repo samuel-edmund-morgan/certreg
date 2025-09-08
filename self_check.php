@@ -282,6 +282,27 @@ try {
   $report('Events referencing unknown cid without delete',$an_unknownCidNoDelete,'fail');
   if($anyH10Fail){ echo "[H10] One or more FAIL conditions detected.\n"; } else { echo "[H10] Audit integrity checks passed (no FAIL).\n"; }
 
+  // Optional automatic remediation
+  if(in_array('--auto-fix-missing-create',$argv,true) && $an_missingCreate){
+    $ins = $pdo->prepare("INSERT INTO token_events (cid,event_type) VALUES (?, 'create')");
+    $fixed=0; foreach($an_missingCreate as $cid){ try { $ins->execute([$cid]); $fixed++; } catch(Throwable $e){ echo "[WARN] Failed insert synthetic create for $cid: ".$e->getMessage()."\n"; } }
+    echo "[FIX] Inserted $fixed synthetic create events. Re-run self_check.php to verify.\n";
+  }
+  if(in_array('--auto-fix-state',$argv,true) && $an_stateMismatch){
+    foreach($an_stateMismatch as $cid){
+      $elist = $eventsByCid[$cid] ?? [];
+      $revState=false; foreach($elist as $ev){ if($ev['event_type']==='revoke') $revState=true; elseif($ev['event_type']==='unrevoke') $revState=false; }
+      try {
+        if($revState){
+          $pdo->prepare("UPDATE tokens SET revoked_at=IFNULL(revoked_at,NOW()), revoke_reason=COALESCE(revoke_reason,'(restored)') WHERE cid=? LIMIT 1")->execute([$cid]);
+        } else {
+          $pdo->prepare("UPDATE tokens SET revoked_at=NULL, revoke_reason=NULL WHERE cid=? LIMIT 1")->execute([$cid]);
+        }
+      } catch(Throwable $e){ echo "[WARN] Failed state reconcile for $cid: ".$e->getMessage()."\n"; }
+    }
+    echo "[FIX] Applied revocation state reconciliation. Re-run self_check.php to verify.\n";
+  }
+
   // Optional remediation suggestions
   if(in_array('--suggest-fixes', $argv, true)){
     echo "[H10] --- Suggested SQL remediation (review before executing) ---\n";

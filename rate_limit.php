@@ -4,6 +4,8 @@
 // Returns silently if allowed; sends HTTP 429 and exits if exceeded.
 
 function rate_limit(string $key, array $cfgOverrides = []): void {
+    // Test bypass: allow automated UI tests to disable rate limiting by setting CERTREG_TEST_MODE=1
+    if (getenv('CERTREG_TEST_MODE') === '1') { return; }
     static $config;
     if($config === null){
         $app = require __DIR__.'/config.php';

@@ -1,0 +1,14 @@
+{
+  "name": "certreg-ui-tests",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Automated headless browser tests for certreg (login, issuance, tokens UI, homoglyph validation)",
+  "scripts": {
+    "test:ui": "playwright test",
+    "test:ui:headed": "playwright test --headed",
+    "test:ui:debug": "PWDEBUG=1 playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0"
+  }
+}
