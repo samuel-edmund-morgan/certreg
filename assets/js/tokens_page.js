@@ -41,7 +41,6 @@
     const reasonInput = document.getElementById('bulkReason');
     const statusEl = document.getElementById('bulkStatus');
   const progressEl = document.getElementById('bulkProgress');
-  const selectAllFiltered = document.getElementById('selectAllFiltered');
     const MAX = 100;
     function rowCheckboxes(){ return Array.from(document.querySelectorAll('.rowChk')); }
   function applyPersistedToPage(){}
@@ -62,7 +61,7 @@
     updateBar();
   if(chkAll){ chkAll.addEventListener('change',()=>{ rowCheckboxes().forEach(c=>{ c.checked = chkAll.checked; c.closest('tr')?.classList.toggle('row-selected', c.checked); }); updateBar(); }); }
   rowCheckboxes().forEach(c=> c.addEventListener('change', ()=>{ c.closest('tr')?.classList.toggle('row-selected', c.checked); updateBar(); }));
-  if(selectAllFiltered){ selectAllFiltered.parentElement.style.display='none'; }
+  // selectAllFiltered removed (feature dropped)
     actionSel.addEventListener('change', updateBar);
   cancelBtn.addEventListener('click', ()=>{ rowCheckboxes().forEach(c=>{ c.checked=false; c.closest('tr')?.classList.remove('row-selected'); }); if(chkAll) chkAll.checked=false; updateBar(); });
   async function runBulk(){

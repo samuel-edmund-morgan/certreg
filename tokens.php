@@ -59,8 +59,7 @@ $csrf = csrf_token();
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
     <div id="bulkBar" class="bulk-bar d-none">
       <div class="bulk-bar__inner flex gap-8 flex-wrap align-center">
-        <strong class="fs-13" id="selSummary">Вибрано: <span id="selCount">0</span></strong>
-        <label class="fs-12"><input type="checkbox" id="selectAllFiltered"> Вибрати всі (фільтр)</label>
+  <strong class="fs-13" id="selSummary">Вибрано: <span id="selCount">0</span></strong>
         <select id="bulkAction" class="fs-13">
           <option value="">Дія...</option>
           <option value="revoke">Відкликати</option>
