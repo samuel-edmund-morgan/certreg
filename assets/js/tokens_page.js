@@ -70,9 +70,14 @@
         if(action==='revoke') payload.reason = reasonInput.value.trim();
         const csrf = bulkForm.querySelector('input[name="_csrf"]').value;
         const res = await fetch('/api/bulk_action.php',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify(payload)});
-        if(!res.ok){ statusEl.textContent='Помилка '+res.status; return; }
+        if(!res.ok){
+          if(res.status===403){ statusEl.textContent='CSRF помилка. Оновіть сторінку.'; return; }
+          statusEl.textContent='Помилка '+res.status; return;
+        }
         const js = await res.json();
-        if(!js.ok){ statusEl.textContent='Помилка'; return; }
+        if(!js.ok){
+          if(js.error==='csrf'){ statusEl.textContent='CSRF помилка. Оновіть сторінку.'; return; }
+          statusEl.textContent='Помилка'; return; }
         statusEl.textContent='Готово: '+js.processed+' успішно, пропущено '+js.skipped+', помилок '+js.errors.length;
         js.results.forEach(r=>{
           const tr = document.querySelector('tr[data-cid="'+r.cid+'"]');

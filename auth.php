@@ -89,10 +89,23 @@ function csrf_token(): string {
 }
 function require_csrf(): void {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $sent = $_POST['_csrf'] ?? '';
         $sess = $_SESSION['csrf'] ?? '';
+        // Primary: form field
+        $sent = $_POST['_csrf'] ?? '';
+        // Fallback for JSON / fetch requests: custom header X-CSRF-Token
+        if($sent === '') {
+            $sent = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        }
         if ($sent === '' || $sess === '' || !hash_equals($sess, $sent)) {
             http_response_code(403);
+            $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+            $ctype  = $_SERVER['CONTENT_TYPE'] ?? '';
+            $wantsJson = (stripos($accept,'application/json') !== false) || (stripos($ctype,'application/json') !== false);
+            if($wantsJson){
+                if(!headers_sent()) header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['error'=>'csrf']);
+                exit;
+            }
             exit('Помилка безпеки (CSRF). Оновіть сторінку та повторіть.');
         }
     }
