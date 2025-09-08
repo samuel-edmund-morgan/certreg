@@ -1,8 +1,10 @@
 <?php
 require_once __DIR__.'/auth.php';
 require_admin();
+require_csrf();
 $isAdminPage = true;
 $cfg = require __DIR__.'/config.php';
+$csrf = csrf_token();
 require_once __DIR__.'/header.php';
 // Expose coords to JS (fallback defaults if missing)
 $coords = $cfg['coords'] ?? [];
@@ -61,6 +63,7 @@ $coords = $cfg['coords'] ?? [];
     </div>
   </div>
 </section>
+<script>window.__CSRF_TOKEN = '<?= htmlspecialchars($csrf) ?>';</script>
 <script src="/assets/js/issue_page.js"></script>
 <script src="/assets/js/issue.js"></script>
 <?php require_once __DIR__.'/footer.php'; ?>

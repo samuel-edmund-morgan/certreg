@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/../auth.php';
 require_admin();
+require_csrf();
 require_once __DIR__.'/../db.php';
 header('Content-Type: application/json; charset=utf-8');
 

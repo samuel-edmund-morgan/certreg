@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/../auth.php';
 require_admin(); // only admin/operator issues certificates
+require_csrf();
 require_once __DIR__.'/../db.php';
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__.'/../rate_limit.php';

@@ -6,7 +6,7 @@
         e.preventDefault();
         if(confirmText && !confirm(confirmText)) return;
         const fd = new FormData(f);
-        const res = await fetch(f.action,{method:'POST',body:fd});
+        const res = await fetch(f.action,{method:'POST',body:fd,credentials:'same-origin'});
         if(!res.ok){ alert('Помилка запиту'); return; }
         const js = await res.json();
         if(js.ok){ location.reload(); } else { alert('Не вдалося: '+(js.error||'??')); }
@@ -84,7 +84,7 @@
         const payload = {action:action, cids:cids};
         if(action==='revoke') payload.reason = reasonInput.value.trim();
         const csrf = bulkForm.querySelector('input[name="_csrf"]').value;
-        const res = await fetch('/api/bulk_action.php',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf,'Accept':'application/json'}, body: JSON.stringify(payload)});
+        const res = await fetch('/api/bulk_action.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf,'Accept':'application/json'}, body: JSON.stringify(payload)});
         if(!res.ok){
           if(res.status===403){ statusEl.textContent='CSRF помилка. Оновіть сторінку.'; return; }
           statusEl.textContent='Помилка '+res.status; return;
