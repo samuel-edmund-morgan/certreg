@@ -1,8 +1,15 @@
 <?php
+// Central header include: sets strict CSP that forbids inline scripts.
+// To keep functionality (e.g. CSRF token access for fetch) we expose the token via a <meta> tag.
+// Any previous inline script usage (like window.__CSRF_TOKEN assignment) must be removed.
+require_once __DIR__.'/config.php';
+require_once __DIR__.'/auth.php'; // ensure csrf_token() available before emitting <head>
 $cfg = require __DIR__.'/config.php';
 // --- Security headers (no inline scripts) ---
 if (!headers_sent()) {
-  $csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
+  // Allow 'unsafe-inline' for styles to permit dynamic element.style changes and legacy inline style attributes
+  // (lower risk than allowing inline scripts). Scripts remain strictly from 'self'.
+  $csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
   header('Content-Security-Policy: ' . $csp);
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: DENY');
@@ -15,6 +22,7 @@ if (!headers_sent()) {
 $coordsJson = htmlspecialchars(json_encode($cfg['coords'] ?? [], JSON_UNESCAPED_UNICODE), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $orgCode = htmlspecialchars($cfg['org_code'] ?? 'ORG-CERT', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $infSent = htmlspecialchars($cfg['infinite_sentinel'] ?? '4000-01-01', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$csrfMeta = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 ?>
 <!doctype html>
 <html lang="uk">
@@ -23,6 +31,7 @@ $infSent = htmlspecialchars($cfg['infinite_sentinel'] ?? '4000-01-01', ENT_QUOTE
   <link rel="shortcut icon" href="/assets/favicon.ico" type="image/x-icon">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title><?= htmlspecialchars($cfg['site_name']) ?></title>
+  <meta name="csrf" content="<?= $csrfMeta ?>">
   <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
 <body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-inf='<?= $infSent ?>'>

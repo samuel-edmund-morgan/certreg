@@ -62,8 +62,8 @@ $coords = $cfg['coords'] ?? [];
       </div>
     </div>
   </div>
-</section>
-<script>window.__CSRF_TOKEN = '<?= htmlspecialchars($csrf) ?>';</script>
-<script src="/assets/js/issue_page.js"></script>
+ </section>
+ <!-- CSRF token now provided via <meta name="csrf"> in header (no inline script allowed by CSP) -->
+ <script src="/assets/js/issue_page.js"></script>
 <script src="/assets/js/issue.js"></script>
 <?php require_once __DIR__.'/footer.php'; ?>
