@@ -7,9 +7,8 @@ require_once __DIR__.'/auth.php'; // ensure csrf_token() available before emitti
 $cfg = require __DIR__.'/config.php';
 // --- Security headers (no inline scripts) ---
 if (!headers_sent()) {
-  // Allow 'unsafe-inline' for styles to permit dynamic element.style changes and legacy inline style attributes
-  // (lower risk than allowing inline scripts). Scripts remain strictly from 'self'.
-  $csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
+  // Strict CSP: no inline scripts or styles. All inline style attributes have been removed from templates.
+  $csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
   header('Content-Security-Policy: ' . $csp);
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: DENY');

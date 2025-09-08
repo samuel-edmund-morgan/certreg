@@ -65,27 +65,63 @@ cp config.php.example config.php
 ```
 Заповніть у `config.php`: параметри БД (`db_host`,`db_name`,`db_user`,`db_pass`), `site_name`, `logo_path`, `org_code`, `infinite_sentinel`.
 
-### 5. Створення таблиць (якщо ще не існують)
-Для актуальної (v2) схеми використовується таблиця `tokens` (міграції вже мають SQL). Якщо розгортаєте «з нуля», просто виконайте потрібну міграцію:
-
-```bash
-php migrations/004_create_tokens_table.php
-```
-
-Якщо у вас залишилась стара таблиця `data`, її можна видалити або архівувати через `php migrations/005_drop_legacy.php --archive`.
-
-Ініціалізуйте обліковий запис адміністратора (приклад):
+### 5. Створення таблиць (без міграцій)
+Схема створюється одразу SQL-скриптом. Виконайте (налаштувавши БД):
 
 ```sql
 USE certreg;
+
 CREATE TABLE creds (
    id INT AUTO_INCREMENT PRIMARY KEY,
    username VARCHAR(64) NOT NULL UNIQUE,
    passhash VARCHAR(255) NOT NULL
-);
--- згенеруйте хеш пароля у PHP CLI: 
--- php -r "echo password_hash('YourStrongPass', PASSWORD_DEFAULT), PHP_EOL;"
-INSERT INTO creds (username, passhash) VALUES ('admin','<сюди_вставити_згенерований_хеш>');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE tokens (
+   id INT AUTO_INCREMENT PRIMARY KEY,
+   cid VARCHAR(64) NOT NULL,
+   version TINYINT NOT NULL DEFAULT 1,
+   h CHAR(64) NOT NULL,
+   course VARCHAR(100) DEFAULT NULL,
+   grade VARCHAR(32) DEFAULT NULL,
+   issued_date DATE DEFAULT NULL,
+   valid_until DATE DEFAULT NULL,
+   revoked_at DATETIME DEFAULT NULL,
+   revoke_reason VARCHAR(255) DEFAULT NULL,
+   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   lookup_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
+   last_lookup_at DATETIME NULL,
+   UNIQUE KEY uq_tokens_cid (cid),
+   UNIQUE KEY uq_tokens_h (h),
+   KEY idx_tokens_revoked_at (revoked_at),
+   KEY idx_tokens_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE token_events (
+   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+   cid VARCHAR(64) NOT NULL,
+   event_type ENUM('revoke','unrevoke','delete','create','lookup') NOT NULL,
+   reason VARCHAR(255) NULL,
+   admin_id INT NULL,
+   admin_user VARCHAR(64) NULL,
+   prev_revoked_at DATETIME NULL,
+   prev_revoke_reason VARCHAR(255) NULL,
+   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   INDEX idx_cid (cid),
+   INDEX idx_event (event_type),
+   INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+Створіть адміністратора:
+
+```bash
+php -r "echo password_hash('YourStrongPass', PASSWORD_DEFAULT), PHP_EOL;"
+```
+Вставте хеш у SQL:
+
+```sql
+INSERT INTO creds (username, passhash) VALUES ('admin','<HASH>');
 ```
 
 ### 6. Nginx
@@ -128,7 +164,7 @@ location /api/status.php { limit_req zone=api_status burst=10 nodelay; }
 Резервуйте: `config.php`, дампи БД (`mysqldump certreg`), логи nginx, список встановлених пакетів.
 
 ### 12. Оновлення
-При деплої: `git pull`, запуск нових міграцій, контрольний `self_check.php`.
+Оскільки міграцій немає: зробіть резервну копію БД → `git pull` → перевірка `self_check.php`. Якщо буде потрібно змінити схему в майбутньому – окремий оновлений SQL блок буде додано в README.
 
 ### Додаткові сценарії прав доступу
 Якщо потрібно додати права існуючому обмеженому користувачу (для індексів/ALTER):
@@ -149,11 +185,10 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
 1. Встановити пакети та PHP модулі.
 2. Створити БД + користувача.
 3. Клонувати код, налаштувати `config.php`.
-4. Запустити міграцію `004_create_tokens_table.php`.
-5. Створити `creds` + admin.
-6. Налаштувати nginx + HTTPS.
-7. self_check & тестова видача токена.
-8. Увімкнути rate limiting / резервні копії.
+4. Виконати SQL зі схемою (creds, tokens, token_events) + додати admin.
+5. Налаштувати nginx + HTTPS.
+6. self_check & тестова видача токена.
+7. Увімкнути rate limiting / резервні копії.
 
 ## API
 - `POST /api/register.php` – створення токена `{cid,v,h,course,grade,date,valid_until}`.
