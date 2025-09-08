@@ -204,11 +204,52 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
 v2|NAME|ORG|CID|COURSE|GRADE|ISSUED_DATE|VALID_UNTIL
 ```
 
+### Швидкі нотатки переходу v1 → v2 (TL;DR)
+- Додано поля `ORG`, `CID`, `VALID_UNTIL` у canonical рядок; `date` перейменовано у `issued_date`.
+- Схема: додати колонку `valid_until DATE NOT NULL DEFAULT '4000-01-01'` та (за потреби) перейменувати `date`.
+- Старі QR (v1) продовжують валідуватися без змін.
+- Ранні v2 QR без явного `org` у payload – fallback на `org_code` (`config.php`) → після цього `org_code` не змінювати.
+- Sentinel `4000-01-01` = "без експірації"; прострочення = `valid_until < today` && != sentinel.
+
+Перевірка стану міграції:
+```sql
+SHOW COLUMNS FROM tokens LIKE 'valid_until';
+SELECT COUNT(*) AS expired FROM tokens WHERE valid_until <> '4000-01-01' AND valid_until < CURDATE();
+```
+Визначення версії canonical у PHP:
+```php
+function detect_canonical_version(string $payload): int {
+   return str_starts_with($payload, 'v2|') ? 2 : 1; // v1 історично без префікса або з 'v1|'
+}
+```
+
 ## Безпека
 Докладні рекомендації, модель загроз та чеклісти наведено у [SECURITY.md](SECURITY.md). Ключові принципи:
 - Анонімні токени та canonical рядок із полями `ORG`, `CID`, `VALID_UNTIL`.
 - Окремі користувачі БД з мінімальними правами.
 - Підтримка rate‑limiting та жорсткого CSP.
+
+### Модель приватності (узагальнено)
+| Дані | БД | QR payload | Ніколи не надсилається |
+|------|----|-----------|------------------------|
+| NAME (оригінал) | ✗ | ✗ | ✓ |
+| Нормалізоване NAME | ✗ | ✗ (впливає лише на HMAC) | – |
+| Salt (32B) | ✗ | ✓ | ✗ |
+| H (HMAC) | ✓ | ✓ | – |
+| INT (10 hex) | похідне | відображається | – |
+
+### Архітектурний потік
+1. Видача: клієнт нормалізує імʼя → формує canonical → обчислює HMAC → надсилає лише метадані + `cid` + `h`.
+2. Перевірка: декодування payload → реконструкція canonical → HMAC → статус.
+3. Аудит: події записуються у `token_events` без PII.
+
+### Audit Trail
+`token_events(event_type)` = `create|revoke|unrevoke|delete|lookup`, зберігає попередні значення для forensics.
+
+### Плановані покращення
+- Усунення inline JS → CSP без nonce.
+- Автоматичний diff security headers (`self_check` розширення).
+- Розширена гомогліф-детекція.
 
 ## Дорожня карта
 1. Винести всі inline scripts → чистий CSP.
@@ -251,6 +292,19 @@ PDF завантаження та QR рендер перевіряються; bu
 - Revoke → статус "Відкликано" + відображення причини на сторінці токенів.
 - Unrevoke → повернення статусу "Активний" при повторній перевірці.
 - Delete → повторна перевірка повертає повідомлення "не знайдено".
+
+### Покриття (matrix)
+| Категорія | Тести | Статус |
+|-----------|-------|--------|
+| Видача одинична | `api_flow.php`, UI issuance | ✓ |
+| Видача bulk | (план) | ▶ |
+| Revocation lifecycle | `verify_lifecycle.spec.js` | ✓ |
+| Expiry | `verify_status.spec.js` | ✓ |
+| Audit events | `api_flow.php` + spot | ✓ (розширити) |
+| Homoglyph guard | UI | ✓ (базова) |
+| Сортування/пагінація | UI | ✓ (масштаб ▶) |
+| Self-check | `self_check.php` | ✓ (розширення ▶) |
+| Security headers diff | (скрипт) | ▶ |
 
 Пер-рядкові (inline) дії відкликання / відновлення реалізовані через невеликі `<form>` у колонці "Статус" (`tokens.php`) та обробляються AJAX (`assets/js/tokens_page.js`). Тести вводять причину перед кліком (валідація бекенду вимагає >=5 символів).
 
