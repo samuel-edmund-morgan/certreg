@@ -329,7 +329,18 @@ main{flex:1}
   .code-box{display:block;max-width:340px;white-space:pre-wrap;word-break:break-all;font-size:11px;background:#f1f5f9;padding:8px;border-radius:6px}
   .canvas-preview{border:1px solid #e2e8f0;border-radius:8px;max-width:100%;height:auto;display:block}
   .qr-img{width:220px;height:220px;border:1px solid #e2e8f0;border-radius:8px;object-fit:contain}
+  /* Bulk bar sticky */
+  .bulk-bar{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--border);padding:4px 10px;z-index:6;box-shadow:0 2px 4px rgba(0,0,0,0.04);min-height:40px;display:flex;align-items:center}
+  body.admin-page .bulk-bar{top:0}
+  /* When bulk bar visible adjust sticky header offset */
+  body.has-bulk .table thead th{top:40px}
+  .bulk-bar__inner{align-items:center}
+  .row-selected td{background:#e0f2fe !important}
+  .table th a.sort{display:inline-block;position:relative;padding-right:14px}
+  .table th a.sort:after{content:'';position:absolute;right:2px;top:50%;width:6px;height:10px;background:linear-gradient(to bottom,#94a3b8 50%,transparent 50%);opacity:.35;transform:translateY(-50%)}
+  .table th a.sort.active.asc:after{background:linear-gradient(to bottom,#2563eb 50%,transparent 50%);}
+  .table th a.sort.active.desc:after{background:linear-gradient(to top,#2563eb 50%,transparent 50%);}
   /* Bulk bar reason field collapse logic */
   #bulkBar{gap:8px}
-  #bulkReason{min-width:220px;transition:width .18s ease, padding .18s ease, opacity .18s ease;}
-  #bulkReason.hidden-slot{width:0 !important;min-width:0 !important;padding:0 !important;margin:0 !important;border:0 !important;opacity:0 !important}
+  #bulkReason{min-width:220px;}
+  #bulkReason.hidden-slot{display:none !important}

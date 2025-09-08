@@ -54,12 +54,13 @@ $csrf = csrf_token();
       <a class="btn btn-light" href="/tokens.php">Скинути</a>
     <?php endif; ?>
   </form>
-  <div class="table-wrap">
-    <form id="bulkForm" class="bulk-form" onsubmit="return false;">
+  <div class="table-wrap" id="tokensTableWrap">
+    <form id="bulkForm" class="bulk-form" onsubmit="return false;" data-total="<?= (int)$total ?>" data-page="<?= (int)$page ?>" data-pages="<?= (int)$pages ?>">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
     <div id="bulkBar" class="bulk-bar d-none">
-      <div class="flex gap-8 flex-wrap align-center">
-        <strong class="fs-13">Вибрано: <span id="selCount">0</span></strong>
+      <div class="bulk-bar__inner flex gap-8 flex-wrap align-center">
+        <strong class="fs-13" id="selSummary">Вибрано: <span id="selCount">0</span></strong>
+        <label class="fs-12"><input type="checkbox" id="selectAllFiltered"> Вибрати всі (фільтр)</label>
         <select id="bulkAction" class="fs-13">
           <option value="">Дія...</option>
           <option value="revoke">Відкликати</option>
@@ -69,6 +70,7 @@ $csrf = csrf_token();
   <input type="text" id="bulkReason" class="fs-13 hidden-slot" placeholder="Причина (для відкликання)" maxlength="255" autocomplete="off">
   <button type="button" id="bulkExecute" class="btn btn-sm btn-primary">Виконати</button>
   <button type="button" id="bulkCancel" class="btn btn-sm btn-light">Скасувати</button>
+        <span id="bulkProgress" class="fs-12 text-muted"></span>
         <span id="bulkStatus" class="fs-12"></span>
       </div>
     </div>
@@ -76,20 +78,20 @@ $csrf = csrf_token();
       <thead>
         <tr>
           <th><input type="checkbox" id="chkAll"></th>
-          <th>CID</th>
-          <th>Версія</th>
-          <th>Курс</th>
-          <th>Оцінка</th>
-          <th>Дата</th>
-          <th>Створено</th>
-          <th>Статус</th>
+          <th><a href="#" class="sort" data-sort="cid">CID</a></th>
+          <th><a href="#" class="sort" data-sort="version">Версія</a></th>
+          <th><a href="#" class="sort" data-sort="course">Курс</a></th>
+          <th><a href="#" class="sort" data-sort="grade">Оцінка</a></th>
+          <th><a href="#" class="sort" data-sort="issued">Дата</a></th>
+          <th><a href="#" class="sort" data-sort="created">Створено</a></th>
+          <th><a href="#" class="sort" data-sort="status">Статус</a></th>
           <th title="К-сть перевірок / остання">Переглядів</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
       <?php foreach($rows as $r): ?>
-        <tr class="<?= $r['revoked_at'] ? 'row-revoked':'' ?>" data-cid="<?= htmlspecialchars($r['cid']) ?>">
+  <tr class="<?= $r['revoked_at'] ? 'row-revoked':'' ?>" data-cid="<?= htmlspecialchars($r['cid']) ?>" data-created="<?= htmlspecialchars($r['created_at']) ?>" data-status="<?= $r['revoked_at'] ? 'revoked':'active' ?>">
           <td><input type="checkbox" class="rowChk" value="<?= htmlspecialchars($r['cid']) ?>"></td>
           <td class="mono fs-12"><a class="link-plain" href="/token.php?cid=<?= urlencode($r['cid']) ?>"><?= htmlspecialchars($r['cid']) ?></a></td>
           <td><?= (int)$r['version'] ?></td>
