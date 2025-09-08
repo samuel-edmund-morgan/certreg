@@ -52,3 +52,19 @@ coverage/
 # Local environment overrides
 certreg.conf
 
+
+# Additional Playwright cache
+playwright/.cache/
+
+# Lockfiles (uncomment one if you want deterministic builds committed)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Patch / merge conflict artifacts
+*.orig
+*.rej
+
+# Editor backup suffix
+*~
+
