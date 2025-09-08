@@ -55,9 +55,27 @@ $csrf = csrf_token();
     <?php endif; ?>
   </form>
   <div class="table-wrap">
+    <form id="bulkForm" class="bulk-form" onsubmit="return false;">
+    <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
+    <div id="bulkBar" class="bulk-bar d-none">
+      <div class="flex gap-8 flex-wrap align-center">
+        <strong class="fs-13">Вибрано: <span id="selCount">0</span></strong>
+        <select id="bulkAction" class="fs-13">
+          <option value="">Дія...</option>
+          <option value="revoke">Відкликати</option>
+          <option value="unrevoke">Відновити</option>
+          <option value="delete">Видалити</option>
+        </select>
+        <input type="text" id="bulkReason" class="fs-13" placeholder="Причина (для відкликання)" maxlength="255" style="min-width:220px;display:none">
+        <button type="button" id="bulkExecute" class="btn btn-sm">Виконати</button>
+        <button type="button" id="bulkCancel" class="btn btn-sm btn-light">Скасувати</button>
+        <span id="bulkStatus" class="fs-12"></span>
+      </div>
+    </div>
     <table class="table">
       <thead>
         <tr>
+          <th><input type="checkbox" id="chkAll"></th>
           <th>CID</th>
           <th>Версія</th>
           <th>Курс</th>
@@ -71,7 +89,8 @@ $csrf = csrf_token();
       </thead>
       <tbody>
       <?php foreach($rows as $r): ?>
-        <tr class="<?= $r['revoked_at'] ? 'row-revoked':'' ?>">
+        <tr class="<?= $r['revoked_at'] ? 'row-revoked':'' ?>" data-cid="<?= htmlspecialchars($r['cid']) ?>">
+          <td><input type="checkbox" class="rowChk" value="<?= htmlspecialchars($r['cid']) ?>"></td>
           <td class="mono fs-12"><a class="link-plain" href="/token.php?cid=<?= urlencode($r['cid']) ?>"><?= htmlspecialchars($r['cid']) ?></a></td>
           <td><?= (int)$r['version'] ?></td>
           <td><?= htmlspecialchars($r['course'] ?? '') ?></td>
@@ -97,7 +116,8 @@ $csrf = csrf_token();
         </tr>
       <?php endforeach; ?>
       </tbody>
-    </table>
+  </table>
+  </form>
   </div>
   <?php if($pages>1): ?>
     <nav class="pagination">

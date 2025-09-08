@@ -7,7 +7,7 @@ $whitelist = [
   // Public / functional entrypoints
   'index.php','admin.php','login.php','logout.php','issue_token.php','tokens.php','token.php','verify.php','qr.php','events.php',
   // API endpoints
-  'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php',
+  'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php','api/bulk_action.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php',
   // Infrastructure helpers
