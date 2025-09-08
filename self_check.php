@@ -22,7 +22,7 @@ foreach($rii as $file){
   if($file->isDir()) continue;
   $rel = substr($file->getPathname(), strlen($root)+1);
   if(substr($rel, -4) === '.php'){
-  if(str_starts_with($rel,'migrations/') || $rel==='self_check.php' || str_starts_with($rel,'lib/') || str_starts_with($rel,'vendor/')) continue; // ignore bundled libraries and CLI helpers
+  if(str_starts_with($rel,'migrations/') || $rel==='self_check.php' || str_starts_with($rel,'lib/') || str_starts_with($rel,'vendor/') || str_starts_with($rel,'tests/')) continue; // ignore bundled libraries, test harness, and CLI helpers
   if(!in_array($rel,$whitelist,true)) $bad[] = $rel;
   }
 }
