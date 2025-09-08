@@ -8,6 +8,8 @@
 	</div>
 </footer>
 
+<?php if (isset($isAdminPage) && $isAdminPage): ?>
 <script src="/assets/js/admin.js"></script>
+<?php endif; ?>
 </body>
 </html>
