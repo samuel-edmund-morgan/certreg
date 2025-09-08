@@ -1,6 +1,25 @@
 # SECURITY
 
-This document consolidates threat model, hardening checklist and rationale previously scattered in README.
+This document consolidates the security model for the registry, covering
+core properties, threat scenarios, hardening measures and testing
+approach.
+
+## Contents
+- [Core Properties](#core-properties)
+- [Threat Scenarios](#threat-scenarios)
+- [Non-Goals](#non-goals)
+- [NAME Normalisation](#name-normalisation)
+- [Canonical v2 Format](#canonical-v2-format)
+- [Expiry Sentinel](#expiry-sentinel)
+- [Password Hashing](#password-hashing)
+- [Hardening Checklist](#hardening-checklist)
+- [Bulk Endpoint Security Notes](#bulk-endpoint-security-notes)
+- [INT Code](#int-code)
+- [Log Hygiene](#log-hygiene)
+- [Next Steps](#next-steps)
+- [Testing Checklist](#testing-checklist)
+- [Incident Considerations](#incident-considerations)
+- [Future (Optional v3 Thoughts)](#future-optional-v3-thoughts)
 
 ## Core Properties
 * Zero PII storage: NAME never leaves client, only HMAC digest `h` and metadata stored.
@@ -109,20 +128,22 @@ First 10 hex of HMAC (≈40 bits). Useful for manual verbal / visual matching. N
 ## Log Hygiene
 Avoid logging full querystrings containing `p` (QR payload). If logs must exist, strip or hash parameter name only.
 
-## Recommendations Roadmap
-1. Remove all inline scripts → CSP `script-src 'self'` only
-2. Enforce rate limiting for status & events endpoints
-3. Expand homoglyph detection set
-4. Implement self-check CLI: headers diff, file whitelist, PHP version, writable dirs
-5. Automate security header regression test (compare against baseline snapshot)
+## Next Steps
+| Action | Purpose |
+|--------|---------|
+| Remove all inline scripts | Allow CSP `script-src 'self'` only |
+| Enforce rate limiting for status & events endpoints | Limit abuse |
+| Expand homoglyph detection set | Improve spoofing detection |
+| Implement self-check CLI: headers diff, file whitelist, PHP version, writable dirs | Automate configuration checks |
+| Automate security header regression test (baseline snapshot) | Detect misconfigurations |
 
-## Testing Quick Matrix
+## Testing Checklist
 | Test | Goal |
 |------|------|
 | v1 cert verifies | Backward compatibility |
 | Early v2 (no org) verifies | Fallback path |
 | New v2 (org) verifies | Primary path |
-| Expired cert flagged | Expiry logic | 
+| Expired cert flagged | Expiry logic |
 | Revoked cert flagged | Revocation logic |
 | Bulk revoke/unrevoke/delete | Batch integrity + audit |
 

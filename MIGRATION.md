@@ -1,5 +1,21 @@
 # MIGRATION
 
+This guide describes how to migrate the certificate registry from
+canonical format v1 to v2, covering compatibility, schema changes and
+operational steps.
+
+## Contents
+- [v1 → v2 Overview](#v1--v2-overview)
+- [Backward Compatibility](#backward-compatibility)
+- [Expiry Model](#expiry-model)
+- [Data Model Changes](#data-model-changes)
+- [Migration Steps](#migration-steps)
+- [Canonical Reconstruction Pseudocode](#canonical-reconstruction-pseudocode)
+- [NAME Normalisation (unchanged)](#name-normalisation-unchanged)
+- [Testing Checklist](#testing-checklist)
+- [Rollback Plan](#rollback-plan)
+- [Future Extensions (v3 placeholder considerations)](#future-extensions-v3-placeholder-considerations)
+
 ## v1 → v2 Overview
 v2 canonical string adds ORG, CID, VALID_UNTIL while keeping NAME normalisation identical.
 ```
@@ -30,15 +46,29 @@ Table `tokens` fields impacted:
 * no storage of ORG (comes from config)
 * CID already present
 
-Suggested migration SQL (adapt to your environment):
+## Migration Steps
+
+### Preparation
+1. Freeze `org_code` value (write once) in `config.php`.
+2. Deploy code supporting fallback verification.
+
+### Database Schema Updates
+Run:
+
 ```sql
 ALTER TABLE tokens
     ADD COLUMN valid_until DATE NOT NULL DEFAULT '4000-01-01' AFTER issued_date;
 ```
+
 If your previous column name was `date` rename it for clarity:
+
 ```sql
 ALTER TABLE tokens CHANGE COLUMN date issued_date DATE NOT NULL;
 ```
+
+### Application Updates
+1. Update issuance UI to request optional expiry and include ORG + CID in canonical.
+2. Regenerate README / docs references.
 
 ## Canonical Reconstruction Pseudocode
 ```php
@@ -54,13 +84,6 @@ $h = hmac_sha256_hex($salt, $canonical);
 4. trim
 5. Uppercase
 6. Block mixed Cyrillic + Latin suspicious (T,O,C baseline)
-
-## Operational Steps
-1. Freeze `org_code` value (write once) in `config.php`.
-2. Deploy code supporting fallback verification.
-3. Add `valid_until` column (default sentinel) – existing rows become no-expiry.
-4. Update issuance UI to request optional expiry and include ORG + CID in canonical.
-5. Regenerate README / docs references (done).
 
 ## Testing Checklist
 - [ ] Existing v1 certificates still verify (code path for version 1 unchanged)
