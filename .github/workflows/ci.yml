@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: certreg
+          MYSQL_USER: certuser
+          MYSQL_PASSWORD: certpass
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, mbstring, xml, pdo_mysql
+          coverage: none
+
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y libjpeg-dev libpng-dev
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            if mysql -h 127.0.0.1 -uroot -proot -e 'SELECT 1' >/dev/null 2>&1; then echo "MySQL up"; break; fi; sleep 2; done
+
+      - name: Create schema
+        run: |
+          mysql -h 127.0.0.1 -uroot -proot <<'SQL'
+          CREATE DATABASE IF NOT EXISTS certreg CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+          CREATE USER IF NOT EXISTS 'certuser'@'%' IDENTIFIED BY 'certpass';
+          GRANT ALL PRIVILEGES ON certreg.* TO 'certuser'@'%';
+          FLUSH PRIVILEGES;
+          USE certreg;
+          CREATE TABLE IF NOT EXISTS creds (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(64) NOT NULL UNIQUE,
+            passhash VARCHAR(255) NOT NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+          CREATE TABLE IF NOT EXISTS tokens (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            cid VARCHAR(64) NOT NULL,
+            version TINYINT NOT NULL DEFAULT 1,
+            h CHAR(64) NOT NULL,
+            course VARCHAR(100) DEFAULT NULL,
+            grade VARCHAR(32) DEFAULT NULL,
+            issued_date DATE DEFAULT NULL,
+            valid_until DATE DEFAULT NULL,
+            revoked_at DATETIME DEFAULT NULL,
+            revoke_reason VARCHAR(255) DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            lookup_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            last_lookup_at DATETIME NULL,
+            UNIQUE KEY uq_tokens_cid (cid),
+            UNIQUE KEY uq_tokens_h (h),
+            KEY idx_tokens_revoked_at (revoked_at),
+            KEY idx_tokens_created_at (created_at)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+          CREATE TABLE IF NOT EXISTS token_events (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            cid VARCHAR(64) NOT NULL,
+            event_type ENUM('revoke','unrevoke','delete','create','lookup') NOT NULL,
+            reason VARCHAR(255) NULL,
+            admin_id INT NULL,
+            admin_user VARCHAR(64) NULL,
+            prev_revoked_at DATETIME NULL,
+            prev_revoke_reason VARCHAR(255) NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_cid (cid),
+            INDEX idx_event (event_type),
+            INDEX idx_created (created_at)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+          SQL
+
+      - name: Prepare config.php
+        run: |
+          cp config.php.example config.php
+          sed -i "s/enter-db-name/certreg/" config.php
+          sed -i "s/enter-db-username/certuser/" config.php
+          sed -i "s/enter-db-password/certpass/" config.php
+
+      - name: Create test admin
+        run: php tests/create_test_admin.php || true
+
+      - name: Run backend tests
+        run: |
+          php tests/run_tests.php
+          php tests/lookup_count_test.php
+          php self_check.php
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Node deps
+        run: npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run UI tests
+        env:
+          CERTREG_TEST_MODE: '1'
+        run: npx playwright test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report

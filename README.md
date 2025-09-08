@@ -1,4 +1,4 @@
-# certreg (privacy-first)
+# certreg (privacy-first) ![CI](https://github.com/samuel-edmund-morgan/certreg/actions/workflows/ci.yml/badge.svg)
 
 Мінімалістична система перевірки сертифікатів без зберігання персональних даних. Імʼя нормалізується локально та не потрапляє в БД; сервер оперує лише анонімними токенами.
 
@@ -244,6 +244,10 @@ CERTREG_TEST_MODE=1 відключає rate limiting для стабільнос
 
 PDF завантаження та QR рендер перевіряються; bulk revoke/unrevoke/delete, сортування, гомогліфи та login UI – покриті.
 
+Глобальний guard для помилок консолі браузера автоматично провалює тест, якщо зʼявляються `console.error` або CSP-помилки (реалізовано у `tests/ui/fixtures.js`). Специ повинні імпортувати `./fixtures` замість `@playwright/test`.
+
+Додаткове покриття: сторінка перевірки (`verify_status.spec.js`) перевіряє активний, відкликаний та прострочений сертифікати.
+
 ## Ігноровані файли / артефакти
 `.gitignore` включає:
 - `node_modules/`, Playwright звіти (`playwright-report/`, `blob-report/`, `test-results/`), тимчасові та кеш файли.
@@ -252,6 +256,19 @@ PDF завантаження та QR рендер перевіряються; bu
 - Локальна конфігурація веб-сервера: `certreg.conf`.
 
 Не коміть реальні приватні ключі / сертифікати. Для тестування використовуйте самопідписані.
+
+### CI
+GitHub Actions workflow (`.github/workflows/ci.yml`) виконує:
+1. Ініціалізацію MySQL + схему.
+2. PHP бекенд тести (`run_tests.php`, `lookup_count_test.php`, `self_check.php`).
+3. UI тести Playwright (Chromium, headless) з `CERTREG_TEST_MODE=1`.
+4. Завантаження звіту Playwright у разі помилки.
+
+Локально повний цикл можна відтворити:
+
+```bash
+php tests/run_tests.php && php tests/lookup_count_test.php && CERTREG_TEST_MODE=1 npx playwright test
+```
 
 ## self_check remediation
 `php self_check.php` виконує:
