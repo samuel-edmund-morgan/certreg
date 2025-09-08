@@ -43,7 +43,11 @@
       const count = selected().length;
       if(count>0){ bulkBar.classList.remove('d-none'); } else { bulkBar.classList.add('d-none'); statusEl.textContent=''; }
       selCountEl.textContent = count;
-      if(actionSel.value==='revoke'){ reasonInput.style.display='inline-block'; } else { reasonInput.style.display='none'; }
+      if(actionSel.value==='revoke'){
+        reasonInput.classList.remove('hidden-slot');
+      } else {
+        reasonInput.classList.add('hidden-slot');
+      }
     }
     if(chkAll){ chkAll.addEventListener('change',()=>{ rowCheckboxes().forEach(c=>{ c.checked = chkAll.checked; }); updateBar(); }); }
     rowCheckboxes().forEach(c=> c.addEventListener('change', updateBar));
@@ -82,14 +86,13 @@
         js.results.forEach(r=>{
           const tr = document.querySelector('tr[data-cid="'+r.cid+'"]');
           if(!tr) return;
+          const statusCell = tr.querySelector('td:nth-child(8)'); // 8th column = Статус
           if(r.revoked_at){
             tr.classList.add('row-revoked');
-            const badgeCell = tr.querySelector('td:nth-child(7)');
-            if(badgeCell) badgeCell.innerHTML='<span class="badge badge-danger">Відкликано</span>';
+            if(statusCell) statusCell.innerHTML='<span class="badge badge-danger">Відкликано</span>';
           } else if(r.unrevoked){
             tr.classList.remove('row-revoked');
-            const badgeCell = tr.querySelector('td:nth-child(7)');
-            if(badgeCell) badgeCell.innerHTML='<span class="badge badge-success">Активний</span>';
+            if(statusCell) statusCell.innerHTML='<span class="badge badge-success">Активний</span>';
           } else if(r.deleted){
             tr.parentNode.removeChild(tr);
           }
