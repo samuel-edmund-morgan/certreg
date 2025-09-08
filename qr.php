@@ -3,6 +3,7 @@
 // Використовується тільки під час видачі сертифіката (issue_token.php) => робимо його адмінським.
 require_once __DIR__.'/auth.php';
 require_admin();
+require_csrf();
 require_once __DIR__.'/lib/phpqrcode.php';
 $data = $_GET['data'] ?? '';
 if (strlen($data) > 512) { http_response_code(400); exit('too long'); }

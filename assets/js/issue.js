@@ -140,7 +140,8 @@
   const sig = await hmacSha256(salt, canonical);
   const h = toHex(sig);
     // Register (no PII)
-  const res = await fetch('/api/register.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cid:cid, v:VERSION, h:h, course:course, grade:grade, date:date, valid_until:validUntil})});
+  const csrf = window.__CSRF_TOKEN || document.querySelector('meta[name="csrf"]')?.content || '';
+  const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify({cid:cid, v:VERSION, h:h, course:course, grade:grade, date:date, valid_until:validUntil})});
     if(!res.ok){
       alert('Помилка реєстрації: '+res.status);
       return;

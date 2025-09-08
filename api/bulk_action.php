@@ -1,8 +1,8 @@
 <?php
 require_once __DIR__.'/../auth.php';
 require_admin();
-require_once __DIR__.'/../db.php';
 require_csrf();
+require_once __DIR__.'/../db.php';
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__.'/../rate_limit.php';
 rate_limit('bulk');
