@@ -12,7 +12,6 @@ $whitelist = [
   'header.php','footer.php','auth.php','db.php','config.php',
   // Infrastructure helpers
   'rate_limit.php',
-  'h10_cleanup.php',
   // Legacy stubs kept for compatibility (410/redirect)
   // Legacy stubs removed
 ];
@@ -23,7 +22,7 @@ foreach($rii as $file){
   if($file->isDir()) continue;
   $rel = substr($file->getPathname(), strlen($root)+1);
   if(substr($rel, -4) === '.php'){
-  if(str_starts_with($rel,'migrations/') || $rel==='self_check.php' || str_starts_with($rel,'lib/') || str_starts_with($rel,'vendor/')) continue; // ignore bundled libraries
+  if(str_starts_with($rel,'migrations/') || $rel==='self_check.php' || str_starts_with($rel,'lib/') || str_starts_with($rel,'vendor/')) continue; // ignore bundled libraries and CLI helpers
   if(!in_array($rel,$whitelist,true)) $bad[] = $rel;
   }
 }
