@@ -20,6 +20,7 @@
   const generateBtn = document.getElementById('bulkGenerateBtn');
   const retryBtn = document.getElementById('bulkRetryBtn');
   const progressHint = document.getElementById('bulkProgressHint');
+  if(progressHint){ progressHint.setAttribute('aria-live','polite'); }
   const resultsBox = document.getElementById('bulkResults');
   const INFINITE_SENTINEL = window.__INFINITE_SENTINEL || '4000-01-01';
   const ORG = window.__ORG_CODE || 'ORG-CERT';
@@ -27,6 +28,8 @@
   let rows = []; // {id, name, grade, status, cid, h, error, int}
   let nextId = 1;
   const MAX_ROWS = 100;
+  let lastErrors = []; // collect error objects {name, error}
+  let autoBatchDone = false; // prevent duplicate auto batch PDF
 
   function normName(s){
     return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
@@ -147,7 +150,8 @@
     if(!course || !date){ alert('Заповніть курс і дату.'); return; }
     if(!infinite && validUntil < date){ alert('Дата завершення раніше дати проходження.'); return; }
     const csrf = window.__CSRF_TOKEN || document.querySelector('meta[name="csrf"]').content;
-    let done=0, ok=0, failed=0;
+  let done=0, ok=0, failed=0;
+  lastErrors = [];
     generateBtn.disabled=true; retryBtn.classList.add('d-none');
     progressHint.textContent='Старт...';
     resultsBox.classList.remove('d-none'); if(!resultsBox.innerHTML) resultsBox.innerHTML='<h3 class="mt-0">Результати</h3><div id="bulkResultLines" class="fs-12"></div>';
@@ -155,15 +159,16 @@
     targetRows.forEach(r=>{ r.status='queued'; updateRowBadge(r.id,'proc','...'); });
     const queue = targetRows.slice();
     const CONC = 4; // concurrency limit
-    progressHint.textContent='Паралельно '+CONC+'...' ;
+  progressHint.textContent='Паралельно '+CONC+'...' ;
+  initProgressBar(targetRows.length);
     async function worker(){
       while(queue.length){
         const r = queue.shift();
         const err = validateRow(r);
-        if(err){ r.status='error'; r.error=err; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; continue; }
+  if(err){ r.status='error'; r.error=err; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); continue; }
         const pibNorm = normName(r.name);
         const grade = r.grade.trim() || defaultGrade;
-        if(!grade){ r.status='error'; r.error='Немає grade'; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; continue; }
+  if(!grade){ r.status='error'; r.error='Немає grade'; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); continue; }
         try {
           const salt = crypto.getRandomValues(new Uint8Array(32));
           const cid = genCid();
@@ -173,8 +178,8 @@
           const res = await fetch('/api/register.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({cid,v:VERSION,h,course,grade,date,valid_until:validUntil})});
           if(!res.ok){ throw new Error('HTTP '+res.status); }
           const js = await res.json(); if(!js.ok) throw new Error('fail');
-          r.status='ok'; r.cid=cid; r.h=h; r.int=h.slice(0,10).toUpperCase(); updateRowBadge(r.id,'ok','OK'); appendLine(r); ok++; done++; progressHint.textContent=`${done}/${targetRows.length}`;
-        } catch(e){ r.status='error'; r.error=e.message||'error'; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; }
+          r.status='ok'; r.cid=cid; r.h=h; r.int=h.slice(0,10).toUpperCase(); updateRowBadge(r.id,'ok','OK'); appendLine(r); ok++; done++; progressHint.textContent=`${done}/${targetRows.length}`; updateProgress(done,targetRows.length);
+        } catch(e){ r.status='error'; r.error=e.message||'error'; lastErrors.push({name:r.name,error:r.error}); updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); }
       }
     }
     const workers = Array.from({length: Math.min(CONC, queue.length)}, ()=>worker());
@@ -184,6 +189,15 @@
   updateGenerateState();
   ensureExportButton();
   autoPdfIfSingle();
+  if(ok>1){
+    ensureBatchPdfButton();
+    if(!autoBatchDone){
+      autoBatchDone = true;
+      // Невелика затримка щоб UI встиг оновитись перед масовим рендером
+      setTimeout(()=>{ try { generateBatchPdf(); } catch(e){ console.warn('Auto batch PDF failed', e); } }, 180);
+    }
+  }
+  renderErrorLog();
   }
   function appendLine(r){
     const linesBox = document.getElementById('bulkResultLines');
@@ -246,6 +260,112 @@
     a.href = URL.createObjectURL(blob);
     a.download = 'bulk_issue_'+ new Date().toISOString().replace(/[:T]/g,'-').slice(0,16) + '.csv';
     document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 4000);
+  }
+  // === Progress bar logic ===
+  function initProgressBar(total){
+    const wrap = document.getElementById('bulkProgressBarWrap');
+    const bar = document.getElementById('bulkProgressBar');
+    if(!wrap||!bar) return;
+  bar.classList.remove('done'); bar.style.width='0%';
+  wrap.classList.remove('progress-hidden');
+  wrap.setAttribute('aria-hidden','false');
+  }
+  function updateProgress(done,total){
+    const bar = document.getElementById('bulkProgressBar'); if(!bar) return;
+    const pct = total? Math.round((done/total)*100):0; bar.style.width=pct+'%'; if(done===total) bar.classList.add('done');
+  }
+  // === Error log UI ===
+  function renderErrorLog(){
+    let box = document.getElementById('bulkErrorLog');
+    if(!box){
+      box = document.createElement('div');
+      box.id='bulkErrorLog';
+      box.className='mt-14 fs-12';
+      box.setAttribute('aria-live','polite');
+      resultsBox.appendChild(box);
+    }
+    const count = lastErrors.length;
+    if(count===0){
+      box.classList.remove('d-none');
+      box.innerHTML = `<h4 class="mt-0">Лог помилок (0)</h4><p class="text-muted mb-0">Помилок немає</p>`;
+      return;
+    }
+    const lines = lastErrors.slice(0,100).map(e=>`<li><strong>${escapeHtml(e.name||'?')}</strong>: ${escapeHtml(e.error||'error')}`);
+    box.classList.remove('d-none');
+    box.innerHTML = `<h4 class="mt-0">Лог помилок (${count})</h4><ul class="mt-4 mb-0">${lines.join('')}</ul>`;
+  }
+  // === Batch PDF (multi-page single file) ===
+  function ensureBatchPdfButton(){
+    if(document.getElementById('bulkBatchPdfBtn')) return;
+    const btn = document.createElement('button');
+    btn.type='button'; btn.id='bulkBatchPdfBtn'; btn.className='btn btn-sm'; btn.textContent='Batch PDF';
+    progressHint.parentNode.insertBefore(btn, progressHint.nextSibling);
+    btn.addEventListener('click', generateBatchPdf);
+  }
+  function generateBatchPdf(){
+    const okRows = rows.filter(r=>r.status==='ok'); if(!okRows.length){ alert('Немає успішних'); return; }
+    const course = form.course.value.trim(); const date=form.date.value; const infinite=form.infinite.checked; const validUntil=infinite?INFINITE_SENTINEL:(form.valid_until.value||'');
+    ensureBg(()=>{
+      // Sequentially render each to same canvas and capture JPEG buffers
+      const canvas = getRenderCanvas(); const ctx = canvas.getContext('2d'); const coords = window.__CERT_COORDS || {}; const cQR = coords.qr || {x:150,y:420,size:220};
+      const pages=[];
+      (async function loop(){
+        for(const r of okRows){
+          await new Promise(res=>{
+            // Build QR for row then render
+            const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||'', course, date, valid_until:validUntil, h:r.h};
+            buildQrForRow(data, (qrImgEl)=>{
+              renderCertToCanvas(data); ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
+              const jpg = canvas.toDataURL('image/jpeg',0.92).split(',')[1];
+              pages.push(Uint8Array.from(atob(jpg), c=>c.charCodeAt(0)));
+              res();
+            });
+          });
+        }
+        const pdfBytes = buildMultiPagePdfFromJpegs(pages, canvas.width, canvas.height);
+        const blob = new Blob([pdfBytes], {type:'application/pdf'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='batch_certificates_'+Date.now()+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
+      })();
+    });
+  }
+  function buildMultiPagePdfFromJpegs(jpegByteArrays, W, H){
+    // Rebuild implementation: correct stream objects & XObject naming (/Im0,/Im1,...)
+    const enc = s=> new TextEncoder().encode(s);
+    let parts=[]; const offsets=[]; let pos=0;
+    function push(x){ if(typeof x==='string'){ const b=enc(x); parts.push(b); pos+=b.length; } else { parts.push(x); pos+=x.length; } }
+    push('%PDF-1.4\n%âãÏÓ\n');
+    const catalogNum = 1;
+    const pagesNum = 2;
+    let nextObj = 3; // next free object number
+    const imageObjNums=[]; const pageObjNums=[];
+    // Image objects
+    jpegByteArrays.forEach((bytes)=>{
+      const num = nextObj++;
+      offsets[num]=pos; push(`${num} 0 obj\n`);
+      push(`<< /Type /XObject /Subtype /Image /Width ${W} /Height ${H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`);
+      push(bytes); push(`\nendstream\nendobj\n`);
+      imageObjNums.push(num);
+    });
+    // For each page: content + page object
+    jpegByteArrays.forEach((_,i)=>{
+      const imgObj = imageObjNums[i];
+      const contentStream = `q\n${W} 0 0 ${H} 0 0 cm\n/Im${i} Do\nQ`;
+      const contentBytes = enc(contentStream);
+      const contentNum = nextObj++;
+      offsets[contentNum]=pos; push(`${contentNum} 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n${contentStream}\nendstream\nendobj\n`);
+      const pageNum = nextObj++;
+      pageObjNums.push(pageNum);
+      offsets[pageNum]=pos; push(`${pageNum} 0 obj\n<< /Type /Page /Parent ${pagesNum} 0 R /Resources << /XObject << /Im${i} ${imgObj} 0 R >> /ProcSet [/PDF /ImageC] >> /MediaBox [0 0 ${W} ${H}] /Contents ${contentNum} 0 R >>\nendobj\n`);
+    });
+    // Pages tree
+    offsets[pagesNum]=pos; push(`${pagesNum} 0 obj\n<< /Type /Pages /Kids [${pageObjNums.map(n=>n+' 0 R').join(' ')}] /Count ${pageObjNums.length} >>\nendobj\n`);
+    // Catalog
+    offsets[catalogNum]=pos; push(`${catalogNum} 0 obj\n<< /Type /Catalog /Pages ${pagesNum} 0 R >>\nendobj\n`);
+    const objCount = nextObj; // since object numbers go up to nextObj-1
+    const xrefOffset=pos; let xref='xref\n0 '+objCount+'\n'; xref+='0000000000 65535 f \n';
+    for(let i=1;i<objCount;i++){ const off=(offsets[i]||0).toString().padStart(10,'0'); xref+=off+' 00000 n \n'; }
+    push(xref); push(`trailer\n<< /Size ${objCount} /Root ${catalogNum} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+    const total = parts.reduce((a,b)=>a+b.length,0); const out=new Uint8Array(total); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; } return out;
   }
   // ===== Certificate rendering & PDF/JPG generation for bulk (on-demand) =====
   // This duplicates minimal logic from issue.js (kept separate to avoid large refactor now).

@@ -49,7 +49,7 @@ $coords = $cfg['coords'] ?? [];
     </div>
   </form>
   <div id="result" class="mt-24 d-none">
-    <div id="summary" class="fs-14"></div>
+    <div id="summary" class="fs-14 maxw-760"></div>
     <div id="advanced" class="d-none mt-18">
       <h3 class="mt-0">Технічні деталі</h3>
       <div id="regMeta" class="fs-13 lh-14 mb-12"></div>
@@ -100,9 +100,12 @@ $coords = $cfg['coords'] ?? [];
           <button type="button" class="btn" id="clearAllBtn">Очистити</button>
         </div>
       </div>
-      <div class="flex gap-10 flex-wrap mt-14">
+      <div class="flex gap-10 flex-wrap mt-14 align-center">
         <button type="button" class="btn btn-success" id="bulkGenerateBtn" disabled>Згенерувати (0)</button>
         <button type="button" class="btn d-none" id="bulkRetryBtn">Повторити невдалі</button>
+        <div class="progress-wrap progress-hidden" id="bulkProgressBarWrap" aria-hidden="true">
+          <div class="progress-bar" id="bulkProgressBar"></div>
+        </div>
         <span class="fs-13 text-muted" id="bulkProgressHint"></span>
       </div>
     </form>
