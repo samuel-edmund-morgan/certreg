@@ -170,11 +170,14 @@
         const grade = r.grade.trim() || defaultGrade;
   if(!grade){ r.status='error'; r.error='Немає grade'; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); continue; }
         try {
+          // Generate per-row random salt (32 bytes) – MUST be embedded in QR for later verification by name.
           const salt = crypto.getRandomValues(new Uint8Array(32));
           const cid = genCid();
           const canonical = `v${VERSION}|${pibNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
           const sig = await hmacSha256(salt, canonical);
           const h = toHex(sig);
+          // Persist base64url salt on the row so QR builder can include it (previous bug: salt omitted -> unverifiable by name).
+          r.saltB64 = b64url(salt);
           const res = await fetch('/api/register.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({cid,v:VERSION,h,course,grade,date,valid_until:validUntil})});
           if(!res.ok){ throw new Error('HTTP '+res.status); }
           const js = await res.json(); if(!js.ok) throw new Error('fail');
@@ -313,7 +316,7 @@
         for(const r of okRows){
           await new Promise(res=>{
             // Build QR for row then render
-            const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||'', course, date, valid_until:validUntil, h:r.h};
+            const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||'', course, date, valid_until:validUntil, h:r.h, salt:r.saltB64};
             buildQrForRow(data, (qrImgEl)=>{
               renderCertToCanvas(data); ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
               const jpg = canvas.toDataURL('image/jpeg',0.92).split(',')[1];
@@ -449,8 +452,8 @@
   }
   function buildQrForRow(data, cb){
     // Generate lightweight QR via server (same endpoint). We need a temporary img.
-    const payloadObj = {v:VERSION,cid:data.cid,s:'',org:ORG,course:data.course,grade:data.grade,date:data.date,valid_until:data.valid_until};
-    // Salt not required for display; omitted intentionally.
+    // Include salt (critical for offline / name-based verification). Fallback to empty string if absent (legacy rows before fix).
+    const payloadObj = {v:VERSION,cid:data.cid,s:data.salt||'',org:ORG,course:data.course,grade:data.grade,date:data.date,valid_until:data.valid_until};
     const payloadStr = JSON.stringify(payloadObj);
     const packed = btoa(unescape(encodeURIComponent(payloadStr))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
     const tmp = new Image();
@@ -464,7 +467,7 @@
     const date = form.date.value;
     const infinite = form.infinite.checked;
     const validUntil = infinite? INFINITE_SENTINEL : (form.valid_until.value||'');
-    const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||form.default_grade.value.trim()||'', course, date, valid_until:validUntil, h:r.h};
+  const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||form.default_grade.value.trim()||'', course, date, valid_until:validUntil, h:r.h, salt:r.saltB64};
     ensureBg(()=>{
       buildQrForRow(data, (qrImgEl)=>{
         // Draw QR then proceed
