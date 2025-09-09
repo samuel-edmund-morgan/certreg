@@ -149,7 +149,8 @@
     const js = await res.json();
     if(!js.ok){ alert('Не вдалося створити запис'); return; }
     // Build QR payload (JSON) then embed as base64url in verification URL
-  const payloadObj = {v:VERSION,cid:cid,s:b64url(salt),org:ORG,course:course,grade:grade,date:date,valid_until:validUntil};
+  const saltB64 = b64url(salt);
+  const payloadObj = {v:VERSION,cid:cid,s:saltB64,org:ORG,course:course,grade:grade,date:date,valid_until:validUntil};
     const payloadStr = JSON.stringify(payloadObj);
     function b64urlStr(str){
       return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -168,6 +169,19 @@
     }
   const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
     regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>ORG:</strong> ${ORG}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${validUntil===INFINITE_SENTINEL?'∞':validUntil}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
+    // Expose cryptographic data for automated test recomputation (non-PII: normalized name not stored server-side)
+    try {
+      regMeta.dataset.h = h;
+      regMeta.dataset.int = shortCode;
+      regMeta.dataset.cid = cid;
+      regMeta.dataset.salt = saltB64;
+      regMeta.dataset.nameNorm = pibNorm; // normalized name used in canonical
+      regMeta.dataset.course = course;
+      regMeta.dataset.grade = grade;
+      regMeta.dataset.date = date;
+      regMeta.dataset.validUntil = validUntil;
+      regMeta.dataset.org = ORG;
+    } catch(_){}
   summary.innerHTML = `<div class=\"alert alert-ok mb-12\">Сертифікат створено. CID <strong>${cid}</strong>. PDF-файл сертифіката автоматично згенеровано та завантажено. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;
   const copyBtn = document.getElementById('copyLinkBtn');
   const copyStatus = document.getElementById('copyLinkStatus');

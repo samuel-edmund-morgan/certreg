@@ -208,7 +208,17 @@
     if(r.status==='ok'){
       const short = r.int.replace(/(.{5})(.{5})/,'$1-$2');
       const div = document.createElement('div'); div.className='fade-in';
-  div.innerHTML = `<span class="token-chip" title="CID">${r.cid}</span> <span class="mono">INT ${short}</span> <span class="text-muted">${escapeHtml(r.name)}</span> <button type="button" class="btn btn-sm" data-act="pdf" data-cid="${r.cid}">PDF</button> <button type="button" class="btn btn-sm" data-act="jpg" data-cid="${r.cid}">JPG</button>`;
+      // Attach data-* for test automation (allows offline HMAC recomputation & normalization tests)
+      try {
+        div.dataset.cid = r.cid || '';
+        div.dataset.h = r.h || '';
+        div.dataset.int = r.int || '';
+        div.dataset.salt = r.saltB64 || '';
+        div.dataset.nameOrig = r.name || '';
+        div.dataset.nameNorm = r.name ? normName(r.name) : '';
+        div.dataset.grade = r.grade || '';
+      } catch(_){ }
+      div.innerHTML = `<span class="token-chip" title="CID">${r.cid}</span> <span class="mono">INT ${short}</span> <span class="text-muted">${escapeHtml(r.name)}</span> <button type="button" class="btn btn-sm" data-act="pdf" data-cid="${r.cid}">PDF</button> <button type="button" class="btn btn-sm" data-act="jpg" data-cid="${r.cid}">JPG</button>`;
       linesBox.appendChild(div);
     } else if(r.status==='error') {
       const div = document.createElement('div'); div.className='fade-in';

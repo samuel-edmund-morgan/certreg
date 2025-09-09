@@ -31,6 +31,8 @@ $csrfMeta = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title><?= htmlspecialchars($cfg['site_name']) ?></title>
   <meta name="csrf" content="<?= $csrfMeta ?>">
+  <link rel="preload" href="/fonts/Montserrat-Light.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="/fonts/Montserrat-SemiBold.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
 <body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-inf='<?= $infSent ?>'>

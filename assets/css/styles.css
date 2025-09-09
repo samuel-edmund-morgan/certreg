@@ -23,6 +23,7 @@ body{
   background:var(--bg);
   color:var(--text);
   font:15px/1.5 'Montserrat', system-ui, 'Segoe UI', Roboto, Ubuntu;
+  font-synthesis:none; /* prevent faux bold/italic to reduce flash weight shift */
 }
 
 /* Шрифти: використовуйте реальні ваги, щоб уникнути «тонких» кнопок */
@@ -64,7 +65,7 @@ main{flex:1}
 .brand{display:flex;align-items:center;gap:16px}
 .logo{width:clamp(36px, 8vw, var(--logo-max));aspect-ratio:1/1;margin:0;max-height:var(--logo-max);max-width:var(--logo-max);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .logo img{width:100%;height:100%;object-fit:contain;display:block;border-radius:8px}
-.title{font-weight:800;font-size:20px;line-height:1.05;white-space:pre-line;text-transform:uppercase}
+.title{font-weight:600;font-size:20px;line-height:1.05;white-space:pre-line;text-transform:uppercase;letter-spacing:.5px}
 
 /* Layout */
 .container{max-width:1200px;margin:18px auto;padding:0 16px}
