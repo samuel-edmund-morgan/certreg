@@ -1,32 +1,118 @@
-<?php
-return [
-    // Minimal config for privacy-first certificate registry
-    'db_host' => '127.0.0.1',
-    'db_name' => 'enter-db-name',
-    'db_user' => 'enter-db-username',
-    'db_pass' => 'enter-db-password',
-    // Optional restricted (read or limited update) user for public endpoints (e.g. api/status.php)
-    // Leave null to reuse main user. Create in MySQL with only needed privileges:
-    //   CREATE USER 'certro'@'localhost' IDENTIFIED BY 'strong-pass';
-    //   GRANT SELECT, UPDATE(lookup_count,last_lookup_at) ON yourdb.tokens TO 'certro'@'localhost';
-    //   GRANT INSERT(cid,event_type) ON yourdb.token_events TO 'certro'@'localhost';
-    //   FLUSH PRIVILEGES;
-    'db_public_user' => null,
-    'db_public_pass' => null,
+# Rate limits
+limit_req_zone $binary_remote_addr zone=api_status:10m rate=60r/m;
+limit_req_zone $binary_remote_addr zone=api_admin:10m  rate=10r/m;
 
-    'site_name' => 'Glorious Site Name',
-    'logo_path' => '/assets/logo.png',
+server {
+    listen 80;
+    listen [::]:80;
+    server_name certs.nasbu.edu.ua;
+    return 301 https://$host$request_uri;
+}
 
-    'coords' => [
-        'name'   => ['x'=>600, 'y'=>420, 'size'=>28, 'angle'=>0],
-        'id'     => ['x'=>600, 'y'=>445, 'size'=>20, 'angle'=>0],
-        'score'  => ['x'=>600, 'y'=>470, 'size'=>24, 'angle'=>0],
-        'course' => ['x'=>600, 'y'=>520, 'size'=>24, 'angle'=>0],
-        'date'   => ['x'=>600, 'y'=>570, 'size'=>24, 'angle'=>0],
-        'expires'=> ['x'=>600, 'y'=>600, 'size'=>20, 'angle'=>0],
-        'qr'     => ['x'=>150, 'y'=>420, 'size'=>220],
-        'int'    => ['x'=>820, 'y'=>670, 'size'=>14, 'angle'=>0],
-    ],
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name certs.nasbu.edu.ua;
 
-    // Legacy keys removed: site_domain, hash_salt, template_path, output_dir, font_path, hash_version.
-];
+    root /var/www/certreg;
+    index index.php;
+
+    ssl_certificate     /etc/letsencrypt/live/certs.nasbu.edu.ua/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/certs.nasbu.edu.ua/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    ssl_trusted_certificate /etc/letsencrypt/live/certs.nasbu.edu.ua/chain.pem;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    resolver 1.1.1.1 1.0.0.1 valid=300s;
+    resolver_timeout 2s;
+
+    server_tokens off;
+    client_max_body_size 10m;
+
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+
+    # CSP лишається з PHP (header.php). Якщо хочеш тут – видали з PHP і додай її сюди єдиною.
+
+    # (COOP/COEP/CORP опущені як непотрібні.)
+    fastcgi_connect_timeout 5s;
+    fastcgi_send_timeout 15s;
+    fastcgi_read_timeout 15s;
+
+    set $php_values "open_basedir=/var/www/certreg/:/tmp/\nmax_execution_time=15\nmax_input_time=15\nmemory_limit=64M";
+    fastcgi_param PHP_VALUE $php_values;
+
+    access_log /var/log/nginx/certreg.access.log;
+    error_log  /var/log/nginx/certreg.error.log warn;
+
+    location = / { return 403; }
+    location ~ ^/vendor/ { return 403; }
+    # Public
+    location = /verify.php {
+        limit_except GET HEAD { deny all; }
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+    location = /api/status.php {
+        limit_req zone=api_status burst=20 nodelay;
+        limit_except GET HEAD { deny all; }
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+
+
+    # Admin UI
+    location ~ ^/(issue_token|tokens|token|events|admin|login|logout|qr)\.php$ {
+        allow 94.45.140.194;
+        allow 94.45.140.195;
+        allow 94.45.140.196;
+        allow 94.45.140.197;
+        allow 94.45.140.198;
+        allow 195.137.202.34;
+        allow 94.158.95.219;
+        deny all;
+        limit_except GET HEAD POST { deny all; }
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+
+    # Admin API (events -> GET; решта -> POST)
+    location ~ ^/api/(register|revoke|unrevoke|delete_token|bulk_action)\.php$ {
+        allow 94.45.140.194; allow 94.45.140.195; allow 94.45.140.196;
+        allow 94.45.140.197; allow 94.45.140.198; allow 195.137.202.34;
+        allow 94.158.95.219; deny all;
+        limit_req zone=api_admin burst=10 nodelay;
+        limit_except POST { deny all; }
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+    location = /api/events.php {
+        allow 94.45.140.194; allow 94.45.140.195; allow 94.45.140.196;
+        allow 94.45.140.197; allow 94.45.140.198; allow 195.137.202.34;
+        allow 94.158.95.219; deny all;
+        # GET only
+        limit_except GET HEAD { deny all; }
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+
+    # Block everything else PHP
+    location ~ \.php$ { return 403; }
+
+    # Static
+    location ~* \.(?:css|js|map|png|jpg|jpeg|gif|svg|ico|ttf|woff2?|webp|avif)$ {
+        expires 7d;
+        access_log off;
+        add_header Cache-Control "public, immutable";
+    }
+    location ^~ /assets/ {
+        try_files $uri =404;
+        access_log off;
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+}
