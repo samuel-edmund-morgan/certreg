@@ -2,6 +2,7 @@
 // Assumes Playwright test environment. We decode the verify.php?p= packed JSON from the QR generation URL.
 
 import { test, expect } from '@playwright/test';
+import { login } from './_helpers';
 
 function b64urlDecode(str){
   str = str.replace(/-/g,'+').replace(/_/g,'/');
@@ -25,8 +26,10 @@ function base64UrlToBytes(b64){
 }
 
 test('bulk: each QR payload has salt and HMAC recomputation matches INT prefix', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('tab', { name: /Bulk|Масов/i }).click();
+  await login(page);
+  await page.goto('/issue_token.php');
+  const bulkTab = page.locator('button.tab[data-tab="bulk"]');
+  await bulkTab.click();
 
   // Fill common form fields
   await page.locator('#bulkTab input[name="course"]').fill('QA Course');
@@ -95,8 +98,10 @@ test('bulk: each QR payload has salt and HMAC recomputation matches INT prefix',
 // Here we just craft a modified p param and open verify page expecting a failure status element.
 
 test('bulk: tampered salt in QR payload leads to verification failure', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('tab', { name: /Bulk|Масов/i }).click();
+  await login(page);
+  await page.goto('/issue_token.php');
+  const bulkTab = page.locator('button.tab[data-tab="bulk"]');
+  await bulkTab.click();
   await page.locator('#bulkTab input[name="course"]').fill('Salt Tamper');
   const today = new Date().toISOString().slice(0,10);
   await page.locator('#bulkTab input[name="date"]').fill(today);
@@ -126,7 +131,12 @@ test('bulk: tampered salt in QR payload leads to verification failure', async ({
   obj.s = tamperedB64;
   const tamperedPacked = Buffer.from(JSON.stringify(obj), 'utf8').toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
   await page.goto(`/verify.php?p=${tamperedPacked}`);
-  // Expect failure indicator; adapt selector to actual verify page DOM (placeholder example)
-  const failLocator = page.locator('.status-fail, .verify-fail, text=/НЕ ВАЛІД|INVALID/i');
-  await expect(failLocator).toBeVisible({ timeout: 10000 });
+  // Wait for form to appear then submit correct name -> expect mismatch indicator
+  await page.waitForSelector('form#ownForm input[name="pib"]', { timeout: 10000 });
+  await page.fill('form#ownForm input[name="pib"]', 'Марія Перевірка');
+  await Promise.all([
+    page.waitForSelector('.verify-fail[data-verdict="mismatch"]', { timeout: 10000 }),
+    page.click('form#ownForm button[type="submit"]')
+  ]);
+  await expect(page.locator('.verify-fail[data-verdict="mismatch"]')).toBeVisible();
 });

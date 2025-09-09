@@ -145,10 +145,10 @@
             return;
           }
           if(matched){
-            ownResult.innerHTML='<div class="alert alert-ok">Так, сертифікат належить зазначеній особі.</div>';
+            ownResult.innerHTML='<div class="alert alert-ok" data-verdict="match">Так, сертифікат належить зазначеній особі.</div>';
           } else {
             mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
-            ownResult.innerHTML='<div class="alert alert-error">Не збігається. Імʼя/формат не відповідає сертифікату.<br><small>Нормалізований варіант: <code>'+pib+'</code></small></div>';
+            ownResult.innerHTML='<div class="alert alert-error verify-fail" data-verdict="mismatch">Не збігається. Імʼя/формат не відповідає сертифікату.<br><small>Нормалізований варіант: <code>'+pib+'</code></small></div>';
           }
           return;
         } else {
