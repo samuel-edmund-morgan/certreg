@@ -7,7 +7,8 @@ module.exports = defineConfig({
   testDir: path.join(__dirname, 'tests/ui'),
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  fullyParallel: true,
+  fullyParallel: false,
+  workers: 1,
   retries: 0,
   reporter: [['list']],
   use: {
@@ -21,7 +22,9 @@ module.exports = defineConfig({
     url: 'http://localhost:8080/admin.php',
     reuseExistingServer: true,
     stdout: 'ignore',
-    stderr: 'pipe'
+  stderr: 'pipe',
+  // Disable rate limiting during automated UI tests for stability
+  env: { ...process.env, CERTREG_TEST_MODE: '1' }
   },
   globalSetup: require.resolve('./tests/ui/globalSetup.js'),
   projects: [

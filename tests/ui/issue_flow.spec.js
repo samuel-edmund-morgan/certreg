@@ -11,8 +11,8 @@ test.describe('Issuance flow (client-side generation + register)', () => {
     await page.fill('input[name="course"]', 'COURSE-PLAY');
     await page.fill('input[name="grade"]', 'A');
     await page.fill('input[name="date"]', today);
-    // Ensure infinite checkbox is checked and hidden valid_until input disabled
-    await expect(page.locator('input[name="infinite"]')).toBeChecked();
+  // Ensure single-issuance infinite checkbox (in expiryBlock) is checked
+  await expect(page.locator('#expiryBlock input[name="infinite"]')).toBeChecked();
     const downloadPromise = page.waitForEvent('download');
     await page.click('#issueForm button[type="submit"]');
     // Wait summary
