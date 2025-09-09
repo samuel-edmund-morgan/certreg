@@ -349,3 +349,31 @@ main{flex:1}
   #bulkBar{gap:8px}
   #bulkReason{min-width:220px;}
   #bulkReason.hidden-slot{display:none !important}
+  /* === Tabs for issuance page === */
+  .tabs{display:flex;gap:4px;margin:10px 0 18px;border-bottom:1px solid var(--border)}
+  .tab{background:#f1f5f9;border:1px solid var(--border);border-bottom:none;padding:8px 14px;border-top-left-radius:10px;border-top-right-radius:10px;cursor:pointer;font-weight:600;font-size:14px;position:relative;top:1px}
+  .tab.active{background:#fff;border-color:var(--border);color:#000;box-shadow:0 2px 4px rgba(0,0,0,0.05)}
+  .tab-panel{padding:2px 4px 8px 2px}
+  .tab-panel.d-none{display:none !important}
+  .bulk-table-wrapper{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff}
+  #bulkTable input{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:14px}
+  #bulkTable td,#bulkTable th{vertical-align:top}
+  .row-error input{border-color:#dc2626}
+  .status-badge{display:inline-block;padding:2px 6px;border-radius:6px;font-size:11px;font-weight:600;line-height:1.2;background:#e2e8f0;color:#334155}
+  .status-badge.ok{background:#10b981;color:#fff}
+  .status-badge.err{background:#dc2626;color:#fff}
+  .status-badge.proc{background:#2563eb;color:#fff}
+  .token-chip{display:inline-block;background:#0f172a;color:#fff;padding:2px 6px;border-radius:6px;font-size:11px;font-family:monospace;margin:2px 4px 2px 0}
+  #bulkResults code{font-size:12px}
+  .fade-in{animation:fadeIn .3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  /* Duplicate name highlight */
+  #bulkTable tr.dup td input[name=name]{outline:2px solid #f59e0b;background:#fff8e1}
+  #bulkTable tr.dup td:first-child{position:relative}
+  #bulkTable tr.dup td:first-child:after{content:'dup';position:absolute;top:2px;right:2px;background:#f59e0b;color:#fff;font-size:9px;padding:1px 3px;border-radius:4px;letter-spacing:.5px}
+
+  /* Bulk table column widths (replacing inline styles) */
+  #bulkTable th.col-n{width:40px}
+  #bulkTable th.col-grade{width:140px}
+  #bulkTable th.col-status{width:110px}
+  #bulkTable th.col-actions{width:54px}

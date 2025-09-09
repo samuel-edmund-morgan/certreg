@@ -1,0 +1,371 @@
+// Bulk issuance logic (MVP) – sequential calls to /api/register.php reusing privacy model.
+(function(){
+  const tabButtons = document.querySelectorAll('.tabs .tab');
+  const singlePanel = document.getElementById('singleTab');
+  const bulkPanel = document.getElementById('bulkTab');
+  tabButtons.forEach(btn=>btn.addEventListener('click',()=>{
+    tabButtons.forEach(b=>{ b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+    btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+    const mode = btn.dataset.tab;
+    if(mode==='bulk') { singlePanel.classList.add('d-none'); bulkPanel.classList.remove('d-none'); }
+    else { bulkPanel.classList.add('d-none'); singlePanel.classList.remove('d-none'); }
+  }));
+
+  const form = document.getElementById('bulkForm');
+  if(!form) return; // if page not present
+  const tableBody = document.querySelector('#bulkTable tbody');
+  const addRowBtn = document.getElementById('addRowBtn');
+  const pasteBtn = document.getElementById('pasteMultiBtn');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  const generateBtn = document.getElementById('bulkGenerateBtn');
+  const retryBtn = document.getElementById('bulkRetryBtn');
+  const progressHint = document.getElementById('bulkProgressHint');
+  const resultsBox = document.getElementById('bulkResults');
+  const INFINITE_SENTINEL = window.__INFINITE_SENTINEL || '4000-01-01';
+  const ORG = window.__ORG_CODE || 'ORG-CERT';
+  const VERSION = 2;
+  let rows = []; // {id, name, grade, status, cid, h, error, int}
+  let nextId = 1;
+  const MAX_ROWS = 100;
+
+  function normName(s){
+    return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
+  }
+  function hasMixedRisk(raw){
+    const latinRisk = /[ABCEHIKMOPTXYOabcehikmoptxyo]/.test(raw);
+    const cyr = /[\u0400-\u04FF]/.test(raw);
+    return latinRisk && cyr;
+  }
+  function genCid(){
+    const ts = Date.now().toString(36);
+    const rnd = crypto.getRandomValues(new Uint8Array(2));
+    return 'C'+ts+'-'+Array.from(rnd).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  function toHex(bytes){ return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+  function b64url(bytes){ return btoa(String.fromCharCode.apply(null, bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  async function hmacSha256(keyBytes, msg){
+    const key = await crypto.subtle.importKey('raw', keyBytes, {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+    return new Uint8Array(sig);
+  }
+
+  function addRow(name='', grade=''){
+    if(rows.length>=MAX_ROWS){ alert('Досягнуто ліміт '+MAX_ROWS); return; }
+    const id = nextId++;
+    const row = {id, name, grade, status:'idle'};
+    rows.push(row);
+    const tr = document.createElement('tr'); tr.dataset.id = id;
+    tr.innerHTML = `<td class="fs-12">${id}</td>
+      <td><input name="name" placeholder="Прізвище Ім'я" value="${escapeHtml(name)}" autocomplete="off"></td>
+      <td><input name="grade" maxlength="16" value="${escapeHtml(grade)}" placeholder="A"></td>
+      <td class="fs-12"><span class="status-badge">—</span></td>
+      <td><button type="button" class="btn btn-sm" data-act="del" aria-label="Видалити">✕</button></td>`;
+    tableBody.appendChild(tr);
+    updateGenerateState();
+  }
+  function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+  function rebuildIndexes(){
+    Array.from(tableBody.querySelectorAll('tr')).forEach((tr,i)=>{ tr.querySelector('td').textContent = String(i+1); });
+  }
+  tableBody.addEventListener('click', e=>{
+    const btn = e.target.closest('button[data-act="del"]');
+    if(!btn) return;
+    const tr = btn.closest('tr');
+    const id = Number(tr.dataset.id);
+    rows = rows.filter(r=>r.id!==id);
+    tr.remove(); rebuildIndexes(); updateGenerateState();
+  });
+
+  tableBody.addEventListener('input', e=>{
+    if(e.target.name==='name' || e.target.name==='grade'){
+      const tr = e.target.closest('tr');
+      const id = Number(tr.dataset.id);
+      const r = rows.find(r=>r.id===id); if(!r) return;
+      r[e.target.name] = e.target.value;
+      r.status='idle';
+      const badge = tr.querySelector('.status-badge'); if(badge){ badge.textContent='—'; badge.className='status-badge'; }
+      updateGenerateState();
+    }
+  });
+
+  function validateRow(r){
+    if(!r.name.trim()) return 'Порожнє імʼя';
+    if(hasMixedRisk(r.name)) return 'Мішані лат./кирил.';
+    if(r.grade && r.grade.length>16) return 'Grade >16';
+    return null;
+  }
+  function updateGenerateState(){
+    let validCount = 0; let hasBlocking=false;
+    const dupMap = new Map();
+    rows.forEach(r=>{
+      const err = validateRow(r); if(!err) validCount++; else hasBlocking=true;
+      const norm = r.name.trim()? normName(r.name) : null; if(norm){ if(!dupMap.has(norm)) dupMap.set(norm, []); dupMap.get(norm).push(r.id); }
+    });
+    // highlight duplicates
+    const duplicateIds = new Set();
+    for(const [k, list] of dupMap.entries()){ if(list.length>1){ list.forEach(id=>duplicateIds.add(id)); } }
+    tableBody.querySelectorAll('tr').forEach(tr=>{
+      const id = Number(tr.dataset.id);
+      tr.classList.toggle('dup', duplicateIds.has(id));
+    });
+    generateBtn.disabled = validCount===0 || hasBlocking;
+    generateBtn.textContent = 'Згенерувати ('+validCount+')';
+  }
+  addRowBtn.addEventListener('click', ()=>addRow());
+  clearAllBtn.addEventListener('click', ()=>{ if(!rows.length) return; if(!confirm('Очистити усі рядки?')) return; rows=[]; tableBody.innerHTML=''; updateGenerateState(); resultsBox.classList.add('d-none'); resultsBox.innerHTML=''; });
+  pasteBtn.addEventListener('click', ()=>{
+    const txt = prompt('Вставте список:\nКожен рядок: ПІБ[;GRADE]');
+    if(!txt) return;
+    const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    lines.forEach(line=>{
+      if(rows.length>=MAX_ROWS) return;
+      let name=line, grade='';
+      const semi=line.indexOf(';');
+      if(semi>0){ name=line.slice(0,semi).trim(); grade=line.slice(semi+1).trim(); }
+      addRow(name, grade);
+    });
+    updateGenerateState();
+  });
+
+  const infiniteCb = form.querySelector('input[name="infinite"]');
+  const validUntilInput = form.querySelector('input[name="valid_until"]');
+  const validWrap = document.getElementById('bulkValidUntilWrap');
+  function syncExpiry(){
+    if(infiniteCb.checked){ validUntilInput.disabled=true; validUntilInput.value=''; validWrap.classList.add('hidden-slot'); }
+    else { validUntilInput.disabled=false; validWrap.classList.remove('hidden-slot'); }
+  }
+  infiniteCb.addEventListener('change', syncExpiry); syncExpiry();
+
+  async function processRows(targetRows){
+    const course = form.course.value.trim();
+    const date = form.date.value;
+    const defaultGrade = form.default_grade.value.trim();
+    const infinite = form.infinite.checked;
+    let validUntil = form.valid_until.value;
+    if(infinite) validUntil = INFINITE_SENTINEL; else if(!validUntil){ alert('Вкажіть дату "Дійсний до" або Безтерміновий.'); return; }
+    if(!course || !date){ alert('Заповніть курс і дату.'); return; }
+    if(!infinite && validUntil < date){ alert('Дата завершення раніше дати проходження.'); return; }
+    const csrf = window.__CSRF_TOKEN || document.querySelector('meta[name="csrf"]').content;
+    let done=0, ok=0, failed=0;
+    generateBtn.disabled=true; retryBtn.classList.add('d-none');
+    progressHint.textContent='Старт...';
+    resultsBox.classList.remove('d-none'); if(!resultsBox.innerHTML) resultsBox.innerHTML='<h3 class="mt-0">Результати</h3><div id="bulkResultLines" class="fs-12"></div>';
+    const linesBox = document.getElementById('bulkResultLines');
+    targetRows.forEach(r=>{ r.status='queued'; updateRowBadge(r.id,'proc','...'); });
+    const queue = targetRows.slice();
+    const CONC = 4; // concurrency limit
+    progressHint.textContent='Паралельно '+CONC+'...' ;
+    async function worker(){
+      while(queue.length){
+        const r = queue.shift();
+        const err = validateRow(r);
+        if(err){ r.status='error'; r.error=err; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; continue; }
+        const pibNorm = normName(r.name);
+        const grade = r.grade.trim() || defaultGrade;
+        if(!grade){ r.status='error'; r.error='Немає grade'; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; continue; }
+        try {
+          const salt = crypto.getRandomValues(new Uint8Array(32));
+          const cid = genCid();
+          const canonical = `v${VERSION}|${pibNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
+          const sig = await hmacSha256(salt, canonical);
+          const h = toHex(sig);
+          const res = await fetch('/api/register.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({cid,v:VERSION,h,course,grade,date,valid_until:validUntil})});
+          if(!res.ok){ throw new Error('HTTP '+res.status); }
+          const js = await res.json(); if(!js.ok) throw new Error('fail');
+          r.status='ok'; r.cid=cid; r.h=h; r.int=h.slice(0,10).toUpperCase(); updateRowBadge(r.id,'ok','OK'); appendLine(r); ok++; done++; progressHint.textContent=`${done}/${targetRows.length}`;
+        } catch(e){ r.status='error'; r.error=e.message||'error'; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; }
+      }
+    }
+    const workers = Array.from({length: Math.min(CONC, queue.length)}, ()=>worker());
+  await Promise.all(workers);
+  progressHint.textContent=`Готово: успішно ${ok}, помилок ${failed}`;
+  if(failed>0){ retryBtn.classList.remove('d-none'); }
+  updateGenerateState();
+  ensureExportButton();
+  autoPdfIfSingle();
+  }
+  function appendLine(r){
+    const linesBox = document.getElementById('bulkResultLines');
+    if(!linesBox) return;
+    if(r.status==='ok'){
+      const short = r.int.replace(/(.{5})(.{5})/,'$1-$2');
+      const div = document.createElement('div'); div.className='fade-in';
+  div.innerHTML = `<span class="token-chip" title="CID">${r.cid}</span> <span class="mono">INT ${short}</span> <span class="text-muted">${escapeHtml(r.name)}</span> <button type="button" class="btn btn-sm" data-act="pdf" data-cid="${r.cid}">PDF</button> <button type="button" class="btn btn-sm" data-act="jpg" data-cid="${r.cid}">JPG</button>`;
+      linesBox.appendChild(div);
+    } else if(r.status==='error') {
+      const div = document.createElement('div'); div.className='fade-in';
+      div.innerHTML = `<span class="status-badge err">ERR</span> <span class="text-muted">${escapeHtml(r.name||'?')}</span> <em class="text-muted">${escapeHtml(r.error||'')}</em>`;
+      linesBox.appendChild(div);
+    }
+  }
+  function updateRowBadge(id, cls, text){
+    const tr = tableBody.querySelector(`tr[data-id="${id}"]`);
+    if(!tr) return; const badge = tr.querySelector('.status-badge'); if(!badge) return;
+    badge.textContent=text; badge.className='status-badge '+(cls==='ok'?'ok':cls==='err'?'err':cls==='proc'?'proc':'');
+  }
+
+  generateBtn.addEventListener('click', ()=>{
+    const target = rows.filter(r=>r.status==='idle' || r.status==='error');
+    if(!target.length) return;
+    processRows(target);
+  });
+  retryBtn.addEventListener('click', ()=>{
+    const target = rows.filter(r=>r.status==='error'); if(!target.length) return; processRows(target);
+  });
+
+  // Initial single empty row
+  addRow();
+
+  // CSV Export button (added dynamically after processing)
+  function ensureExportButton(){
+    if(document.getElementById('bulkCsvBtn')) return;
+    const btn = document.createElement('button');
+    btn.type='button'; btn.id='bulkCsvBtn'; btn.className='btn btn-sm'; btn.textContent='Експорт CSV';
+    progressHint.parentNode.insertBefore(btn, progressHint.nextSibling);
+    btn.addEventListener('click', exportCsv);
+  }
+  function exportCsv(){
+    const okRows = rows.filter(r=>r.status==='ok');
+    if(!okRows.length){ alert('Немає успішних записів'); return; }
+    const course = form.course.value.trim();
+    const date = form.date.value;
+    const infinite = form.infinite.checked;
+    const validUntil = infinite? INFINITE_SENTINEL : form.valid_until.value || '';
+    const header = ['NAME_ORIG','CID','INT','COURSE','GRADE','ISSUED_DATE','VALID_UNTIL'];
+  const lines = [header.join(',')];
+    okRows.forEach(r=>{
+      const row = [r.name.replace(/"/g,'""'), r.cid, r.int, course, (r.grade||'').replace(/"/g,'""'), date, validUntil];
+      lines.push(row.map(f=>'"'+f+'"').join(','));
+    });
+  // Use CRLF for Excel friendliness and prepend UTF-8 BOM so Excel detects encoding
+  const csv = lines.join('\r\n');
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM+csv], {type:'text/csv;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bulk_issue_'+ new Date().toISOString().replace(/[:T]/g,'-').slice(0,16) + '.csv';
+    document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 4000);
+  }
+  // ===== Certificate rendering & PDF/JPG generation for bulk (on-demand) =====
+  // This duplicates minimal logic from issue.js (kept separate to avoid large refactor now).
+  const BULK_CANVAS_ID = 'bulkRenderCanvas';
+  function getRenderCanvas(){
+    let c = document.getElementById(BULK_CANVAS_ID);
+    if(!c){ c = document.createElement('canvas'); c.width=1000; c.height=700; c.id=BULK_CANVAS_ID; c.className='d-none'; document.body.appendChild(c); }
+    return c;
+  }
+  let bulkBgImg = null; let bulkBgLoading=false; let bulkBgReadyCb=[];
+  function ensureBg(cb){
+    if(bulkBgImg && bulkBgImg.complete){ cb(); return; }
+    bulkBgReadyCb.push(cb);
+    if(bulkBgLoading) return;
+    bulkBgLoading=true;
+    bulkBgImg = new Image();
+    bulkBgImg.onload = ()=>{ bulkBgReadyCb.splice(0).forEach(fn=>fn()); };
+    bulkBgImg.src = '/files/cert_template.jpg';
+  }
+  function renderCertToCanvas(data){
+    const canvas = getRenderCanvas();
+    const ctx = canvas.getContext('2d');
+    const coords = window.__CERT_COORDS || {};
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(bulkBgImg && bulkBgImg.complete){ ctx.drawImage(bulkBgImg,0,0,canvas.width,canvas.height); }
+    ctx.fillStyle='#000';
+    ctx.font='28px sans-serif';
+    const cName = coords.name || {x:600,y:420};
+    const cId   = coords.id   || {x:600,y:445};
+    const cScore= coords.score|| {x:600,y:470};
+    const cCourse=coords.course||{x:600,y:520};
+    const cDate = coords.date || {x:600,y:570};
+    const cExp  = coords.expires || {x:600,y:600};
+    const cQR   = coords.qr || {x:150,y:420,size:220};
+    ctx.fillText(data.pib, cName.x, cName.y);
+    ctx.font='20px sans-serif'; ctx.fillText(data.cid, cId.x, cId.y);
+    ctx.font='24px sans-serif'; ctx.fillText('Оцінка: '+data.grade, cScore.x, cScore.y);
+    ctx.fillText('Курс: '+data.course, cCourse.x, cCourse.y);
+    ctx.fillText('Дата: '+data.date, cDate.x, cDate.y);
+    const expLabel = data.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : data.valid_until;
+    ctx.font=(cExp.size?cExp.size:20)+'px sans-serif';
+    if(cExp.angle){ ctx.save(); ctx.translate(cExp.x,cExp.y); ctx.rotate(cExp.angle*Math.PI/180); ctx.fillText('Термін дії до: '+expLabel,0,0); ctx.restore(); }
+    else { ctx.fillText('Термін дії до: '+expLabel, cExp.x, cExp.y); }
+    // Short INT
+    if(data.h){
+      const short = data.h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
+      const cInt = coords.int || {x: canvas.width - 180, y: canvas.height - 30, size:14};
+      ctx.save(); ctx.font=(cInt.size||14)+'px monospace'; ctx.fillStyle='#111';
+      if(cInt.angle){ ctx.translate(cInt.x,cInt.y); ctx.rotate(cInt.angle*Math.PI/180); ctx.fillText('INT '+short,0,0); }
+      else { ctx.fillText('INT '+short, cInt.x, cInt.y); }
+      ctx.restore();
+    }
+    return canvas;
+  }
+  function generatePdfFromCanvas(canvas, cid){
+    const jpegDataUrl = canvas.toDataURL('image/jpeg',0.92);
+    const b64 = jpegDataUrl.split(',')[1];
+    const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+    const W=canvas.width,H=canvas.height;
+    const contentStream = `q\n${W} 0 0 ${H} 0 0 cm\n/Im0 Do\nQ`;
+    const enc = s=> new TextEncoder().encode(s);
+    let parts=[]; const offsets=[]; let pos=0;
+    function push(x){ if(typeof x==='string'){ const b=enc(x); parts.push(b); pos+=b.length; } else { parts.push(x); pos+=x.length; } }
+    push('%PDF-1.4\n%âãÏÓ\n');
+    function obj(n,body){ offsets[n]=pos; push(`${n} 0 obj\n${body}\nendobj\n`); }
+    obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+    obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    obj(3,`<< /Type /Page /Parent 2 0 R /Resources << /XObject << /Im0 4 0 R >> /ProcSet [/PDF /ImageC] >> /MediaBox [0 0 ${W} ${H}] /Contents 5 0 R >>`);
+    offsets[4]=pos; push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${W} /Height ${H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`); push(bytes); push(`\nendstream\nendobj\n`);
+    const contentBytes = enc(contentStream);
+    obj(5,`<< /Length ${contentBytes.length} >>\nstream\n${contentStream}\nendstream`);
+    const xrefOffset = pos; const objCount=6; let xref='xref\n0 '+objCount+'\n'; xref+='0000000000 65535 f \n';
+    for(let i=1;i<objCount;i++){ const off=(offsets[i]||0).toString().padStart(10,'0'); xref+=off+' 00000 n \n'; }
+    push(xref); push(`trailer\n<< /Size ${objCount} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+    const total = parts.reduce((a,b)=>a+b.length,0); const out=new Uint8Array(total); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
+    const blob = new Blob([out], {type:'application/pdf'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
+  }
+  function downloadJpg(canvas, cid){
+    const a=document.createElement('a'); a.href=canvas.toDataURL('image/jpeg',0.92); a.download='certificate_'+cid+'.jpg'; document.body.appendChild(a); a.click(); a.remove();
+  }
+  function buildQrForRow(data, cb){
+    // Generate lightweight QR via server (same endpoint). We need a temporary img.
+    const payloadObj = {v:VERSION,cid:data.cid,s:'',org:ORG,course:data.course,grade:data.grade,date:data.date,valid_until:data.valid_until};
+    // Salt not required for display; omitted intentionally.
+    const payloadStr = JSON.stringify(payloadObj);
+    const packed = btoa(unescape(encodeURIComponent(payloadStr))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    const tmp = new Image();
+    tmp.onload=()=>cb(tmp);
+    tmp.src='/qr.php?data='+encodeURIComponent(window.location.origin+'/verify.php?p='+packed);
+  }
+  function handleDownload(kind, cid){
+    const r = rows.find(x=>x.cid===cid);
+    if(!r){ alert('Не знайдено рядок'); return; }
+    const course = form.course.value.trim();
+    const date = form.date.value;
+    const infinite = form.infinite.checked;
+    const validUntil = infinite? INFINITE_SENTINEL : (form.valid_until.value||'');
+    const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||form.default_grade.value.trim()||'', course, date, valid_until:validUntil, h:r.h};
+    ensureBg(()=>{
+      buildQrForRow(data, (qrImgEl)=>{
+        // Draw QR then proceed
+        const canvas = getRenderCanvas();
+        renderCertToCanvas(data);
+        const coords = window.__CERT_COORDS || {}; const cQR = coords.qr || {x:150,y:420,size:220};
+        const ctx = canvas.getContext('2d'); ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
+        if(kind==='pdf') generatePdfFromCanvas(canvas, r.cid); else downloadJpg(canvas, r.cid);
+      });
+    });
+  }
+  document.addEventListener('click', e=>{
+    const btn = e.target.closest('button[data-act]'); if(!btn) return;
+    if(btn.dataset.act==='pdf'){ handleDownload('pdf', btn.dataset.cid); }
+    else if(btn.dataset.act==='jpg'){ handleDownload('jpg', btn.dataset.cid); }
+  });
+
+  function autoPdfIfSingle(){
+    const okRows = rows.filter(r=>r.status==='ok');
+    if(okRows.length===1){ handleDownload('pdf', okRows[0].cid); }
+  }
+  // Hook into completion to show export
+  // end IIFE
+})();

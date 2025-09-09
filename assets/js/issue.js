@@ -159,7 +159,7 @@
   qrPayloadEl.textContent = verifyUrl + "\n\n" + payloadStr;
     // Ensure onload handler is set BEFORE changing src to avoid race (cache instant load)
   currentData = {pib:pibNorm,cid:cid,grade:grade,course:course,date:date,h:h,valid_until:validUntil}; // draw normalized
-  qrImg.onload = ()=>{ renderAll(); autoDownload(); }; 
+  qrImg.onload = ()=>{ renderAll(); setTimeout(()=>{ try{ autoDownload(); }catch(e){ console.warn('PDF auto generation failed', e); ensureManualPdfBtn(); } },120); };
     qrImg.src = '/qr.php?data='+encodeURIComponent(verifyUrl);
     // If image was cached and already complete, trigger manually
     if(qrImg.complete){
@@ -183,6 +183,8 @@
       }catch(e){ alert('Не вдалося скопіювати'); }
     });
   }
+  // Always add manual download buttons (PDF & JPG) – some browsers block auto download
+  ensureDownloadButtons();
   if(genBtn) genBtn.disabled = false;
   toggleDetails.classList.remove('d-none');
   resultWrap.classList.remove('d-none');
@@ -210,6 +212,8 @@
   // Minimal PDF generator embedding the rendered JPEG (client-side, no PII leaves browser)
   function generatePdfFromCanvas(){
     if(!canvas) return;
+    if(canvas.width===0||canvas.height===0){ console.warn('Canvas size zero'); return; }
+    try { renderAll(); } catch(_e){}
     const jpegDataUrl = canvas.toDataURL('image/jpeg',0.92); // includes QR + text
     const b64 = jpegDataUrl.split(',')[1];
     const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
@@ -261,6 +265,40 @@
     setTimeout(()=>{ URL.revokeObjectURL(link.href); link.remove(); }, 4000);
   }
   function autoDownload(){ generatePdfFromCanvas(); }
+  function ensureManualPdfBtn(){
+    if(document.getElementById('manualPdfBtn')) return;
+    const wrap = summary;
+    if(!wrap) return;
+    const btn = document.createElement('button');
+    btn.type='button'; btn.id='manualPdfBtn'; btn.className='btn btn-sm'; btn.textContent='Завантажити PDF';
+    btn.addEventListener('click', ()=>{ try{ generatePdfFromCanvas(); }catch(e){ alert('Не вдалося згенерувати PDF'); } });
+    wrap.appendChild(document.createTextNode(' '));
+    wrap.appendChild(btn);
+  }
+  function ensureDownloadButtons(){
+    if(!summary || document.getElementById('manualPdfBtn')){
+      // If PDF button exists, still ensure JPG maybe
+      if(!document.getElementById('manualJpgBtn')) addJpgBtn();
+      return;
+    }
+    ensureManualPdfBtn();
+    addJpgBtn();
+  }
+  function addJpgBtn(){
+    if(document.getElementById('manualJpgBtn')) return;
+    const btn = document.createElement('button');
+    btn.type='button'; btn.id='manualJpgBtn'; btn.className='btn btn-sm'; btn.textContent='Завантажити JPG';
+    btn.addEventListener('click', ()=>{
+      try {
+        const dataUrl = canvas.toDataURL('image/jpeg',0.92);
+        const a = document.createElement('a');
+        a.href = dataUrl; a.download = 'certificate_'+(currentData?currentData.cid:'')+'.jpg';
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch(e){ alert('Не вдалося згенерувати JPG'); }
+    });
+    summary.appendChild(document.createTextNode(' '));
+    summary.appendChild(btn);
+  }
   toggleDetails && toggleDetails.addEventListener('click',()=>{
     if(advancedBlock.classList.contains('d-none')){
       advancedBlock.classList.remove('d-none');

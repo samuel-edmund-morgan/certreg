@@ -11,8 +11,13 @@ $coords = $cfg['coords'] ?? [];
 ?>
 <section class="section">
   <h2>Видача (анонімна модель без ПІБ у БД)</h2>
-  <p class="maxw-720 fs-14 lh-14">ПІБ не зберігається на сервері. Після створення зображення сертифікат автоматично завантажиться. За потреби можна відкрити технічні деталі (CID, hash, QR payload) для аудиту.</p>
-  <form id="issueForm" class="form flex-col gap-12 maxw-520" autocomplete="off">
+  <div class="tabs" role="tablist" aria-label="Режим видачі">
+    <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="single">Один сертифікат</button>
+    <button type="button" class="tab" role="tab" aria-selected="false" data-tab="bulk">Масова генерація</button>
+  </div>
+  <div id="singleTab" class="tab-panel" role="tabpanel" aria-labelledby="single" data-panel="single">
+  <p class="maxw-760 fs-14 lh-14">ПІБ не зберігається на сервері. Після створення зображення сертифікат автоматично завантажиться. За потреби можна відкрити технічні деталі (CID, hash, QR payload) для аудиту.</p>
+  <form id="issueForm" class="form flex-col gap-12 maxw-760" autocomplete="off">
     <label>ПІБ (тільки в зображенні)
       <input type="text" name="pib" required placeholder="Прізвище Ім'я" autocomplete="off">
     </label>
@@ -62,8 +67,50 @@ $coords = $cfg['coords'] ?? [];
       </div>
     </div>
   </div>
+  </div><!-- /singleTab -->
+
+  <div id="bulkTab" class="tab-panel d-none" role="tabpanel" aria-labelledby="bulk" data-panel="bulk">
+    <p class="maxw-760 fs-14 lh-14">Масова видача: імена не зберігаються; для кожного рядка клієнт локально обчислює HMAC. Спільні поля застосовуються до всіх. Обмеження: максимум 100 записів за один запуск.</p>
+    <form id="bulkForm" class="form flex-col gap-14 maxw-760" autocomplete="off">
+      <fieldset class="flex flex-wrap gap-12">
+        <label class="minw-200 flex-1">Курс (спільний)
+          <input type="text" name="course" required placeholder="COURSE-101">
+        </label>
+        <label class="minw-200">Дата проходження
+          <input type="date" name="date" required>
+        </label>
+        <label class="minw-200">Загальний Grade (опц.)
+          <input type="text" name="default_grade" maxlength="16" placeholder="A">
+        </label>
+      </fieldset>
+      <div class="flex flex-wrap gap-12 align-center" id="bulkExpiryWrap">
+        <label class="flex mb-0 gap-6 align-center nowrap fs-13"><input type="checkbox" name="infinite" checked> <span>Безтерміновий</span></label>
+        <div id="bulkValidUntilWrap" class="expiry-slot hidden-slot"><input type="date" name="valid_until" placeholder="YYYY-MM-DD" disabled></div>
+      </div>
+      <div class="bulk-table-wrapper">
+        <table class="table" id="bulkTable" aria-label="Список сертифікатів для генерації">
+          <thead>
+            <tr><th class="col-n">#</th><th>ПІБ</th><th class="col-grade">Grade</th><th class="col-status">Статус</th><th class="col-actions"></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="flex gap-8 mt-8 flex-wrap">
+          <button type="button" class="btn" id="addRowBtn">+ Рядок</button>
+          <button type="button" class="btn" id="pasteMultiBtn">Вставити список</button>
+          <button type="button" class="btn" id="clearAllBtn">Очистити</button>
+        </div>
+      </div>
+      <div class="flex gap-10 flex-wrap mt-14">
+        <button type="button" class="btn btn-success" id="bulkGenerateBtn" disabled>Згенерувати (0)</button>
+        <button type="button" class="btn d-none" id="bulkRetryBtn">Повторити невдалі</button>
+        <span class="fs-13 text-muted" id="bulkProgressHint"></span>
+      </div>
+    </form>
+    <div id="bulkResults" class="mt-18 d-none"></div>
+  </div><!-- /bulkTab -->
  </section>
  <!-- CSRF token now provided via <meta name="csrf"> in header (no inline script allowed by CSP) -->
  <script src="/assets/js/issue_page.js"></script>
 <script src="/assets/js/issue.js"></script>
+ <script src="/assets/js/issue_bulk.js"></script>
 <?php require_once __DIR__.'/footer.php'; ?>
