@@ -60,5 +60,5 @@ playwright/.cache/
 *~
 
 # Local environment overrides
-certreg.conf
+#certreg.conf
 

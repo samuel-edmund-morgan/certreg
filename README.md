@@ -127,7 +127,19 @@ INSERT INTO creds (username, passhash) VALUES ('admin','<HASH>');
 ```
 
 ### 6. Nginx
-Створіть файл сайту `/etc/nginx/sites-available/certreg` (приклад в репозиторії може містити CSP/headers). Увімкніть і перезапустіть:
+Канонічний приклад конфігурації знаходиться у `certreg.conf.example` в корені репозиторію.
+
+Кроки:
+1) Скопіюйте приклад:
+   `/var/www/certreg/certreg.conf.example` → `/etc/nginx/sites-available/certreg`
+2) Відредагуйте `server_name` та `fastcgi_pass` під вашу версію PHP-FPM (напр., `/run/php/php8.3-fpm.sock`).
+3) Увімкніть сайт і перезавантажте nginx.
+
+Приклад підтримує «чисті URL» для публічних точок:
+- `/verify` → `verify.php` (301 redirect)
+- `/api/status` → `api/status.php` (301 redirect)
+
+Після зміни перевірте синтаксис і перезавантажте:
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/certreg /etc/nginx/sites-enabled/
