@@ -23,8 +23,8 @@ test('bulk issuance 2 rows produces OK statuses and CSV export', async ({ page }
   await page.fill('#bulkTable tbody tr:nth-child(1) input[name="name"]', row1Name);
   await page.fill('#bulkTable tbody tr:nth-child(1) input[name="grade"]', 'A');
   await page.fill('#bulkTable tbody tr:nth-child(2) input[name="name"]', row2Name);
-  // Leave grade blank second row, set default grade
-  await page.fill('#bulkForm input[name="default_grade"]', 'B');
+  // Provide per-row grades explicitly
+  await page.fill('#bulkTable tbody tr:nth-child(2) input[name="grade"]', 'B');
   // Generate
   await page.click('#bulkGenerateBtn');
   // Wait for both rows OK

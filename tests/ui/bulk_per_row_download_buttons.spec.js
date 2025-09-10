@@ -9,10 +9,11 @@ test('bulk per-row PDF & JPG buttons appear for each successful row', async ({ p
   const today = new Date().toISOString().slice(0,10);
   await page.fill('#bulkForm input[name="course"]', 'COURSE-BTNS');
   await page.fill('#bulkForm input[name="date"]', today);
-  await page.fill('#bulkForm input[name="default_grade"]', 'A');
   await page.click('#addRowBtn');
   await page.fill('#bulkTable tbody tr:nth-child(1) input[name="name"]', 'Кнопка Один');
+  await page.fill('#bulkTable tbody tr:nth-child(1) input[name="grade"]', 'A');
   await page.fill('#bulkTable tbody tr:nth-child(2) input[name="name"]', 'Кнопка Два');
+  await page.fill('#bulkTable tbody tr:nth-child(2) input[name="grade"]', 'B');
   const downloadPromise = page.waitForEvent('download');
   await page.click('#bulkGenerateBtn');
   await page.waitForSelector('#bulkProgressBar.done', { timeout: 20000 });

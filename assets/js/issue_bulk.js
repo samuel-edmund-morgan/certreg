@@ -141,9 +141,8 @@
   infiniteCb.addEventListener('change', syncExpiry); syncExpiry();
 
   async function processRows(targetRows){
-    const course = form.course.value.trim();
-    const date = form.date.value;
-    const defaultGrade = form.default_grade.value.trim();
+  const course = form.course.value.trim();
+  const date = form.date.value;
     const infinite = form.infinite.checked;
     let validUntil = form.valid_until.value;
     if(infinite) validUntil = INFINITE_SENTINEL; else if(!validUntil){ alert('Вкажіть дату "Дійсний до" або Безтерміновий.'); return; }
@@ -167,7 +166,7 @@
         const err = validateRow(r);
   if(err){ r.status='error'; r.error=err; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); continue; }
         const pibNorm = normName(r.name);
-        const grade = r.grade.trim() || defaultGrade;
+  const grade = (r.grade||'').trim();
   if(!grade){ r.status='error'; r.error='Немає grade'; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); continue; }
         try {
           // Generate per-row random salt (32 bytes) – MUST be embedded in QR for later verification by name.
@@ -257,12 +256,12 @@
     if(!okRows.length){ alert('Немає успішних записів'); return; }
     const course = form.course.value.trim();
     const date = form.date.value;
-    const infinite = form.infinite.checked;
-    const validUntil = infinite? INFINITE_SENTINEL : form.valid_until.value || '';
+  const infinite = form.infinite.checked;
+  const validUntil = infinite? INFINITE_SENTINEL : form.valid_until.value || '';
     const header = ['NAME_ORIG','CID','INT','COURSE','GRADE','ISSUED_DATE','VALID_UNTIL'];
   const lines = [header.join(',')];
     okRows.forEach(r=>{
-      const row = [r.name.replace(/"/g,'""'), r.cid, r.int, course, (r.grade||'').replace(/"/g,'""'), date, validUntil];
+  const row = [r.name.replace(/"/g,'""'), r.cid, r.int, course, (r.grade||'').replace(/"/g,'""'), date, validUntil];
       lines.push(row.map(f=>'"'+f+'"').join(','));
     });
   // Use CRLF for Excel friendliness and prepend UTF-8 BOM so Excel detects encoding
@@ -477,7 +476,7 @@
     const date = form.date.value;
     const infinite = form.infinite.checked;
     const validUntil = infinite? INFINITE_SENTINEL : (form.valid_until.value||'');
-  const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||form.default_grade.value.trim()||'', course, date, valid_until:validUntil, h:r.h, salt:r.saltB64};
+  const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||'', course, date, valid_until:validUntil, h:r.h, salt:r.saltB64};
     ensureBg(()=>{
       buildQrForRow(data, (qrImgEl)=>{
         // Draw QR then proceed

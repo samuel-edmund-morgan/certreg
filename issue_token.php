@@ -72,15 +72,12 @@ $coords = $cfg['coords'] ?? [];
   <div id="bulkTab" class="tab-panel d-none" role="tabpanel" aria-labelledby="bulk" data-panel="bulk">
     <p class="maxw-760 fs-14 lh-14">Масова видача: імена не зберігаються; для кожного рядка клієнт локально обчислює HMAC. Спільні поля застосовуються до всіх. Обмеження: максимум 100 записів за один запуск.</p>
     <form id="bulkForm" class="form flex-col gap-14 maxw-760" autocomplete="off">
-      <fieldset class="flex flex-wrap gap-12">
+  <fieldset class="flex flex-wrap gap-12">
         <label class="minw-200 flex-1">Курс (спільний)
           <input type="text" name="course" required placeholder="COURSE-101">
         </label>
         <label class="minw-200">Дата проходження
           <input type="date" name="date" required>
-        </label>
-        <label class="minw-200">Загальний Grade (опц.)
-          <input type="text" name="default_grade" maxlength="16" placeholder="A">
         </label>
       </fieldset>
       <div class="flex flex-wrap gap-12 align-center" id="bulkExpiryWrap">

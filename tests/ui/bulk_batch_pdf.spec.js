@@ -10,16 +10,15 @@ test.describe('Bulk issuance – batch PDF & UI elements', () => {
     const today = new Date().toISOString().slice(0,10);
     await page.fill('#bulkForm input[name="course"]', 'COURSE-BATCH');
     await page.fill('#bulkForm input[name="date"]', today);
-    // default grade for inherited rows
-    await page.fill('#bulkForm input[name="default_grade"]', 'B');
     // create 3 rows (1 already present)
     await page.click('#addRowBtn');
     await page.click('#addRowBtn');
     const names = ['Тест Один','Тест Два','Тест Три'];
     for(let i=0;i<3;i++){
       await page.fill(`#bulkTable tbody tr:nth-child(${i+1}) input[name="name"]`, names[i]);
-      // Give explicit grade only to first row
-      if(i===0){ await page.fill(`#bulkTable tbody tr:nth-child(${i+1}) input[name="grade"]`, 'A'); }
+  // Provide per-row grades explicitly
+  const grade = i===0 ? 'A' : (i===1 ? 'B' : 'C');
+  await page.fill(`#bulkTable tbody tr:nth-child(${i+1}) input[name="grade"]`, grade);
     }
     // Start generation; wait for download (batch PDF auto)
     const downloadPromise = page.waitForEvent('download');

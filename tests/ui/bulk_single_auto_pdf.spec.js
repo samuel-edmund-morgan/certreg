@@ -9,7 +9,8 @@ test('single-row bulk auto PDF (not batch) triggers certificate_ download', asyn
   const today = new Date().toISOString().slice(0,10);
   await page.fill('#bulkForm input[name="course"]', 'COURSE-SINGLEBULK');
   await page.fill('#bulkForm input[name="date"]', today);
-  await page.fill('#bulkForm input[name="default_grade"]', 'A');
+  // Per-row grade is required now (no default grade field)
+  await page.fill('#bulkTable tbody tr:nth-child(1) input[name="grade"]', 'A');
   await page.fill('#bulkTable tbody tr:nth-child(1) input[name="name"]', 'Одно Рядок');
   const downloadPromise = page.waitForEvent('download');
   await page.click('#bulkGenerateBtn');
