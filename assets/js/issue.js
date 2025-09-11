@@ -285,13 +285,13 @@
   const blob = new Blob([out], {type:'application/pdf'});
     const cid = (currentData?currentData.cid:'');
   if(window.__TEST_MODE){
-      // In CI, upload bytes and await completion, then trigger GET so file contains full PDF (not fallback)
       try {
-        await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob});
+        const ticket = 'single_'+cid+'_'+Math.random().toString(36).slice(2);
         const a = document.createElement('a');
-        a.href = '/test_download.php?kind=pdf&cid=' + encodeURIComponent(cid);
+  a.href = '/test_download.php?ticket='+encodeURIComponent(ticket)+'&wait=25&kind=pdf&cid='+encodeURIComponent('certificate_'+cid);
         a.download = 'certificate_'+cid+'.pdf';
         document.body.appendChild(a); a.click(); a.remove();
+        await fetch('/test_download.php?ticket='+encodeURIComponent(ticket), {method:'POST', body: blob});
         return;
       } catch(_e){}
     }

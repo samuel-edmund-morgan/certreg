@@ -337,12 +337,12 @@
         const pdfBytes = buildMultiPagePdfFromJpegs(pages, canvas.width, canvas.height);
         const blob = new Blob([pdfBytes], {type:'application/pdf'});
         if(window.__TEST_MODE){
-          const id = 'batch_certificates_'+Date.now();
-          // Upload bytes first then trigger GET
-          try {
-            await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(id), {method:'POST', body: blob});
-          } catch(_e){}
-          const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(id); a.download=id+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
+          const filename = 'batch_certificates_'+Date.now()+'.pdf';
+          const ticket = 'batch_'+Math.random().toString(36).slice(2);
+          // Trigger download immediately; server will wait briefly for bytes
+          const a=document.createElement('a'); a.href='/test_download.php?ticket='+encodeURIComponent(ticket)+'&wait=25&kind=pdf&cid='+encodeURIComponent(filename.replace(/\.pdf$/,'')); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+          // Now upload the bytes to fulfill the ticket
+          try { await fetch('/test_download.php?ticket='+encodeURIComponent(ticket), {method:'POST', body: blob}); } catch(_e){}
           return;
         }
         const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='batch_certificates_'+Date.now()+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
@@ -398,13 +398,17 @@
   }
   let bulkBgImg = null; let bulkBgLoading=false; let bulkBgReadyCb=[];
   function ensureBg(cb){
-    if(bulkBgImg && bulkBgImg.complete){ cb(); return; }
-    bulkBgReadyCb.push(cb);
-    if(bulkBgLoading) return;
-    bulkBgLoading=true;
-    bulkBgImg = new Image();
-    bulkBgImg.onload = ()=>{ bulkBgReadyCb.splice(0).forEach(fn=>fn()); };
-    bulkBgImg.src = '/files/cert_template.jpg';
+  if(bulkBgImg && bulkBgImg.complete){ cb(); return; }
+  bulkBgReadyCb.push(cb);
+  if(bulkBgLoading) return;
+  bulkBgLoading=true;
+  bulkBgImg = new Image();
+  let done=false; const flush=()=>{ if(done) return; done=true; bulkBgReadyCb.splice(0).forEach(fn=>{ try{ fn(); }catch(_e){} }); };
+  bulkBgImg.onload = flush;
+  bulkBgImg.onerror = flush; // proceed without background on error
+  // Timeout fallback in case neither onload nor onerror fires
+  setTimeout(flush, 1500);
+  bulkBgImg.src = '/files/cert_template.jpg';
   }
   function renderCertToCanvas(data){
     const canvas = getRenderCanvas();
@@ -464,9 +468,11 @@
     const total = parts.reduce((a,b)=>a+b.length,0); const out=new Uint8Array(total); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
     const blob = new Blob([out], {type:'application/pdf'});
     if(window.__TEST_MODE){
-      // Upload bytes first, then trigger GET (await to avoid fallback artifact)
-      try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob}); } catch(_e){}
-      const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cid); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
+      const filename = 'certificate_'+cid+'.pdf';
+      const ticket = 'row_'+cid+'_'+Math.random().toString(36).slice(2);
+      // Trigger immediate download; server waits for content
+  const a=document.createElement('a'); a.href='/test_download.php?ticket='+encodeURIComponent(ticket)+'&wait=25&kind=pdf&cid='+encodeURIComponent('certificate_'+cid); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+      try { await fetch('/test_download.php?ticket='+encodeURIComponent(ticket), {method:'POST', body: blob}); } catch(_e){}
       return;
     }
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
@@ -479,9 +485,11 @@
         const b64 = dataUrl.split(',')[1];
         const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
         const blob = new Blob([bytes], {type:'image/jpeg'});
-        await fetch('/test_download.php?kind=jpg&cid='+encodeURIComponent(cid), {method:'POST', body: blob});
+  const filename = 'certificate_'+cid+'.jpg';
+  const ticket = 'jpg_'+cid+'_'+Math.random().toString(36).slice(2);
+  const a=document.createElement('a'); a.href='/test_download.php?ticket='+encodeURIComponent(ticket)+'&wait=25&kind=jpg&cid='+encodeURIComponent('certificate_'+cid); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  await fetch('/test_download.php?ticket='+encodeURIComponent(ticket), {method:'POST', body: blob});
       } catch(_e){}
-      const a=document.createElement('a'); a.href='/test_download.php?kind=jpg&cid='+encodeURIComponent(cid); a.download='certificate_'+cid+'.jpg'; document.body.appendChild(a); a.click(); a.remove();
       return;
     }
     const a=document.createElement('a'); a.href=canvas.toDataURL('image/jpeg',0.92); a.download='certificate_'+cid+'.jpg'; document.body.appendChild(a); a.click(); a.remove();
@@ -493,7 +501,18 @@
     const payloadStr = JSON.stringify(payloadObj);
     const packed = btoa(unescape(encodeURIComponent(payloadStr))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
     const tmp = new Image();
-    tmp.onload=()=>cb(tmp);
+    let settled=false;
+    function finish(img){ if(settled) return; settled=true; try{ cb(img); }catch(_e){} }
+    tmp.onload=()=>finish(tmp);
+    tmp.onerror=()=>{
+      try {
+        // fallback to tiny transparent PNG so rendering can proceed
+        const c=document.createElement('canvas'); c.width=2; c.height=2; const ctx=c.getContext('2d'); ctx.clearRect(0,0,2,2);
+        const dataUrl=c.toDataURL('image/png'); const ph=new Image(); ph.onload=()=>finish(ph); ph.src=dataUrl;
+      } catch(_e) { finish(tmp); }
+    };
+    // timeout fallback
+    setTimeout(()=>{ if(!settled) tmp.onerror(); }, 1500);
     tmp.src='/qr.php?data='+encodeURIComponent(window.location.origin+'/verify.php?p='+packed);
   }
   function handleDownload(kind, cid){
