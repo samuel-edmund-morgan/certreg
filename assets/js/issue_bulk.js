@@ -30,6 +30,15 @@
   const MAX_ROWS = 100;
   let lastErrors = []; // collect error objects {name, error}
   let autoBatchDone = false; // prevent duplicate auto batch PDF
+  // In test mode on CI, Chrome may block programmatic downloads not under a user gesture.
+  // We'll open a single waiting GET (ticket) during the Generate button click, and later
+  // fulfill it by POSTing bytes to that ticket once ready (single-auto or batch-auto).
+  let pendingTicket = null; // string | null
+  function rndHex(len){
+    const bytes = new Uint8Array(Math.ceil(len/2));
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,len);
+  }
 
   function normName(s){
     return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
@@ -235,7 +244,23 @@
   generateBtn.addEventListener('click', ()=>{
     const target = rows.filter(r=>r.status==='idle' || r.status==='error');
     if(!target.length) return;
-    // No special pre-click in test mode; we'll upload then click once bytes are ready
+    // In TEST mode, start a waiting GET under this user gesture so Playwright can
+    // reliably observe a 'download' event even if bytes are produced later.
+  if(window.__TEST_MODE){
+      try {
+        pendingTicket = 't_'+rndHex(24);
+        // Predict filename pattern for tests: single => certificate_*, multi => batch_certificates_*
+        const predictedSingle = target.length === 1;
+        const fname = predictedSingle ? ('certificate_auto.pdf') : ('batch_certificates_auto.pdf');
+        const a = document.createElement('a');
+    // Don't wait on server; return immediately so tests get a download event without blocking worker progress
+    a.href = '/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket)+'&name='+encodeURIComponent(fname);
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch(_e) { /* ignore and fall back to POST->GET later */ }
+    }
     processRows(target);
   });
   retryBtn.addEventListener('click', ()=>{
@@ -344,10 +369,16 @@
         const pdfBytes = buildMultiPagePdfFromJpegs(pages, canvas.width, canvas.height);
         const blob = new Blob([pdfBytes], {type:'application/pdf'});
         if(window.__TEST_MODE){
-          // POST actual bytes, then trigger download
+          // If a pending ticket exists (started under a user gesture), fulfill it.
+          if(pendingTicket){
+            try { await fetch('/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket), {method:'POST', body: blob, credentials:'same-origin'}); } catch(_e){}
+            pendingTicket = null;
+            return; // waiting GET will deliver the bytes and trigger download event
+          }
+          // Fallback: POST→GET deterministic (may be blocked in strict CI, but used when no ticket)
           const filename = 'batch_certificates_'+Date.now()+'.pdf';
           const cidKey = filename.replace(/\.pdf$/,'');
-          try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cidKey), {method:'POST', body: blob}); } catch(_e){}
+          try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cidKey), {method:'POST', body: blob, credentials:'same-origin'}); } catch(_e){}
           const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cidKey)+'&name='+encodeURIComponent(filename); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
           return;
         }
@@ -474,7 +505,14 @@
     const total = parts.reduce((a,b)=>a+b.length,0); const out=new Uint8Array(total); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
     const blob = new Blob([out], {type:'application/pdf'});
     if(window.__TEST_MODE){
-      try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob}); } catch(_e){}
+      // If a pending ticket exists (opened under user gesture on Generate), use it.
+      if(pendingTicket){
+        try { await fetch('/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket), {method:'POST', body: blob, credentials:'same-origin'}); } catch(_e){}
+        pendingTicket = null;
+        return;
+      }
+      // Otherwise, POST→GET deterministic flow
+      try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob, credentials:'same-origin'}); } catch(_e){}
       const a=document.createElement('a');
       const filename = 'certificate_'+cid+'.pdf';
       a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cid)+'&name='+encodeURIComponent(filename);
