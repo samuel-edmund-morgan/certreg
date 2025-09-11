@@ -13,6 +13,7 @@ module.exports = defineConfig({
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:8080',
+  acceptDownloads: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'off'

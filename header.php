@@ -8,7 +8,8 @@ $cfg = require __DIR__.'/config.php';
 // --- Security headers (no inline scripts) ---
 if (!headers_sent()) {
   // Strict CSP: no inline scripts or styles. All inline style attributes have been removed from templates.
-  $csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
+  // Allow blob: for client-side PDF/JPG downloads (object URLs) and navigation to them.
+  $csp = "default-src 'self' blob:; navigate-to 'self' blob:; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
   header('Content-Security-Policy: ' . $csp);
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: DENY');
