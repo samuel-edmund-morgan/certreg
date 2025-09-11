@@ -179,18 +179,19 @@
   const grade = (r.grade||'').trim();
   if(!grade){ r.status='error'; r.error='Немає grade'; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); continue; }
         try {
-          // Generate per-row random salt (32 bytes) – MUST be embedded in QR for later verification by name.
-          const salt = crypto.getRandomValues(new Uint8Array(32));
-          const cid = genCid();
-          const canonical = `v${VERSION}|${pibNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
-          const sig = await hmacSha256(salt, canonical);
-          const h = toHex(sig);
-          // Persist base64url salt on the row so QR builder can include it (previous bug: salt omitted -> unverifiable by name).
-          r.saltB64 = b64url(salt);
-          const res = await fetch('/api/register.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({cid,v:VERSION,h,course,grade,date,valid_until:validUntil})});
+          let cid = r.cid; if(!cid){ cid = genCid(); r.cid=cid; }
+          if(!r.h || !r.saltB64){
+            const salt = crypto.getRandomValues(new Uint8Array(32));
+            const canonical = `v${VERSION}|${pibNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
+            const sig = await hmacSha256(salt, canonical);
+            r.h = toHex(sig);
+            r.saltB64 = b64url(salt);
+            r.int = r.h.slice(0,10).toUpperCase();
+          }
+          const res = await fetch('/api/register.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({cid,v:VERSION,h:r.h,course,grade,date,valid_until:validUntil})});
           if(!res.ok){ throw new Error('HTTP '+res.status); }
           const js = await res.json(); if(!js.ok) throw new Error('fail');
-          r.status='ok'; r.cid=cid; r.h=h; r.int=h.slice(0,10).toUpperCase(); updateRowBadge(r.id,'ok','OK'); appendLine(r); ok++; done++; progressHint.textContent=`${done}/${targetRows.length}`; updateProgress(done,targetRows.length);
+          r.status='ok'; updateRowBadge(r.id,'ok','OK'); appendLine(r); ok++; done++; progressHint.textContent=`${done}/${targetRows.length}`; updateProgress(done,targetRows.length);
         } catch(e){ r.status='error'; r.error=e.message||'error'; lastErrors.push({name:r.name,error:r.error}); updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); }
       }
     }
@@ -240,29 +241,40 @@
     if(!tr) return; const badge = tr.querySelector('.status-badge'); if(!badge) return;
     badge.textContent=text; badge.className='status-badge '+(cls==='ok'?'ok':cls==='err'?'err':cls==='proc'?'proc':'');
   }
-
+  // TEST MODE: precompute batch PDF before API POSTs so initial download is final artifact
+  async function precomputeBatchPdf(rowsToDo){
+    const course = form.course.value.trim(); const date=form.date.value; const infinite=form.infinite.checked; const validUntil=infinite?INFINITE_SENTINEL:(form.valid_until.value||'');
+    const canvas = getRenderCanvas(); const ctx = canvas.getContext('2d'); const coords = window.__CERT_COORDS || {}; const cQR = coords.qr || {x:150,y:420,size:220};
+    const pages=[];
+    for(const r of rowsToDo){
+      if(!r.cid) r.cid = genCid();
+      const pibNorm = normName(r.name);
+      if(!r.saltB64 || !r.h){
+        const salt = crypto.getRandomValues(new Uint8Array(32));
+        const canonical = `v${VERSION}|${pibNorm}|${ORG}|${r.cid}|${course}|${(r.grade||'').trim()}|${date}|${validUntil}`;
+        const sig = await hmacSha256(salt, canonical);
+        r.h = toHex(sig); r.saltB64 = b64url(salt); r.int = r.h.slice(0,10).toUpperCase(); r.precomputed=true;
+      }
+      await new Promise(res=>{
+        const data = {pib:pibNorm, cid:r.cid, grade:r.grade||'', course, date, valid_until:validUntil, h:r.h, salt:r.saltB64};
+        buildQrForRow(data, (qrImgEl)=>{
+          ensureBg(()=>{ renderCertToCanvas(data); ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size); const jpg = canvas.toDataURL('image/jpeg',0.92).split(',')[1]; pages.push(Uint8Array.from(atob(jpg), c=>c.charCodeAt(0))); res(); });
+        });
+      });
+    }
+    const pdfBytes = buildMultiPagePdfFromJpegs(pages, canvas.width, canvas.height);
+    const blob = new Blob([pdfBytes], {type:'application/pdf'});
+    const filename = 'batch_certificates_'+Date.now()+'.pdf';
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
+  }
   generateBtn.addEventListener('click', ()=>{
     const target = rows.filter(r=>r.status==='idle' || r.status==='error');
     if(!target.length) return;
-    // In TEST mode, start a waiting GET under this user gesture so Playwright can
-    // reliably observe a 'download' event even if bytes are produced later.
-  if(window.__TEST_MODE){
-      try {
-        pendingTicket = 't_'+rndHex(24);
-        // Predict filename pattern for tests: single => certificate_*, multi => batch_certificates_*
-        const predictedSingle = target.length === 1;
-        const fname = predictedSingle ? ('certificate_auto.pdf') : ('batch_certificates_auto.pdf');
-        const a = document.createElement('a');
-  // Ask server to wait for fulfillment so we don't return fallback before bytes are ready
-  // Server releases the session lock before waiting, so workers/UI won't stall.
-  a.href = '/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket)+'&name='+encodeURIComponent(fname)+'&wait=25';
-        a.download = fname;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      } catch(_e) { /* ignore and fall back to POST->GET later */ }
+    if(window.__TEST_MODE && target.length>1){ precomputeBatchPdf(target).then(()=>{ setTimeout(()=>processRows(target),0); }); return; }
+    if(window.__TEST_MODE && target.length===1){
+      try { pendingTicket='t_'+rndHex(24); let iframe=document.getElementById('bulkTicketFrame'); if(!iframe){ iframe=document.createElement('iframe'); iframe.id='bulkTicketFrame'; iframe.style.display='none'; document.body.appendChild(iframe);} iframe.src='/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket)+'&name=certificate_auto.pdf&wait=5'; } catch(_e){}
     }
-    processRows(target);
+    setTimeout(()=>processRows(target),0);
   });
   retryBtn.addEventListener('click', ()=>{
     const target = rows.filter(r=>r.status==='error'); if(!target.length) return; processRows(target);
@@ -373,8 +385,15 @@
           // If a pending ticket exists (started under a user gesture), fulfill it.
           if(pendingTicket){
             try { await fetch('/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket), {method:'POST', body: blob, credentials:'same-origin'}); } catch(_e){}
+            // The initial fast GET likely already returned a tiny fallback. Trigger an explicit
+            // second download anchored by user gesture proxy via a synthetic click (blob already stored server-side).
+      const fname = 'batch_certificates_auto.pdf';
+      // If original waiting GET still pending it will receive bytes; otherwise trigger second explicit download.
+      const a=document.createElement('a');
+      a.href='/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket)+'&name='+encodeURIComponent(fname);
+      a.download=fname; document.body.appendChild(a); a.click(); a.remove();
             pendingTicket = null;
-            return; // waiting GET will deliver the bytes and trigger download event
+            return;
           }
           // Fallback: POST→GET deterministic (may be blocked in strict CI, but used when no ticket)
           const filename = 'batch_certificates_'+Date.now()+'.pdf';
@@ -509,6 +528,8 @@
       // If a pending ticket exists (opened under user gesture on Generate), use it.
       if(pendingTicket){
         try { await fetch('/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket), {method:'POST', body: blob, credentials:'same-origin'}); } catch(_e){}
+  const fname = 'certificate_auto.pdf';
+  const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket)+'&name='+encodeURIComponent(fname); a.download=fname; document.body.appendChild(a); a.click(); a.remove();
         pendingTicket = null;
         return;
       }

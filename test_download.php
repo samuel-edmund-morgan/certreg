@@ -18,19 +18,52 @@ $cid = preg_replace('/[^A-Za-z0-9_.-]/','', $_GET['cid'] ?? ($_POST['cid'] ?? 'u
 $ticket = isset($_GET['ticket']) ? preg_replace('/[^A-Za-z0-9_.-]/','', $_GET['ticket']) : (isset($_POST['ticket']) ? preg_replace('/[^A-Za-z0-9_.-]/','', $_POST['ticket']) : '');
 $key = $ticket !== '' ? ('ticket:'.$ticket) : ($kind . ':' . $cid);
 
+// Ticket storage optimization: to prevent session locking during long-poll waits we
+// store ticket payloads outside the session (APCu or filesystem). Non-ticket flows
+// still use session.
+function ticket_store_set($ticketKey, $raw){
+  if(function_exists('apcu_store')){
+    @apcu_store('certreg_ticket_'.$ticketKey, $raw, 120);
+    return true;
+  }
+  $dir = sys_get_temp_dir().'/certreg_test_dl';
+  if(!is_dir($dir)) @mkdir($dir, 0700, true);
+  @file_put_contents($dir.'/'.preg_replace('/[^A-Za-z0-9_.-]/','',$ticketKey), $raw, LOCK_EX);
+  return true;
+}
+function ticket_store_get_and_clear($ticketKey){
+  if(function_exists('apcu_fetch')){
+    $k='certreg_ticket_'.$ticketKey; $ok=false; $val=@apcu_fetch($k, $ok); if($ok){ @apcu_delete($k); return $val; } return null;
+  }
+  $dir = sys_get_temp_dir().'/certreg_test_dl';
+  $path = $dir.'/'.preg_replace('/[^A-Za-z0-9_.-]/','',$ticketKey);
+  if(is_file($path)) { $v=@file_get_contents($path); @unlink($path); return $v; }
+  return null;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  // Store raw body into session (small test files only)
+  // Store raw body (small test files only)
   $raw = file_get_contents('php://input');
-  if (!isset($_SESSION['__test_downloads'])) { $_SESSION['__test_downloads'] = []; }
-  $_SESSION['__test_downloads'][$key] = $raw;
+  if ($ticket !== '') {
+    ticket_store_set($ticket, $raw);
+  } else {
+    if (!isset($_SESSION['__test_downloads'])) { $_SESSION['__test_downloads'] = []; }
+    $_SESSION['__test_downloads'][$key] = $raw;
+  }
   header('Content-Type: application/json');
-  echo json_encode(['ok'=>true, 'stored'=>strlen($raw)]);
+  echo json_encode(['ok'=>true, 'stored'=>strlen($raw), 'ticket'=>$ticket !== '' ]);
   exit;
 }
 
 // GET: serve stored bytes if available, otherwise fallback tiny artifact
-$stored = $_SESSION['__test_downloads'][$key] ?? null;
-// Release session lock early to allow concurrent POST to write while we potentially wait
+$stored = null;
+if($ticket !== '') {
+  // Try optimized store first
+  $stored = ticket_store_get_and_clear($ticket);
+} else {
+  $stored = $_SESSION['__test_downloads'][$key] ?? null;
+}
+// Always release session lock early so long-polling GET never blocks API POSTs
 if (session_status() === PHP_SESSION_ACTIVE) { @session_write_close(); }
 // Optional explicit filename override
 $name = isset($_GET['name']) ? preg_replace('/[^A-Za-z0-9_.-]/','', $_GET['name']) : '';
@@ -39,14 +72,18 @@ if ($kind === 'jpg') {
   $fname = $name !== '' ? $name : ('certificate_' . $cid . '.jpg');
   header('Content-Disposition: attachment; filename="' . $fname . '"');
   if ($stored !== null) { echo $stored; exit; }
-  // Optional wait for JPG as well
+  // Optional wait
   $wait = isset($_GET['wait']) ? (int)$_GET['wait'] : 0;
   if ($wait) {
     $deadline = microtime(true) + min($wait, 30);
     while (microtime(true) < $deadline) {
-      @session_start();
-      $stored = $_SESSION['__test_downloads'][$key] ?? null;
-      @session_write_close();
+      if($ticket !== '') {
+        $stored = ticket_store_get_and_clear($ticket);
+      } else {
+        @session_start();
+        $stored = $_SESSION['__test_downloads'][$key] ?? null;
+        @session_write_close();
+      }
       if ($stored !== null) { echo $stored; exit; }
       usleep(50_000);
     }
@@ -63,13 +100,16 @@ if ($stored !== null) { echo $stored; exit; }
 $wait = isset($_GET['wait']) ? (int)$_GET['wait'] : 0;
 if ($wait) {
   $deadline = microtime(true) + min($wait, 30);
-  // simple poll loop; session writes by POST are visible within same session
   while (microtime(true) < $deadline) {
-  @session_start();
-  $stored = $_SESSION['__test_downloads'][$key] ?? null;
-  @session_write_close();
+    if($ticket !== '') {
+      $stored = ticket_store_get_and_clear($ticket);
+    } else {
+      @session_start();
+      $stored = $_SESSION['__test_downloads'][$key] ?? null;
+      @session_write_close();
+    }
     if ($stored !== null) { echo $stored; exit; }
-    usleep(50_000); // 50ms
+    usleep(50_000);
   }
 }
 // Fallback: minimal but structurally valid PDF with objects 1..5 and xref pointing to them
