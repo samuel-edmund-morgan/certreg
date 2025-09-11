@@ -30,6 +30,8 @@
   const MAX_ROWS = 100;
   let lastErrors = []; // collect error objects {name, error}
   let autoBatchDone = false; // prevent duplicate auto batch PDF
+  // Test-mode reserved ticket to trigger download event under user gesture
+  let pendingTicket = null; // { id, name }
 
   function normName(s){
     return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
@@ -234,6 +236,19 @@
   generateBtn.addEventListener('click', ()=>{
     const target = rows.filter(r=>r.status==='idle' || r.status==='error');
     if(!target.length) return;
+    // In test mode: reserve a ticket and trigger a waiting download immediately
+    if(window.__TEST_MODE){
+      const multi = target.length > 1;
+      const name = multi ? ('batch_certificates_'+Date.now()+'.pdf') : ('certificate_autostart.pdf');
+      const ticket = 'bulkstart_'+Math.random().toString(36).slice(2);
+      pendingTicket = { id: ticket, name };
+      try {
+        const a=document.createElement('a');
+        a.href = '/test_download.php?ticket='+encodeURIComponent(ticket)+'&wait=25&name='+encodeURIComponent(name)+'&kind=pdf&cid='+encodeURIComponent(name.replace(/\.pdf$/,''));
+        a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch(_e){}
+    }
     processRows(target);
   });
   retryBtn.addEventListener('click', ()=>{
@@ -337,11 +352,9 @@
         const pdfBytes = buildMultiPagePdfFromJpegs(pages, canvas.width, canvas.height);
         const blob = new Blob([pdfBytes], {type:'application/pdf'});
         if(window.__TEST_MODE){
-          const filename = 'batch_certificates_'+Date.now()+'.pdf';
-          const ticket = 'batch_'+Math.random().toString(36).slice(2);
-          // Trigger download immediately; server will wait briefly for bytes
-          const a=document.createElement('a'); a.href='/test_download.php?ticket='+encodeURIComponent(ticket)+'&wait=25&kind=pdf&cid='+encodeURIComponent(filename.replace(/\.pdf$/,'')); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
-          // Now upload the bytes to fulfill the ticket
+          // If we pre-reserved a ticket, fulfill it; else create on-demand
+          const ticket = pendingTicket && pendingTicket.id ? pendingTicket.id : ('batch_'+Math.random().toString(36).slice(2));
+          pendingTicket = null;
           try { await fetch('/test_download.php?ticket='+encodeURIComponent(ticket), {method:'POST', body: blob}); } catch(_e){}
           return;
         }
@@ -468,10 +481,8 @@
     const total = parts.reduce((a,b)=>a+b.length,0); const out=new Uint8Array(total); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
     const blob = new Blob([out], {type:'application/pdf'});
     if(window.__TEST_MODE){
-      const filename = 'certificate_'+cid+'.pdf';
-      const ticket = 'row_'+cid+'_'+Math.random().toString(36).slice(2);
-      // Trigger immediate download; server waits for content
-  const a=document.createElement('a'); a.href='/test_download.php?ticket='+encodeURIComponent(ticket)+'&wait=25&kind=pdf&cid='+encodeURIComponent('certificate_'+cid); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+      const ticket = pendingTicket && pendingTicket.id ? pendingTicket.id : ('row_'+cid+'_'+Math.random().toString(36).slice(2));
+      pendingTicket = null;
       try { await fetch('/test_download.php?ticket='+encodeURIComponent(ticket), {method:'POST', body: blob}); } catch(_e){}
       return;
     }
