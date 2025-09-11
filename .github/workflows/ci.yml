@@ -146,13 +146,13 @@ jobs:
         run: |
           php -S 127.0.0.1:8080 -t . >/tmp/php-server.log 2>&1 &
           echo $! > /tmp/php-server.pid
-          for i in {1..20}; do curl -sS -I http://127.0.0.1:8080/ >/dev/null && break; sleep 0.5; done
+          for i in {1..40}; do curl -sS -I http://127.0.0.1:8080/ >/dev/null && break; sleep 0.5; done
 
       - name: Run headers check
         env:
           BASE_URL: http://127.0.0.1:8080
           ENDPOINTS: "/verify.php /index.php"
-        run: bash scripts/security/check_headers.sh
+        run: bash scripts/security/check_headers.sh || { echo '--- PHP server log ---'; cat /tmp/php-server.log; exit 1; }
 
       - name: Stop PHP server
         if: always()
