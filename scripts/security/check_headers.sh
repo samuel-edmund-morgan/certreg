@@ -11,7 +11,7 @@ CURL_FLAGS=${CURL_FLAGS:-}
 
 # Expected headers (name-insensitive, value exact match)
 EXPECTED=$(cat <<'EOF'
-Content-Security-Policy: default-src 'self' blob:; navigate-to 'self' blob:; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests
+Content-Security-Policy: default-src 'self' blob:; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 Referrer-Policy: no-referrer
