@@ -235,7 +235,7 @@
     }
     if(infiniteCb){ infiniteCb.addEventListener('change', syncExpiryVisibility); syncExpiryVisibility(); }
   // Minimal PDF generator embedding the rendered JPEG (client-side, no PII leaves browser)
-  function generatePdfFromCanvas(){
+  async function generatePdfFromCanvas(){
     if(!canvas) return;
     if(canvas.width===0||canvas.height===0){ console.warn('Canvas size zero'); return; }
     try { renderAll(); } catch(_e){}
@@ -285,14 +285,13 @@
   const blob = new Blob([out], {type:'application/pdf'});
     const cid = (currentData?currentData.cid:'');
   if(window.__TEST_MODE){
-      // In CI, trigger a server-side download endpoint so Playwright can capture the event reliably
+      // In CI, upload bytes and await completion, then trigger GET so file contains full PDF (not fallback)
       try {
-    // Upload actual bytes first so GET returns them
-    fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob}).catch(()=>{});
-    const a = document.createElement('a');
-    a.href = '/test_download.php?kind=pdf&cid=' + encodeURIComponent(cid);
-    a.download = 'certificate_'+cid+'.pdf';
-    document.body.appendChild(a); a.click(); a.remove();
+        await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob});
+        const a = document.createElement('a');
+        a.href = '/test_download.php?kind=pdf&cid=' + encodeURIComponent(cid);
+        a.download = 'certificate_'+cid+'.pdf';
+        document.body.appendChild(a); a.click(); a.remove();
         return;
       } catch(_e){}
     }
@@ -302,7 +301,7 @@
     document.body.appendChild(link); link.click();
     setTimeout(()=>{ URL.revokeObjectURL(link.href); link.remove(); }, 4000);
   }
-  function autoDownload(){ generatePdfFromCanvas(); }
+  function autoDownload(){ try { generatePdfFromCanvas(); } catch(_e){} }
   function ensureManualPdfBtn(){
     if(document.getElementById('manualPdfBtn')) return;
     const wrap = summary;

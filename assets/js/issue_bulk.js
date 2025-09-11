@@ -160,15 +160,6 @@
     const CONC = 4; // concurrency limit
   progressHint.textContent='Паралельно '+CONC+'...' ;
   initProgressBar(targetRows.length);
-  if(window.__TEST_MODE){
-    // Ensure at least one valid row before triggering test download
-    try {
-      // Fire a tiny deterministic download immediately within user gesture
-      const id = 'bulk_primer_'+Date.now();
-      fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(id), {method:'POST', body: new Blob([new Uint8Array([1,2,3])], {type:'application/pdf'})}).catch(()=>{});
-      const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(id); a.download=id+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
-    } catch(_e){}
-  }
     async function worker(){
       while(queue.length){
         const r = queue.shift();
@@ -202,7 +193,7 @@
   autoPdfIfSingle();
   if(ok>1){
     ensureBatchPdfButton();
-    if(!autoBatchDone && !window.__TEST_MODE){
+  if(!autoBatchDone){
       autoBatchDone = true;
       // Невелика затримка щоб UI встиг оновитись перед масовим рендером
       setTimeout(()=>{ try { generateBatchPdf(); } catch(e){ console.warn('Auto batch PDF failed', e); } }, 180);
@@ -348,7 +339,9 @@
         if(window.__TEST_MODE){
           const id = 'batch_certificates_'+Date.now();
           // Upload bytes first then trigger GET
-          fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(id), {method:'POST', body: blob}).catch(()=>{});
+          try {
+            await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(id), {method:'POST', body: blob});
+          } catch(_e){}
           const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(id); a.download=id+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
           return;
         }
@@ -448,7 +441,7 @@
     }
     return canvas;
   }
-  function generatePdfFromCanvas(canvas, cid){
+  async function generatePdfFromCanvas(canvas, cid){
     const jpegDataUrl = canvas.toDataURL('image/jpeg',0.92);
     const b64 = jpegDataUrl.split(',')[1];
     const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
@@ -471,14 +464,14 @@
     const total = parts.reduce((a,b)=>a+b.length,0); const out=new Uint8Array(total); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
     const blob = new Blob([out], {type:'application/pdf'});
     if(window.__TEST_MODE){
-      // Upload bytes first, then trigger GET
-      fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob}).catch(()=>{});
+      // Upload bytes first, then trigger GET (await to avoid fallback artifact)
+      try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob}); } catch(_e){}
       const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cid); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
       return;
     }
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
   }
-  function downloadJpg(canvas, cid){
+  async function downloadJpg(canvas, cid){
     if(window.__TEST_MODE){
       // Upload actual JPG bytes before triggering download
       try {
@@ -486,7 +479,7 @@
         const b64 = dataUrl.split(',')[1];
         const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
         const blob = new Blob([bytes], {type:'image/jpeg'});
-        fetch('/test_download.php?kind=jpg&cid='+encodeURIComponent(cid), {method:'POST', body: blob}).catch(()=>{});
+        await fetch('/test_download.php?kind=jpg&cid='+encodeURIComponent(cid), {method:'POST', body: blob});
       } catch(_e){}
       const a=document.createElement('a'); a.href='/test_download.php?kind=jpg&cid='+encodeURIComponent(cid); a.download='certificate_'+cid+'.jpg'; document.body.appendChild(a); a.click(); a.remove();
       return;
@@ -511,9 +504,9 @@
     const infinite = form.infinite.checked;
     const validUntil = infinite? INFINITE_SENTINEL : (form.valid_until.value||'');
   const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||'', course, date, valid_until:validUntil, h:r.h, salt:r.saltB64};
-    ensureBg(()=>{
-      buildQrForRow(data, (qrImgEl)=>{
-        // Draw QR then proceed
+    // Trigger QR request immediately; render once QR and background are ready
+    buildQrForRow(data, (qrImgEl)=>{
+      ensureBg(()=>{
         const canvas = getRenderCanvas();
         renderCertToCanvas(data);
         const coords = window.__CERT_COORDS || {}; const cQR = coords.qr || {x:150,y:420,size:220};
