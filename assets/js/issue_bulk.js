@@ -253,8 +253,9 @@
         const predictedSingle = target.length === 1;
         const fname = predictedSingle ? ('certificate_auto.pdf') : ('batch_certificates_auto.pdf');
         const a = document.createElement('a');
-    // Don't wait on server; return immediately so tests get a download event without blocking worker progress
-    a.href = '/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket)+'&name='+encodeURIComponent(fname);
+  // Ask server to wait for fulfillment so we don't return fallback before bytes are ready
+  // Server releases the session lock before waiting, so workers/UI won't stall.
+  a.href = '/test_download.php?kind=pdf&ticket='+encodeURIComponent(pendingTicket)+'&name='+encodeURIComponent(fname)+'&wait=25';
         a.download = fname;
         document.body.appendChild(a);
         a.click();
