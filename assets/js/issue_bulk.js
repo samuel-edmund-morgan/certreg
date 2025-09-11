@@ -30,7 +30,6 @@
   const MAX_ROWS = 100;
   let lastErrors = []; // collect error objects {name, error}
   let autoBatchDone = false; // prevent duplicate auto batch PDF
-  // Test-mode: no reserved ticket; we will POST bytes first, then GET to trigger download
 
   function normName(s){
     return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
@@ -236,6 +235,7 @@
   generateBtn.addEventListener('click', ()=>{
     const target = rows.filter(r=>r.status==='idle' || r.status==='error');
     if(!target.length) return;
+    // No special pre-click in test mode; we'll upload then click once bytes are ready
     processRows(target);
   });
   retryBtn.addEventListener('click', ()=>{
@@ -344,9 +344,11 @@
         const pdfBytes = buildMultiPagePdfFromJpegs(pages, canvas.width, canvas.height);
         const blob = new Blob([pdfBytes], {type:'application/pdf'});
         if(window.__TEST_MODE){
+          // POST actual bytes, then trigger download
           const filename = 'batch_certificates_'+Date.now()+'.pdf';
-          try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(filename.replace(/\.pdf$/,'')), {method:'POST', body: blob}); } catch(_e){}
-          const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(filename.replace(/\.pdf$/,''))+'&name='+encodeURIComponent(filename); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+          const cidKey = filename.replace(/\.pdf$/,'');
+          try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cidKey), {method:'POST', body: blob}); } catch(_e){}
+          const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cidKey)+'&name='+encodeURIComponent(filename); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
           return;
         }
         const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='batch_certificates_'+Date.now()+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
@@ -473,7 +475,10 @@
     const blob = new Blob([out], {type:'application/pdf'});
     if(window.__TEST_MODE){
       try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob}); } catch(_e){}
-      const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cid); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
+      const a=document.createElement('a');
+      const filename = 'certificate_'+cid+'.pdf';
+      a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cid)+'&name='+encodeURIComponent(filename);
+      a.download=filename; document.body.appendChild(a); a.click(); a.remove();
       return;
     }
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);

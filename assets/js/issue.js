@@ -289,16 +289,17 @@
     // Concatenate
     let totalLen = parts.reduce((a,b)=>a+b.length,0);
     const out = new Uint8Array(totalLen); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
-  const blob = new Blob([out], {type:'application/pdf'});
+    const blob = new Blob([out], {type:'application/pdf'});
     const cid = (currentData?currentData.cid:'');
-  if(window.__TEST_MODE){
+    if(window.__TEST_MODE){
+      // Deterministic: upload bytes first, then trigger GET so Playwright captures download instantly
       try {
-        const ticket = 'single_'+cid+'_'+Math.random().toString(36).slice(2);
+        const filename = 'certificate_'+cid+'.pdf';
+        await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent('certificate_'+cid), {method:'POST', body: blob});
         const a = document.createElement('a');
-  a.href = '/test_download.php?ticket='+encodeURIComponent(ticket)+'&wait=25&kind=pdf&cid='+encodeURIComponent('certificate_'+cid);
-        a.download = 'certificate_'+cid+'.pdf';
+        a.href = '/test_download.php?kind=pdf&cid='+encodeURIComponent('certificate_'+cid)+'&name='+encodeURIComponent(filename);
+        a.download = filename;
         document.body.appendChild(a); a.click(); a.remove();
-        await fetch('/test_download.php?ticket='+encodeURIComponent(ticket), {method:'POST', body: blob});
         return;
       } catch(_e){}
     }

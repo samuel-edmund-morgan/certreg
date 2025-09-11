@@ -72,6 +72,27 @@ if ($wait) {
     usleep(50_000); // 50ms
   }
 }
-// Fallback: tiny, valid single-page PDF with one blank page
-$pdf = "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 4 0 R/Resources<<>>>>endobj\n4 0 obj<</Length 8>>stream\nBT ET\nendstream endobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000056 00000 n \n0000000107 00000 n \n0000000223 00000 n \ntrailer<</Size 5/Root 1 0 R>>\nstartxref\n315\n%%EOF";
-echo $pdf;
+// Fallback: minimal but structurally valid PDF with objects 1..5 and xref pointing to them
+$fallback = "%PDF-1.4\n".
+"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".
+"2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n".
+"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 5 0 R /Resources << >> >>\nendobj\n".
+"4 0 obj\n<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length 0 >>\nstream\n\nendstream\nendobj\n".
+"5 0 obj\n<< /Length 8 >>\nstream\nBT ET\nendstream\nendobj\n";
+// Build xref with correct offsets
+$offsets = [];
+$pos = 0; $lines = explode("\n", $fallback);
+$buf = '';
+$add = function($s) use (&$buf, &$pos){ $buf .= $s; $pos += strlen($s); };
+$add("%PDF-1.4\n");
+$offsets[1] = $pos; $add("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+$offsets[2] = $pos; $add("2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n");
+$offsets[3] = $pos; $add("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 5 0 R /Resources << >> >>\nendobj\n");
+$offsets[4] = $pos; $add("4 0 obj\n<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length 0 >>\nstream\n\nendstream\nendobj\n");
+$offsets[5] = $pos; $add("5 0 obj\n<< /Length 8 >>\nstream\nBT ET\nendstream\nendobj\n");
+$xrefPos = $pos;
+$xref = "xref\n0 6\n0000000000 65535 f \n";
+for($i=1;$i<=5;$i++){ $off = str_pad((string)$offsets[$i], 10, '0', STR_PAD_LEFT); $xref .= $off." 00000 n \n"; }
+$add($xref);
+$add("trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n".$xrefPos."\n%%EOF");
+echo $buf;
