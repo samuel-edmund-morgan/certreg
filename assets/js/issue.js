@@ -139,6 +139,12 @@
   const canonical = `v${VERSION}|${pibNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
   const sig = await hmacSha256(salt, canonical);
   const h = toHex(sig);
+    // Prepare render data early
+  currentData = {pib:pibNorm,cid:cid,grade:grade,course:course,date:date,h:h,valid_until:validUntil};
+    // In test mode: trigger immediate download within user gesture (without waiting for QR load)
+    if(window.__TEST_MODE){
+      try { generatePdfFromCanvas(); } catch(_e){}
+    }
     // Register (no PII)
   const csrf = window.__CSRF_TOKEN || document.querySelector('meta[name="csrf"]')?.content || '';
   const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify({cid:cid, v:VERSION, h:h, course:course, grade:grade, date:date, valid_until:validUntil})});
@@ -148,7 +154,7 @@
     }
     const js = await res.json();
     if(!js.ok){ alert('Не вдалося створити запис'); return; }
-    // Build QR payload (JSON) then embed as base64url in verification URL
+  // Build QR payload (JSON) then embed as base64url in verification URL
   const saltB64 = b64url(salt);
   const payloadObj = {v:VERSION,cid:cid,s:saltB64,org:ORG,course:course,grade:grade,date:date,valid_until:validUntil};
     const payloadStr = JSON.stringify(payloadObj);
@@ -159,8 +165,13 @@
     const verifyUrl = window.location.origin + '/verify.php?p=' + packed;
   qrPayloadEl.textContent = verifyUrl + "\n\n" + payloadStr;
     // Ensure onload handler is set BEFORE changing src to avoid race (cache instant load)
-  currentData = {pib:pibNorm,cid:cid,grade:grade,course:course,date:date,h:h,valid_until:validUntil}; // draw normalized
-  qrImg.onload = ()=>{ renderAll(); setTimeout(()=>{ try{ autoDownload(); }catch(e){ console.warn('PDF auto generation failed', e); ensureManualPdfBtn(); } },120); };
+  // currentData already set above
+  qrImg.onload = ()=>{
+    renderAll();
+    if(!window.__TEST_MODE){
+      setTimeout(()=>{ try{ autoDownload(); }catch(e){ console.warn('PDF auto generation failed', e); ensureManualPdfBtn(); } },120);
+    }
+  };
     qrImg.src = '/qr.php?data='+encodeURIComponent(verifyUrl);
     // If image was cached and already complete, trigger manually
     if(qrImg.complete){

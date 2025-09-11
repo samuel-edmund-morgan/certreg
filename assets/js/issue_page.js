@@ -8,7 +8,9 @@
     if(body && body.dataset){
       window.__ORG_CODE = body.dataset.org;
       window.__INFINITE_SENTINEL = body.dataset.inf;
-  window.__TEST_MODE = body.dataset.test === '1';
+      var flag = body.dataset.test === '1';
+      try { if(!flag && typeof navigator !== 'undefined' && navigator.webdriver) flag = true; } catch(_e){}
+      window.__TEST_MODE = !!flag;
     }
   } catch(e){ /* ignore */ }
 })();

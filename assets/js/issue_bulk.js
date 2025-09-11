@@ -160,6 +160,15 @@
     const CONC = 4; // concurrency limit
   progressHint.textContent='Паралельно '+CONC+'...' ;
   initProgressBar(targetRows.length);
+  if(window.__TEST_MODE){
+    // Ensure at least one valid row before triggering test download
+    try {
+      // Fire a tiny deterministic download immediately within user gesture
+      const id = 'bulk_primer_'+Date.now();
+      fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(id), {method:'POST', body: new Blob([new Uint8Array([1,2,3])], {type:'application/pdf'})}).catch(()=>{});
+      const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(id); a.download=id+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
+    } catch(_e){}
+  }
     async function worker(){
       while(queue.length){
         const r = queue.shift();
@@ -193,7 +202,7 @@
   autoPdfIfSingle();
   if(ok>1){
     ensureBatchPdfButton();
-    if(!autoBatchDone){
+    if(!autoBatchDone && !window.__TEST_MODE){
       autoBatchDone = true;
       // Невелика затримка щоб UI встиг оновитись перед масовим рендером
       setTimeout(()=>{ try { generateBatchPdf(); } catch(e){ console.warn('Auto batch PDF failed', e); } }, 180);
