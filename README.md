@@ -127,17 +127,13 @@ INSERT INTO creds (username, passhash) VALUES ('admin','<HASH>');
 ```
 
 ### 6. Nginx
-Канонічний приклад конфігурації знаходиться у `certreg.conf.example` в корені репозиторію.
+Приклад конфігурації знаходиться у `docs/nginx/certreg.conf`.
 
 Кроки:
 1) Скопіюйте приклад:
-   `/var/www/certreg/certreg.conf.example` → `/etc/nginx/sites-available/certreg`
+   `/var/www/certreg/docs/nginx/certreg.conf` → `/etc/nginx/sites-available/certreg`
 2) Відредагуйте `server_name` та `fastcgi_pass` під вашу версію PHP-FPM (напр., `/run/php/php8.3-fpm.sock`).
 3) Увімкніть сайт і перезавантажте nginx.
-
-Приклад підтримує «чисті URL» для публічних точок:
-- `/verify` → `verify.php` (301 redirect)
-- `/api/status` → `api/status.php` (301 redirect)
 
 Після зміни перевірте синтаксис і перезавантажте:
 
@@ -266,10 +262,11 @@ function detect_canonical_version(string $payload): int {
 ## Дорожня карта
 1. Винести всі inline scripts → чистий CSP.
 2. Batch PDF (M4).
-3. Nginx hardening + rate limiting (M6).
-4. QR refactor & caching (M7).
-5. Header diff self-check (M8).
-6. Розширена детекція гомогліфів.
+3. Спрощення статус‑колонки у `tokens.php`: прибрати кнопки, показувати лише «Активний» / «Відкликано».
+4. Nginx hardening + rate limiting (M6).
+5. QR refactor & caching (M7).
+6. Header diff self-check (M8).
+7. Розширена детекція гомогліфів.
 
 ## Ліцензія
 MIT
