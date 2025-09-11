@@ -12,6 +12,8 @@ $whitelist = [
   'header.php','footer.php','auth.php','db.php','config.php',
   // Infrastructure helpers
   'rate_limit.php',
+  // Test-only endpoint for CI/browser tests
+  'test_download.php',
   // Legacy stubs kept for compatibility (410/redirect)
   // Legacy stubs removed
 ];
