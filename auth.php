@@ -31,10 +31,15 @@ function require_admin() {
 
 function login_admin(string $u, string $p): bool {
     // Lazy-load DB only when performing login to avoid requiring DB on simple header includes
-    if (!isset($pdo)) {
+    global $pdo;
+    if (!($pdo instanceof PDO)) {
         require_once __DIR__.'/db.php';
     }
-    global $pdo;
+    if (!($pdo instanceof PDO)) {
+        // DB still not initialized – fail gracefully without fatal
+        error_log('DB not initialized in login_admin');
+        return false;
+    }
     $st = $pdo->prepare("SELECT id, passhash FROM creds WHERE username=?");
     $st->execute([$u]);
     $row = $st->fetch();
