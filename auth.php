@@ -17,7 +17,6 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     ]);
     session_start();
 }
-require_once __DIR__.'/db.php';
 
 function is_admin_logged(): bool {
     return !empty($_SESSION['admin_id']);
@@ -31,6 +30,10 @@ function require_admin() {
 }
 
 function login_admin(string $u, string $p): bool {
+    // Lazy-load DB only when performing login to avoid requiring DB on simple header includes
+    if (!isset($pdo)) {
+        require_once __DIR__.'/db.php';
+    }
     global $pdo;
     $st = $pdo->prepare("SELECT id, passhash FROM creds WHERE username=?");
     $st->execute([$u]);

@@ -141,6 +141,13 @@ jobs:
         with:
           php-version: '8.3'
 
+      - name: Prepare config.php
+        run: |
+          cp config.php.example config.php
+          sed -i "s/enter-db-name/testdb/" config.php
+          sed -i "s/enter-db-username/testuser/" config.php
+          sed -i "s/enter-db-password/testpass/" config.php
+
       - name: Start PHP server
         working-directory: .
         run: |
