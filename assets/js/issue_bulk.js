@@ -30,8 +30,7 @@
   const MAX_ROWS = 100;
   let lastErrors = []; // collect error objects {name, error}
   let autoBatchDone = false; // prevent duplicate auto batch PDF
-  // Test-mode reserved ticket to trigger download event under user gesture
-  let pendingTicket = null; // { id, name }
+  // Test-mode: no reserved ticket; we will POST bytes first, then GET to trigger download
 
   function normName(s){
     return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
@@ -101,10 +100,10 @@
     return null;
   }
   function updateGenerateState(){
-    let validCount = 0; let hasBlocking=false;
+    let validCount = 0;
     const dupMap = new Map();
     rows.forEach(r=>{
-      const err = validateRow(r); if(!err) validCount++; else hasBlocking=true;
+      const err = validateRow(r); if(!err) validCount++;
       const norm = r.name.trim()? normName(r.name) : null; if(norm){ if(!dupMap.has(norm)) dupMap.set(norm, []); dupMap.get(norm).push(r.id); }
     });
     // highlight duplicates
@@ -114,7 +113,7 @@
       const id = Number(tr.dataset.id);
       tr.classList.toggle('dup', duplicateIds.has(id));
     });
-    generateBtn.disabled = validCount===0 || hasBlocking;
+  generateBtn.disabled = validCount===0;
     generateBtn.textContent = 'Згенерувати ('+validCount+')';
   }
   addRowBtn.addEventListener('click', ()=>addRow());
@@ -150,7 +149,8 @@
     if(infinite) validUntil = INFINITE_SENTINEL; else if(!validUntil){ alert('Вкажіть дату "Дійсний до" або Безтерміновий.'); return; }
     if(!course || !date){ alert('Заповніть курс і дату.'); return; }
     if(!infinite && validUntil < date){ alert('Дата завершення раніше дати проходження.'); return; }
-    const csrf = window.__CSRF_TOKEN || document.querySelector('meta[name="csrf"]').content;
+  const metaCsrf = document.querySelector('meta[name="csrf"]');
+  const csrf = window.__CSRF_TOKEN || (metaCsrf && metaCsrf.content) || '';
   let done=0, ok=0, failed=0;
   lastErrors = [];
     generateBtn.disabled=true; retryBtn.classList.add('d-none');
@@ -236,19 +236,6 @@
   generateBtn.addEventListener('click', ()=>{
     const target = rows.filter(r=>r.status==='idle' || r.status==='error');
     if(!target.length) return;
-    // In test mode: reserve a ticket and trigger a waiting download immediately
-    if(window.__TEST_MODE){
-      const multi = target.length > 1;
-      const name = multi ? ('batch_certificates_'+Date.now()+'.pdf') : ('certificate_autostart.pdf');
-      const ticket = 'bulkstart_'+Math.random().toString(36).slice(2);
-      pendingTicket = { id: ticket, name };
-      try {
-        const a=document.createElement('a');
-        a.href = '/test_download.php?ticket='+encodeURIComponent(ticket)+'&wait=25&name='+encodeURIComponent(name)+'&kind=pdf&cid='+encodeURIComponent(name.replace(/\.pdf$/,''));
-        a.download = name;
-        document.body.appendChild(a); a.click(); a.remove();
-      } catch(_e){}
-    }
     processRows(target);
   });
   retryBtn.addEventListener('click', ()=>{
@@ -293,13 +280,18 @@
     const wrap = document.getElementById('bulkProgressBarWrap');
     const bar = document.getElementById('bulkProgressBar');
     if(!wrap||!bar) return;
-  bar.classList.remove('done'); bar.style.width='0%';
+  bar.classList.remove('done'); bar.style.width='1%';
   wrap.classList.remove('progress-hidden');
   wrap.setAttribute('aria-hidden','false');
   }
   function updateProgress(done,total){
     const bar = document.getElementById('bulkProgressBar'); if(!bar) return;
-    const pct = total? Math.round((done/total)*100):0; bar.style.width=pct+'%'; if(done===total) bar.classList.add('done');
+    const pct = total? Math.round((done/total)*100):0;
+    bar.style.width = (pct>0? pct : 1)+'%'; // keep at least 1% for visibility
+    if(done===total){
+      bar.classList.add('done');
+      const wrap = document.getElementById('bulkProgressBarWrap'); if(wrap){ wrap.classList.remove('progress-hidden'); wrap.setAttribute('aria-hidden','false'); }
+    }
   }
   // === Error log UI ===
   function renderErrorLog(){
@@ -352,10 +344,9 @@
         const pdfBytes = buildMultiPagePdfFromJpegs(pages, canvas.width, canvas.height);
         const blob = new Blob([pdfBytes], {type:'application/pdf'});
         if(window.__TEST_MODE){
-          // If we pre-reserved a ticket, fulfill it; else create on-demand
-          const ticket = pendingTicket && pendingTicket.id ? pendingTicket.id : ('batch_'+Math.random().toString(36).slice(2));
-          pendingTicket = null;
-          try { await fetch('/test_download.php?ticket='+encodeURIComponent(ticket), {method:'POST', body: blob}); } catch(_e){}
+          const filename = 'batch_certificates_'+Date.now()+'.pdf';
+          try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(filename.replace(/\.pdf$/,'')), {method:'POST', body: blob}); } catch(_e){}
+          const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(filename.replace(/\.pdf$/,''))+'&name='+encodeURIComponent(filename); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
           return;
         }
         const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='batch_certificates_'+Date.now()+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
@@ -481,9 +472,8 @@
     const total = parts.reduce((a,b)=>a+b.length,0); const out=new Uint8Array(total); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
     const blob = new Blob([out], {type:'application/pdf'});
     if(window.__TEST_MODE){
-      const ticket = pendingTicket && pendingTicket.id ? pendingTicket.id : ('row_'+cid+'_'+Math.random().toString(36).slice(2));
-      pendingTicket = null;
-      try { await fetch('/test_download.php?ticket='+encodeURIComponent(ticket), {method:'POST', body: blob}); } catch(_e){}
+      try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob}); } catch(_e){}
+      const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cid); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
       return;
     }
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
@@ -497,9 +487,8 @@
         const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
         const blob = new Blob([bytes], {type:'image/jpeg'});
   const filename = 'certificate_'+cid+'.jpg';
-  const ticket = 'jpg_'+cid+'_'+Math.random().toString(36).slice(2);
-  const a=document.createElement('a'); a.href='/test_download.php?ticket='+encodeURIComponent(ticket)+'&wait=25&kind=jpg&cid='+encodeURIComponent('certificate_'+cid); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
-  await fetch('/test_download.php?ticket='+encodeURIComponent(ticket), {method:'POST', body: blob});
+  await fetch('/test_download.php?kind=jpg&cid='+encodeURIComponent(cid), {method:'POST', body: blob});
+  const a=document.createElement('a'); a.href='/test_download.php?kind=jpg&cid='+encodeURIComponent(cid)+'&name='+encodeURIComponent(filename); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
       } catch(_e){}
       return;
     }
