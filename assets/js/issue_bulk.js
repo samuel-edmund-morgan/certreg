@@ -336,6 +336,13 @@
         }
         const pdfBytes = buildMultiPagePdfFromJpegs(pages, canvas.width, canvas.height);
         const blob = new Blob([pdfBytes], {type:'application/pdf'});
+        if(window.__TEST_MODE){
+          const id = 'batch_certificates_'+Date.now();
+          // Upload bytes first then trigger GET
+          fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(id), {method:'POST', body: blob}).catch(()=>{});
+          const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(id); a.download=id+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
+          return;
+        }
         const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='batch_certificates_'+Date.now()+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
       })();
     });
@@ -454,9 +461,27 @@
     push(xref); push(`trailer\n<< /Size ${objCount} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
     const total = parts.reduce((a,b)=>a+b.length,0); const out=new Uint8Array(total); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
     const blob = new Blob([out], {type:'application/pdf'});
+    if(window.__TEST_MODE){
+      // Upload bytes first, then trigger GET
+      fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cid), {method:'POST', body: blob}).catch(()=>{});
+      const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cid); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='certificate_'+cid+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);
   }
   function downloadJpg(canvas, cid){
+    if(window.__TEST_MODE){
+      // Upload actual JPG bytes before triggering download
+      try {
+        const dataUrl = canvas.toDataURL('image/jpeg',0.92);
+        const b64 = dataUrl.split(',')[1];
+        const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+        const blob = new Blob([bytes], {type:'image/jpeg'});
+        fetch('/test_download.php?kind=jpg&cid='+encodeURIComponent(cid), {method:'POST', body: blob}).catch(()=>{});
+      } catch(_e){}
+      const a=document.createElement('a'); a.href='/test_download.php?kind=jpg&cid='+encodeURIComponent(cid); a.download='certificate_'+cid+'.jpg'; document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
     const a=document.createElement('a'); a.href=canvas.toDataURL('image/jpeg',0.92); a.download='certificate_'+cid+'.jpg'; document.body.appendChild(a); a.click(); a.remove();
   }
   function buildQrForRow(data, cb){
