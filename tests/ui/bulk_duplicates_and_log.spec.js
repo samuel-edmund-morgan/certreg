@@ -16,12 +16,15 @@ test('duplicate detection adds dup class & error log visible (0)', async ({ page
   await page.fill('#bulkTable tbody tr:nth-child(2) input[name="name"]', 'дуплікейт   тест'); // normalized same
   await page.fill('#bulkTable tbody tr:nth-child(2) input[name="grade"]', 'A');
   // Trigger generation (will block until names valid, both valid)
-  const downloadPromise = page.waitForEvent('download');
   await page.click('#bulkGenerateBtn');
   await page.waitForSelector('#bulkProgressBar.done', { timeout: 20000 });
   await page.waitForSelector('#bulkTable tbody tr:nth-child(1).dup');
   await page.waitForSelector('#bulkTable tbody tr:nth-child(2).dup');
-  await downloadPromise; // consume batch or single depending on logic (should batch)
+  // Manual batch PDF: click after dup detection
+  await page.waitForSelector('#bulkBatchPdfBtn');
+  const downloadPromise = page.waitForEvent('download');
+  await page.click('#bulkBatchPdfBtn');
+  await downloadPromise;
   // Error log box always visible now
   await page.waitForSelector('#bulkErrorLog');
   const logText = await page.locator('#bulkErrorLog').innerText();

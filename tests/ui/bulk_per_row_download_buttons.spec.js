@@ -14,12 +14,15 @@ test('bulk per-row PDF & JPG buttons appear for each successful row', async ({ p
   await page.fill('#bulkTable tbody tr:nth-child(1) input[name="grade"]', 'A');
   await page.fill('#bulkTable tbody tr:nth-child(2) input[name="name"]', 'Кнопка Два');
   await page.fill('#bulkTable tbody tr:nth-child(2) input[name="grade"]', 'B');
-  const downloadPromise = page.waitForEvent('download');
   await page.click('#bulkGenerateBtn');
   await page.waitForSelector('#bulkProgressBar.done', { timeout: 20000 });
   await page.waitForSelector('#bulkTable tbody tr:nth-child(1) .status-badge.ok');
   await page.waitForSelector('#bulkTable tbody tr:nth-child(2) .status-badge.ok');
-  await downloadPromise; // consume batch PDF
+  // Manual batch PDF generation now
+  await page.waitForSelector('#bulkBatchPdfBtn');
+  const downloadPromise = page.waitForEvent('download');
+  await page.click('#bulkBatchPdfBtn');
+  await downloadPromise;
   // In results list, each successful line should have two buttons (PDF + JPG)
   const line1 = page.locator('#bulkResultLines div').nth(0);
   const line2 = page.locator('#bulkResultLines div').nth(1);

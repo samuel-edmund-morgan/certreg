@@ -1,17 +1,16 @@
 const { test, expect } = require('./fixtures');
 const { login } = require('./_helpers');
+const crypto = require('crypto');
 
 // Simple direct POST to /api/register.php to ensure endpoint responds and not hanging.
 test('register endpoint smoke', async ({ page }) => {
   await login(page);
-  // Need CSRF meta: load issue page quickly
-  await page.goto('/issue_token.php');
-  const csrf = await page.getAttribute('meta[name="csrf"]','content');
+  await page.goto('/issue_token.php'); // ensure CSRF meta tag present
   const today = new Date().toISOString().slice(0,10);
   const payload = {
-    cid: 'TESTCID'+Date.now().toString(36),
+    cid: 'TESTCID'+Date.now().toString(36)+Math.random().toString(36).slice(2,10),
     v: 2,
-    h: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+    h: crypto.randomBytes(32).toString('hex'), // unique 64 hex chars
     course: 'SMOKE',
     grade: 'A',
     date: today,

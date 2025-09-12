@@ -6,17 +6,18 @@ test.describe('Single issuance – PDF generation', () => {
   test('single certificate PDF download', async ({ page }, testInfo) => {
     await login(page);
     await page.goto('/issue_token.php');
-    await page.click('.tab[data-tab="single"]');
-    await page.waitForSelector('#issueSingleForm');
+  // Single tab is active by default, but click defensively.
+  await page.click('.tab[data-tab="single"]');
+  await page.waitForSelector('#issueForm');
     const today = new Date().toISOString().slice(0,10);
-    await page.fill('#issueSingleForm input[name="name"]', 'Тест Одинарний');
-    await page.fill('#issueSingleForm input[name="course"]', 'COURSE-SINGLE');
-    await page.fill('#issueSingleForm input[name="date"]', today);
-    await page.fill('#issueSingleForm input[name="grade"]', 'A');
+  await page.fill('#issueForm input[name="pib"]', 'Тест Одинарний');
+  await page.fill('#issueForm input[name="course"]', 'COURSE-SINGLE');
+  await page.fill('#issueForm input[name="date"]', today);
+  await page.fill('#issueForm input[name="grade"]', 'A');
 
     // Prepare to capture download triggered automatically in single issuance
-    const downloadPromise = page.waitForEvent('download');
-    await page.click('#issueSingleForm button[type="submit"]');
+  const downloadPromise = page.waitForEvent('download');
+  await page.click('#issueForm button[type="submit"]');
 
     const download = await downloadPromise;
     const filename = download.suggestedFilename();
