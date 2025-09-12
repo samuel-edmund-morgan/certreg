@@ -1,10 +1,13 @@
 // Bulk issuance logic (MVP) – sequential calls to /api/register.php reusing privacy model.
 (function(){
-            // Read test mode status from meta tag or body attribute, respecting CSP
-  const testModeMeta = document.querySelector('meta[name="test-mode"]');
-  if ((testModeMeta && testModeMeta.content === '1') || document.body.dataset.test === '1') {
-    try { window.__TEST_MODE = true; } catch(_e){}
-  }
+  // Defer test mode detection until DOM is ready to avoid race conditions.
+  document.addEventListener('DOMContentLoaded', () => {
+    const testModeMeta = document.querySelector('meta[name="test-mode"]');
+    if ((testModeMeta && testModeMeta.content === '1') || document.body.dataset.test === '1') {
+      try { window.__TEST_MODE = true; } catch(_e){}
+    }
+  });
+
   // Instrumentation & debug collection (non-invasive, capped size)
   const debugEvents = [];
   function logBulk(type, data){
