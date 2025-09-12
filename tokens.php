@@ -187,7 +187,7 @@ function sort_arrow($column, $currentSort, $currentDir) {
     }
     ?>
   <?php if($pages > 1):
-    render_pagination($page, $pages, ['q' => $q, 'state' => $state]);
+    render_pagination($page, $pages, ['q' => $q, 'state' => $state, 'sort' => $sort, 'dir' => $dir]);
   ?>
   <?php endif; ?>
 </section>
