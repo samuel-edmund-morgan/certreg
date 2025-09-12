@@ -7,24 +7,17 @@ body.admin-page .alert-banner {
 
   /* Висота липкого хедера та банера для коректних offsets */
   --topbar-h: 96px;
-  --alert-h: 36px; /* мінімальна висота банера; за пот  .table th a.sort:after {
-    content: '';
-    position: absolute;
-    right: 2px;
-    top: 50%;
-    margin-top: -3px;
-    border: 5px solid transparent;
-    opacity: 0.35;
-  }
-  .table th a.sort.asc:after {
-    margin-top: -8px;
-    border-bottom-color: #2563eb;
-    opacity: 1;
-  }
-  .table th a.sort.desc:after {
-    border-top-color: #2563eb;
-    opacity: 1;
-  }и відкоригуйте */
+  --alert-h: 36px; /* мінімальна висота банера; за пот    .table th a {
+  display: flex;
+  align-items: center;
+}
+
+.table th a svg {
+  width: 1em;
+  height: 1em;
+  margin-left: 0.25rem;
+  display: inline-block;
+}и відкоригуйте */
   --sticky-stack: calc(var(--topbar-h) + var(--alert-h));
 }
 
