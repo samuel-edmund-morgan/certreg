@@ -54,7 +54,7 @@ $csrfMeta = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
   <?php // auth already required above ?>
     <?php if (is_admin_logged()): ?>
   <a class="btn btn-light mr-8" href="/issue_token.php">Видача</a>
-  <a class="btn btn-light mr-8" href="/tokens.php">Сертифікати</a>
+  <a class="btn btn-light mr-8" href="/tokens.php">Нагороди</a>
   <a class="btn btn-light mr-8" href="/events.php">Журнал</a>
         <form action="/logout.php" method="post" class="d-inline">
           <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
@@ -75,8 +75,8 @@ $csrfMeta = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
   <div class="alert-banner" role="alert" aria-live="polite">
     <div class="alert-banner__marquee">
       <div class="alert-banner__track">
-        <span class="alert-banner__text">Увага! Якщо дані у вікні 'Технічні дані' не збігаються з даними роздрукованого сертифіката, це свідчить про підробку документа.</span>
-        <span class="alert-banner__text">Увага! Якщо дані у вікні 'Технічні дані' не збігаються з даними роздрукованого сертифіката, це свідчить про підробку документа.</span>
+  <span class="alert-banner__text">Увага! Якщо дані у вікні 'Технічні дані' не збігаються з даними роздрукованої нагороди, це свідчить про підробку документа.</span>
+  <span class="alert-banner__text">Увага! Якщо дані у вікні 'Технічні дані' не збігаються з даними роздрукованої нагороди, це свідчить про підробку документа.</span>
       </div>
     </div>
   </div>

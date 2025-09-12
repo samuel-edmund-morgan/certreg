@@ -75,7 +75,7 @@ function render_sort_arrow($column, $sort, $dir) {
 }
 ?>
 <section class="section">
-  <h2 class="mt-0">Сертифікати (анонімна модель)</h2>
+  <h2 class="mt-0">Нагороди (анонімна модель)</h2>
   <form id="filterForm" class="form filter-form" method="get">
     <input type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Пошук CID / курс / оцінка">
     <select name="state">

@@ -18,14 +18,14 @@ require __DIR__.'/header.php';
 ?>
 <section class="centered centered--top">
   <div class="card card--narrow">
-  <h1 class="card__title mt-0 fs-22">Перевірка сертифіката</h1>
+  <h1 class="card__title mt-0 fs-22">Перевірка нагороди</h1>
     <?php if($err): ?>
       <div class="alert alert-error mt-4 mb-0"><?= htmlspecialchars($err) ?></div>
     <?php else: ?>
       <div id="existBox" class="alert alert-info">Перевірка реєстраційного номера…</div>
       <form id="ownForm" class="form d-none mt-14" autocomplete="off">
         <label class="mb-12">ПІБ для підтвердження
-          <input type="text" name="pib" placeholder="Введіть ПІБ як на сертифікаті" required autocomplete="off">
+          <input type="text" name="pib" placeholder="Введіть ПІБ як на нагороді" required autocomplete="off">
         </label>
         <div class="text-center mb-8"><button class="btn btn-primary" type="submit">Перевірити належність</button></div>
       </form>

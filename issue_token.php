@@ -10,13 +10,13 @@ require_once __DIR__.'/header.php';
 $coords = $cfg['coords'] ?? [];
 ?>
 <section class="section">
-  <h2>Видача сертифікатів (ПІБ не зберігається у БД)</h2>
+  <h2>Видача нагород (ПІБ не зберігається у БД)</h2>
   <div class="tabs" role="tablist" aria-label="Режим видачі">
-    <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="single">Один сертифікат</button>
+  <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="single">Одна нагорода</button>
     <button type="button" class="tab" role="tab" aria-selected="false" data-tab="bulk">Масова генерація</button>
   </div>
   <div id="singleTab" class="tab-panel" role="tabpanel" aria-labelledby="single" data-panel="single">
-  <p class="maxw-760 fs-14 lh-14">ПІБ не зберігається на сервері. Після створення зображення сертифікат автоматично завантажиться. За потреби можна відкрити технічні деталі (CID, hash, QR payload) для аудиту.</p>
+  <p class="maxw-760 fs-14 lh-14">ПІБ не зберігається на сервері. Після створення зображення нагорода автоматично завантажиться. За потреби можна відкрити технічні деталі (CID, hash, QR payload) для аудиту.</p>
   <form id="issueForm" class="form flex-col gap-12 maxw-760" autocomplete="off">
     <label>ПІБ (тільки в зображенні)
       <input type="text" name="pib" required placeholder="Прізвище Ім'я" autocomplete="off">
@@ -70,7 +70,7 @@ $coords = $cfg['coords'] ?? [];
   </div><!-- /singleTab -->
 
   <div id="bulkTab" class="tab-panel d-none" role="tabpanel" aria-labelledby="bulk" data-panel="bulk">
-    <p class="maxw-760 fs-14 lh-14">Масова видача: імена не зберігаються; для кожного рядка клієнт локально обчислює HMAC. Спільні поля застосовуються до всіх. Обмеження: максимум 100 записів за один запуск.</p>
+  <p class="maxw-760 fs-14 lh-14">Масова видача нагород: імена не зберігаються; для кожного рядка клієнт локально обчислює HMAC. Спільні поля застосовуються до всіх. Обмеження: максимум 100 записів за один запуск.</p>
     <form id="bulkForm" class="form flex-col gap-14 maxw-760" autocomplete="off">
   <fieldset class="flex flex-wrap gap-12">
         <label class="minw-200 flex-1">Курс (спільний)
@@ -85,7 +85,7 @@ $coords = $cfg['coords'] ?? [];
         <div id="bulkValidUntilWrap" class="expiry-slot hidden-slot"><input type="date" name="valid_until" placeholder="YYYY-MM-DD" disabled></div>
       </div>
       <div class="bulk-table-wrapper">
-        <table class="table" id="bulkTable" aria-label="Список сертифікатів для генерації">
+  <table class="table" id="bulkTable" aria-label="Список нагород для генерації">
           <thead>
             <tr><th class="col-n">#</th><th>ПІБ</th><th class="col-grade">Оцінка</th><th class="col-status">Статус</th><th class="col-actions"></th></tr>
           </thead>

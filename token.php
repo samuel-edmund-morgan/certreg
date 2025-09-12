@@ -22,7 +22,7 @@ if(!empty($row['h'] ?? null)){
 }
 ?>
 <section class="section">
-  <h2 class="mt-0 flex flex-wrap gap-8 align-center">Сертифікат (CID): <span class="mono"><?= htmlspecialchars($row['cid']) ?></span>
+  <h2 class="mt-0 flex flex-wrap gap-8 align-center">Нагорода (CID): <span class="mono"><?= htmlspecialchars($row['cid']) ?></span>
     <button type="button" class="btn btn-sm" id="copyCidBtn" title="Копіювати CID">Копіювати CID</button>
     <?php if($intShort): ?>
       <span class="fs-14 text-muted">INT <code id="intCode" class="badge-int"><?= htmlspecialchars($intShort) ?></code></span>
@@ -73,7 +73,7 @@ if(!empty($row['h'] ?? null)){
     </div>
     <p class="fs-11 text-muted mt-14">Видалення безповоротне. Сервер не зберігає ПІБ, тому повторно привʼязати особу буде неможливо.</p>
     <p class="mt-10 flex gap-8 flex-wrap">
-  <a href="/tokens.php" class="btn btn-sm">← До сертифікатів</a>
+  <a href="/tokens.php" class="btn btn-sm">← До нагород</a>
     </p>
   </div>
 </section>
