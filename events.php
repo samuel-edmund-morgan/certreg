@@ -30,7 +30,7 @@ $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 require_once __DIR__.'/header.php';
 ?>
 <section class="section">
-  <h2 class="mt-0">Аудит подій токенів</h2>
+  <h2 class="mt-0">Журнал подій</h2>
   <form class="form filter-form" method="get">
     <input type="text" name="cid" placeholder="CID" value="<?= htmlspecialchars($cid) ?>" class="minw-280">
     <button class="btn" type="submit">Фільтр</button>

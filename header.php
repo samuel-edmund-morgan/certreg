@@ -54,8 +54,8 @@ $csrfMeta = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
   <?php // auth already required above ?>
     <?php if (is_admin_logged()): ?>
   <a class="btn btn-light mr-8" href="/issue_token.php">Видача</a>
-  <a class="btn btn-light mr-8" href="/tokens.php">Токени</a>
-  <a class="btn btn-light mr-8" href="/events.php">Аудит</a>
+  <a class="btn btn-light mr-8" href="/tokens.php">Сертифікати</a>
+  <a class="btn btn-light mr-8" href="/events.php">Журнал</a>
         <form action="/logout.php" method="post" class="d-inline">
           <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
           <button class="btn btn-light" type="submit">Вийти</button>

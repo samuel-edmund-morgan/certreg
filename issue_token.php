@@ -10,7 +10,7 @@ require_once __DIR__.'/header.php';
 $coords = $cfg['coords'] ?? [];
 ?>
 <section class="section">
-  <h2>Видача (анонімна модель без ПІБ у БД)</h2>
+  <h2>Видача сертифікатів (ПІБ не зберігається у БД)</h2>
   <div class="tabs" role="tablist" aria-label="Режим видачі">
     <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="single">Один сертифікат</button>
     <button type="button" class="tab" role="tab" aria-selected="false" data-tab="bulk">Масова генерація</button>
@@ -87,7 +87,7 @@ $coords = $cfg['coords'] ?? [];
       <div class="bulk-table-wrapper">
         <table class="table" id="bulkTable" aria-label="Список сертифікатів для генерації">
           <thead>
-            <tr><th class="col-n">#</th><th>ПІБ</th><th class="col-grade">Grade</th><th class="col-status">Статус</th><th class="col-actions"></th></tr>
+            <tr><th class="col-n">#</th><th>ПІБ</th><th class="col-grade">Оцінка</th><th class="col-status">Статус</th><th class="col-actions"></th></tr>
           </thead>
           <tbody></tbody>
         </table>

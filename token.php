@@ -22,7 +22,7 @@ if(!empty($row['h'] ?? null)){
 }
 ?>
 <section class="section">
-  <h2 class="mt-0 flex flex-wrap gap-8 align-center">CID: <span class="mono"><?= htmlspecialchars($row['cid']) ?></span>
+  <h2 class="mt-0 flex flex-wrap gap-8 align-center">Сертифікат (CID): <span class="mono"><?= htmlspecialchars($row['cid']) ?></span>
     <button type="button" class="btn btn-sm" id="copyCidBtn" title="Копіювати CID">Копіювати CID</button>
     <?php if($intShort): ?>
       <span class="fs-14 text-muted">INT <code id="intCode" class="badge-int"><?= htmlspecialchars($intShort) ?></code></span>
@@ -35,7 +35,7 @@ if(!empty($row['h'] ?? null)){
       <div><strong>Версія</strong></div><div><?= (int)$row['version'] ?></div>
       <div><strong>Курс</strong></div><div><?= htmlspecialchars($row['course'] ?? '') ?></div>
       <div><strong>Оцінка</strong></div><div><?= htmlspecialchars($row['grade'] ?? '') ?></div>
-      <div><strong>Дата (issued)</strong></div><div><?= htmlspecialchars($row['issued_date'] ?? '') ?></div>
+  <div><strong>Дата видачі</strong></div><div><?= htmlspecialchars($row['issued_date'] ?? '') ?></div>
       <div><strong>Створено (UTC)</strong></div><div><?= htmlspecialchars($row['created_at']) ?></div>
       <div><strong>Статус</strong></div><div>
         <?php if($row['revoked_at']): ?>
@@ -46,7 +46,7 @@ if(!empty($row['h'] ?? null)){
           <span class="badge badge-success">Активний</span>
         <?php endif; ?>
       </div>
-  <div><strong>Переглядів</strong></div><div><?= (int)($row['lookup_count'] ?? 0) ?></div>
+  <div><strong>Перевірок</strong></div><div><?= (int)($row['lookup_count'] ?? 0) ?></div>
   <div><strong>Остання перевірка</strong></div><div><?= $row['last_lookup_at'] ? htmlspecialchars($row['last_lookup_at']) : '—' ?></div>
     </div>
     <hr class="my-18">
@@ -73,7 +73,7 @@ if(!empty($row['h'] ?? null)){
     </div>
     <p class="fs-11 text-muted mt-14">Видалення безповоротне. Сервер не зберігає ПІБ, тому повторно привʼязати особу буде неможливо.</p>
     <p class="mt-10 flex gap-8 flex-wrap">
-      <a href="/tokens.php" class="btn btn-sm">← До списку</a>
+  <a href="/tokens.php" class="btn btn-sm">← До сертифікатів</a>
     </p>
   </div>
 </section>

@@ -75,7 +75,7 @@ function render_sort_arrow($column, $sort, $dir) {
 }
 ?>
 <section class="section">
-  <h2 class="mt-0">Токени (анонімні сертифікати)</h2>
+  <h2 class="mt-0">Сертифікати (анонімна модель)</h2>
   <form id="filterForm" class="form filter-form" method="get">
     <input type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Пошук CID / курс / оцінка">
     <select name="state">
@@ -118,7 +118,7 @@ function render_sort_arrow($column, $sort, $dir) {
           <th><a href="#" class="sort<?= sort_arrow('issued_date', $sort, $dir) ?>" data-sort="issued_date">Дата <?= render_sort_arrow('issued_date', $sort, $dir) ?></a></th>
           <th><a href="#" class="sort<?= sort_arrow('created_at', $sort, $dir) ?>" data-sort="created_at">Створено <?= render_sort_arrow('created_at', $sort, $dir) ?></a></th>
           <th><a href="#" class="sort<?= sort_arrow('status', $sort, $dir) ?>" data-sort="status">Статус <?= render_sort_arrow('status', $sort, $dir) ?></a></th>
-          <th title="К-сть перевірок / остання"><a href="#" class="sort<?= sort_arrow('lookup_count', $sort, $dir) ?>" data-sort="lookup_count">Переглядів <?= render_sort_arrow('lookup_count', $sort, $dir) ?></a></th>
+          <th title="Кількість перевірок / остання"><a href="#" class="sort<?= sort_arrow('lookup_count', $sort, $dir) ?>" data-sort="lookup_count">Перевірок <?= render_sort_arrow('lookup_count', $sort, $dir) ?></a></th>
           <th></th>
         </tr>
       </thead>
