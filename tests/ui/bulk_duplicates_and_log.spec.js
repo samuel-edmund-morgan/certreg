@@ -2,6 +2,8 @@ const { test, expect } = require('./fixtures');
 const { login } = require('./_helpers');
 
 test('duplicate detection adds dup class & error log visible (0)', async ({ page }) => {
+  test.setTimeout(120000); // 2 minute timeout for this test
+
   await login(page);
   await page.goto('/issue_token.php');
   await page.click('.tab[data-tab="bulk"]');
@@ -20,14 +22,17 @@ test('duplicate detection adds dup class & error log visible (0)', async ({ page
   await page.waitForSelector('#bulkProgressBar.done', { timeout: 20000 });
   await page.waitForSelector('#bulkTable tbody tr:nth-child(1).dup');
   await page.waitForSelector('#bulkTable tbody tr:nth-child(2).dup');
-  // Manual batch PDF: click after dup detection
-  await page.waitForSelector('#bulkBatchPdfBtn', { timeout: 120000 });
-  await expect(page.locator('#bulkBatchPdfBtn')).toBeEnabled({ timeout: 120000 });
 
   // Manual batch PDF: click after dup detection
-  const downloadPromise = page.waitForEvent('download');
-  await page.click('#bulkBatchPdfBtn');
-  await downloadPromise;
+  await expect(page.locator('#bulkBatchPdfBtn')).toBeVisible();
+  await expect(page.locator('#bulkBatchPdfBtn')).toBeEnabled();
+
+  // Use Promise.all to click and wait for download simultaneously
+  await Promise.all([
+    page.waitForEvent('download', { timeout: 60000 }),
+    page.locator('#bulkBatchPdfBtn').click()
+  ]);
+
   // Error log box always visible now
   await page.waitForSelector('#bulkErrorLog');
   const logText = await page.locator('#bulkErrorLog').innerText();

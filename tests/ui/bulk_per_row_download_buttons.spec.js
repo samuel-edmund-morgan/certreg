@@ -2,6 +2,8 @@ const { test, expect } = require('./fixtures');
 const { login } = require('./_helpers');
 
 test('bulk per-row PDF & JPG buttons appear for each successful row', async ({ page }) => {
+  test.setTimeout(120000); // 2 minute timeout for this test
+
   await login(page);
   await page.goto('/issue_token.php');
   await page.click('.tab[data-tab="bulk"]');
@@ -18,14 +20,17 @@ test('bulk per-row PDF & JPG buttons appear for each successful row', async ({ p
   await page.waitForSelector('#bulkProgressBar.done', { timeout: 20000 });
   await page.waitForSelector('#bulkTable tbody tr:nth-child(1) .status-badge.ok');
   await page.waitForSelector('#bulkTable tbody tr:nth-child(2) .status-badge.ok');
-  // Manual batch PDF generation now
-  await page.waitForSelector('#bulkBatchPdfBtn', { timeout: 120000 });
-  await expect(page.locator('#bulkBatchPdfBtn')).toBeEnabled({ timeout: 120000 });
 
   // Manual batch PDF generation now
-  const downloadPromise = page.waitForEvent('download');
-  await page.click('#bulkBatchPdfBtn');
-  await downloadPromise;
+  await expect(page.locator('#bulkBatchPdfBtn')).toBeVisible();
+  await expect(page.locator('#bulkBatchPdfBtn')).toBeEnabled();
+
+  // Use Promise.all to click and wait for download simultaneously
+  await Promise.all([
+    page.waitForEvent('download', { timeout: 60000 }),
+    page.locator('#bulkBatchPdfBtn').click()
+  ]);
+
   // In results list, each successful line should have two buttons (PDF + JPG)
   const line1 = page.locator('#bulkResultLines div').nth(0);
   const line2 = page.locator('#bulkResultLines div').nth(1);

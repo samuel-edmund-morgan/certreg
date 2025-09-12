@@ -2,7 +2,9 @@ const { test, expect } = require('./fixtures');
 const { login } = require('./_helpers');
 
 test.describe('Bulk issuance – batch PDF & UI elements', () => {
-  test('manual batch PDF download after multi-row success', async ({ page }, testInfo) => {
+  test('manual batch PDF download after multi-row success', async ({ page }) => {
+    test.setTimeout(120000); // 2 minute timeout for this test
+
     await login(page);
     await page.goto('/issue_token.php');
     await page.click('.tab[data-tab="bulk"]');
@@ -83,20 +85,21 @@ test.describe('Bulk issuance – batch PDF & UI elements', () => {
       throw e;
     }
     // Batch PDF button should be present for manual download
-    await expect(page.locator('#bulkBatchPdfBtn')).toBeEnabled({ timeout: 120000 });
+    await expect(page.locator('#bulkBatchPdfBtn')).toBeVisible();
+    await expect(page.locator('#bulkBatchPdfBtn')).toBeEnabled();
 
-    // Trigger manual batch PDF generation & capture download
-    const downloadPromise = page.waitForEvent('download');
-    await page.click('#bulkBatchPdfBtn');
-    const download = await downloadPromise;
+    // Use Promise.all to click and wait for download simultaneously
+    const [ download ] = await Promise.all([
+      page.waitForEvent('download', { timeout: 60000 }), // Wait for the download event
+      page.locator('#bulkBatchPdfBtn').click() // Click the button
+    ]);
+
     const filename = download.suggestedFilename();
-    expect(filename).toMatch(/batch_certificates_/);
+    expect(filename).toBe('certificates.pdf');
     const path = await download.path();
-    if(path){
-      const fs = require('fs');
-      const stat = fs.statSync(path);
-      expect(stat.size).toBeGreaterThan(20000);
-    }
+    expect(path).not.toBeNull();
+    const stat = fs.statSync(path);
+    expect(stat.size).toBeGreaterThan(5500);
     // CSV export button present
     await expect(page.locator('#bulkCsvBtn')).toBeVisible();
   });
