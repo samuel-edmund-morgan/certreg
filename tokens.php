@@ -9,9 +9,17 @@ require_once __DIR__.'/db.php';
 
 $q = trim($_GET['q'] ?? '');
 $state = $_GET['state'] ?? '';
+$sort = $_GET['sort'] ?? 'id';
+$dir = $_GET['dir'] ?? 'desc';
 $page = max(1,(int)($_GET['page'] ?? 1));
 $perPage = 50;
 $offset = ($page-1)*$perPage;
+
+$allowedSorts = ['id', 'cid', 'version', 'course', 'grade', 'issued_date', 'created_at', 'status', 'lookup_count'];
+if(!in_array($sort, $allowedSorts, true)) {
+    $sort = 'id';
+}
+$dir = strtolower($dir) === 'asc' ? 'asc' : 'desc';
 
 $where = '';$params=[];$conds=[];
 if($q!==''){
@@ -27,12 +35,17 @@ if($conds){
   $where = 'WHERE '.implode(' AND ',$conds);
 }
 
+$orderBy = "ORDER BY {$sort} {$dir}";
+if ($sort === 'status') {
+    $orderBy = "ORDER BY revoked_at IS NOT NULL {$dir}, id {$dir}";
+}
+
 $totalSt = $pdo->prepare("SELECT COUNT(*) FROM tokens $where");
 foreach($params as $k=>$v) $totalSt->bindValue($k,$v);
 $totalSt->execute();
 $total = (int)$totalSt->fetchColumn();
 
-$st = $pdo->prepare("SELECT cid, version, course, grade, issued_date, revoked_at, revoke_reason, created_at, lookup_count, last_lookup_at FROM tokens $where ORDER BY id DESC LIMIT :lim OFFSET :off");
+$st = $pdo->prepare("SELECT cid, version, course, grade, issued_date, revoked_at, revoke_reason, created_at, lookup_count, last_lookup_at FROM tokens $where {$orderBy} LIMIT :lim OFFSET :off");
 foreach($params as $k=>$v) $st->bindValue($k,$v);
 $st->bindValue(':lim',$perPage,PDO::PARAM_INT);
 $st->bindValue(':off',$offset,PDO::PARAM_INT);
@@ -40,6 +53,13 @@ $st->execute();
 $rows = $st->fetchAll();
 $pages = max(1,(int)ceil($total/$perPage));
 $csrf = csrf_token();
+
+function sort_arrow($column, $currentSort, $currentDir) {
+    if ($column === $currentSort) {
+        return $currentDir === 'asc' ? ' asc' : ' desc';
+    }
+    return '';
+}
 ?>
 <section class="section">
   <h2 class="mt-0">Токени (анонімні сертифікати)</h2>
@@ -78,14 +98,14 @@ $csrf = csrf_token();
       <thead>
         <tr>
           <th><input type="checkbox" id="chkAll"></th>
-          <th><a href="#" class="sort" data-sort="cid">CID</a></th>
-          <th><a href="#" class="sort" data-sort="version">Версія</a></th>
-          <th><a href="#" class="sort" data-sort="course">Курс</a></th>
-          <th><a href="#" class="sort" data-sort="grade">Оцінка</a></th>
-          <th><a href="#" class="sort" data-sort="issued">Дата</a></th>
-          <th><a href="#" class="sort" data-sort="created">Створено</a></th>
-          <th><a href="#" class="sort" data-sort="status">Статус</a></th>
-          <th title="К-сть перевірок / остання">Переглядів</th>
+          <th><a href="#" class="sort<?= sort_arrow('cid', $sort, $dir) ?>" data-sort="cid">CID</a></th>
+          <th><a href="#" class="sort<?= sort_arrow('version', $sort, $dir) ?>" data-sort="version">Версія</a></th>
+          <th><a href="#" class="sort<?= sort_arrow('course', $sort, $dir) ?>" data-sort="course">Курс</a></th>
+          <th><a href="#" class="sort<?= sort_arrow('grade', $sort, $dir) ?>" data-sort="grade">Оцінка</a></th>
+          <th><a href="#" class="sort<?= sort_arrow('issued_date', $sort, $dir) ?>" data-sort="issued_date">Дата</a></th>
+          <th><a href="#" class="sort<?= sort_arrow('created_at', $sort, $dir) ?>" data-sort="created_at">Створено</a></th>
+          <th><a href="#" class="sort<?= sort_arrow('status', $sort, $dir) ?>" data-sort="status">Статус</a></th>
+          <th title="К-сть перевірок / остання"><a href="#" class="sort<?= sort_arrow('lookup_count', $sort, $dir) ?>" data-sort="lookup_count">Переглядів</a></th>
           <th></th>
         </tr>
       </thead>

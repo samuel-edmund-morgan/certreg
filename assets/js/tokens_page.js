@@ -126,37 +126,26 @@
     }
     executeBtn.addEventListener('click', runBulk);
   }
-  // Sorting (client-side simple for current page)
+  // Sorting (server-side)
   const table = document.querySelector('.table');
   if(table){
-    const tbody = table.querySelector('tbody');
     table.querySelectorAll('th a.sort').forEach(a=>{
       a.addEventListener('click', e=>{
         e.preventDefault();
         const key = a.dataset.sort;
-        const current = a.classList.contains('active') ? (a.classList.contains('asc') ? 'asc':'desc'):null;
-        table.querySelectorAll('th a.sort').forEach(x=>x.classList.remove('active','asc','desc'));
+        const currentUrl = new URL(window.location);
+        const currentSort = currentUrl.searchParams.get('sort');
+        const currentDir = currentUrl.searchParams.get('dir') || 'desc';
+        
         let nextDir = 'asc';
-        if(current==='asc') nextDir='desc'; else if(current==='desc') nextDir='asc';
-        a.classList.add('active', nextDir);
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        rows.sort((r1,r2)=>{
-          function val(r){
-            if(key==='cid') return r.getAttribute('data-cid');
-            if(key==='created') return r.getAttribute('data-created');
-            if(key==='status') return r.getAttribute('data-status');
-            if(key==='version') return r.children[2].textContent.trim();
-            if(key==='course') return r.children[3].textContent.trim();
-            if(key==='grade') return r.children[4].textContent.trim();
-            if(key==='issued') return r.children[5].textContent.trim();
-            return '';
-          }
-          const v1 = val(r1); const v2 = val(r2);
-          if(v1 < v2) return nextDir==='asc' ? -1:1;
-          if(v1 > v2) return nextDir==='asc' ? 1:-1;
-          return 0;
-        });
-        rows.forEach(r=>tbody.appendChild(r));
+        if(currentSort === key && currentDir === 'asc') {
+          nextDir = 'desc';
+        }
+        
+        currentUrl.searchParams.set('sort', key);
+        currentUrl.searchParams.set('dir', nextDir);
+        currentUrl.searchParams.delete('page'); // Reset to first page on new sort
+        window.location.href = currentUrl.toString();
       });
     });
   }

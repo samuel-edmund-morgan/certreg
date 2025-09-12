@@ -345,8 +345,8 @@ main{flex:1}
   .row-selected td{background:#e0f2fe !important}
   .table th a.sort{display:inline-block;position:relative;padding-right:14px}
   .table th a.sort:after{content:'';position:absolute;right:2px;top:50%;width:6px;height:10px;background:linear-gradient(to bottom,#94a3b8 50%,transparent 50%);opacity:.35;transform:translateY(-50%)}
-  .table th a.sort.active.asc:after{background:linear-gradient(to bottom,#2563eb 50%,transparent 50%);}
-  .table th a.sort.active.desc:after{background:linear-gradient(to top,#2563eb 50%,transparent 50%);}
+  .table th a.sort.active.asc:after, .table th a.sort.asc:after{background:linear-gradient(to bottom,#2563eb 50%,transparent 50%); opacity: 1;}
+  .table th a.sort.active.desc:after, .table th a.sort.desc:after{background:linear-gradient(to top,#2563eb 50%,transparent 50%); opacity: 1;}
   /* Bulk bar reason field collapse logic */
   #bulkBar{gap:8px}
   #bulkReason{min-width:220px;}
