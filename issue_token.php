@@ -21,12 +21,6 @@ $coords = $cfg['coords'] ?? [];
     <label>ПІБ (тільки в зображенні)
       <input type="text" name="pib" required placeholder="Прізвище Ім'я" autocomplete="off">
     </label>
-    <label>Курс
-      <input type="text" name="course" required placeholder="Курс з основ кібербезпеки">
-    </label>
-    <label>Оцінка
-      <input type="text" name="grade" required placeholder="A" maxlength="16">
-    </label>
     <label>Додаткова інформація (необов’язково)
       <input type="text" name="extra" placeholder="напр., Номінація — Стійкість" maxlength="255">
       <span class="fs-12 text-muted">Це поле зберігається у БД та додається у QR-пейлоад (без ПІБ). Якщо не потрібно — залиште порожнім.</span>
@@ -77,11 +71,11 @@ $coords = $cfg['coords'] ?? [];
   <p class="maxw-760 fs-14 lh-14">Масова видача нагород: імена не зберігаються; для кожного рядка клієнт локально обчислює HMAC. Спільні поля застосовуються до всіх. Обмеження: максимум 100 записів за один запуск.</p>
     <form id="bulkForm" class="form flex-col gap-14 maxw-760" autocomplete="off">
   <fieldset class="flex flex-wrap gap-12">
-        <label class="minw-200 flex-1">Курс (спільний)
-          <input type="text" name="course" required placeholder="Курс з основ кібербезпеки">
-        </label>
         <label class="minw-200">Дата проходження
           <input type="date" name="date" required>
+        </label>
+        <label class="minw-200 flex-1">Додаткова інформація (спільна, необов’язково)
+          <input type="text" name="extra" placeholder="напр., Номінація — Стійкість" maxlength="255">
         </label>
       </fieldset>
       <div class="flex flex-wrap gap-12 align-center" id="bulkExpiryWrap">
@@ -91,7 +85,7 @@ $coords = $cfg['coords'] ?? [];
       <div class="bulk-table-wrapper">
   <table class="table" id="bulkTable" aria-label="Список нагород для генерації">
           <thead>
-            <tr><th class="col-n">#</th><th>ПІБ</th><th class="col-grade">Оцінка</th><th class="col-status">Статус</th><th class="col-actions"></th></tr>
+            <tr><th class="col-n">#</th><th>ПІБ</th><th class="col-status">Статус</th><th class="col-actions"></th></tr>
           </thead>
           <tbody></tbody>
         </table>

@@ -37,9 +37,9 @@ require __DIR__.'/header.php';
           <strong>Версія:</strong> <span id="verOut"></span><br>
           <strong>Організація:</strong> <span id="orgOut"></span><br>
           <strong>Сіль (base64url):</strong> <code class="code-box mt-2" id="saltOut"></code>
-          <strong>Курс:</strong> <span id="courseOut"></span><br>
-          <strong>Оцінка:</strong> <span id="gradeOut"></span><br>
           <strong>Дата:</strong> <span id="dateOut"></span><br>
+          <strong>Канон (URL):</strong> <span id="canonOut"></span><br>
+          <strong>Додаткова інформація:</strong> <span id="extraOut"></span><br>
           <strong>H (з сервера):</strong> <code class="code-box mt-2" id="hashOut"></code>
           <strong>Integrity (INT):</strong> <span id="intOut" class="mono"></span>
         </div>

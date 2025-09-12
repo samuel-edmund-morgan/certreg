@@ -1,6 +1,7 @@
 <?php
 // Safe DB migration runner for v3 changes
 // - Adds tokens.extra_info if missing
+// - Drops legacy tokens.course and tokens.grade (v3-only model)
 // Usage: php scripts/migrate.php
 
 $cfg = require __DIR__.'/../config.php';
@@ -23,11 +24,31 @@ try {
     // 1) Add tokens.extra_info if missing
     if (!column_exists($pdo, $dbName, 'tokens', 'extra_info')) {
         echo " - Adding column tokens.extra_info... ";
-        $pdo->exec("ALTER TABLE `tokens` ADD COLUMN `extra_info` VARCHAR(255) NULL AFTER `grade`");
+        // If grade column no longer exists, fallback to position after h
+        $afterCol = column_exists($pdo, $dbName, 'tokens', 'grade') ? 'grade' : 'h';
+        $pdo->exec("ALTER TABLE `tokens` ADD COLUMN `extra_info` VARCHAR(255) NULL AFTER `{$afterCol}`");
         echo "done.\n";
         $changed = true;
     } else {
         echo " - Column tokens.extra_info already exists.\n";
+    }
+
+    // 2) Drop legacy columns course and grade if present
+    if (column_exists($pdo, $dbName, 'tokens', 'course')) {
+        echo " - Dropping column tokens.course... ";
+        $pdo->exec("ALTER TABLE `tokens` DROP COLUMN `course`");
+        echo "done.\n";
+        $changed = true;
+    } else {
+        echo " - Column tokens.course already absent.\n";
+    }
+    if (column_exists($pdo, $dbName, 'tokens', 'grade')) {
+        echo " - Dropping column tokens.grade... ";
+        $pdo->exec("ALTER TABLE `tokens` DROP COLUMN `grade`");
+        echo "done.\n";
+        $changed = true;
+    } else {
+        echo " - Column tokens.grade already absent.\n";
     }
 
     if(!$changed){

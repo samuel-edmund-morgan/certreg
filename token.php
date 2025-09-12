@@ -33,8 +33,6 @@ if(!empty($row['h'] ?? null)){
   <div class="card maxw-760">
     <div class="details-grid">
       <div><strong>Версія</strong></div><div><?= (int)$row['version'] ?></div>
-      <div><strong>Курс</strong></div><div><?= htmlspecialchars($row['course'] ?? '') ?></div>
-  <div><strong>Оцінка</strong></div><div><?= htmlspecialchars($row['grade'] ?? '') ?></div>
   <div><strong>Додаткова інформація</strong></div><div><?= htmlspecialchars($row['extra_info'] ?? '') ?></div>
   <div><strong>Дата видачі</strong></div><div><?= htmlspecialchars($row['issued_date'] ?? '') ?></div>
       <div><strong>Створено (UTC)</strong></div><div><?= htmlspecialchars($row['created_at']) ?></div>

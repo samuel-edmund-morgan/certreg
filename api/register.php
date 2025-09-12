@@ -7,7 +7,7 @@ if(!headers_sent()) header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__.'/../rate_limit.php';
 rate_limit('register');
 
-// Expect JSON: {cid, v, h, course, grade, date, valid_until?, extra_info?}
+// Expect JSON: {cid, v:3, h, date, valid_until, extra_info?} – v3 only
 $raw = isset($GLOBALS['__TEST_JSON_BODY']) ? $GLOBALS['__TEST_JSON_BODY'] : file_get_contents('php://input');
 $payload = json_decode($raw, true);
 if (!is_array($payload)) { http_response_code(400); echo json_encode(['error'=>'bad_json']); exit; }
@@ -22,10 +22,8 @@ function val_str($a,$k,$max){
 }
 }
 $cid = val_str($payload,'cid',64);
-$v   = (int)($payload['v'] ?? 1);
+$v   = (int)($payload['v'] ?? 3);
 $h   = val_str($payload,'h',64);
-$course = val_str($payload,'course',100);
-$grade  = val_str($payload,'grade',32);
 $extra  = val_str($payload,'extra_info',255);
 $date   = val_str($payload,'date',10); // issued_date YYYY-MM-DD
 $validUntil = val_str($payload,'valid_until',10); // YYYY-MM-DD or sentinel
@@ -37,27 +35,16 @@ if (!$cid || !$h || strlen($h)!==64 || !ctype_xdigit($h)) {
   http_response_code(422); echo json_encode(['error'=>'invalid_fields']); exit;
 }
 if ($date && !preg_match('/^\d{4}-\d{2}-\d{2}$/',$date)) { $date=null; }
-if ($v === 2 || $v === 3) {
-  if(!$validUntil){ $validUntil = $sentinel; }
-  if(!preg_match('/^\d{4}-\d{2}-\d{2}$/',$validUntil)) { http_response_code(422); echo json_encode(['error'=>'bad_valid_until']); exit; }
-  // basic logical check: if not sentinel and earlier than issued_date
-  if($validUntil !== $sentinel && $date && strcmp($validUntil,$date) < 0){ http_response_code(422); echo json_encode(['error'=>'expiry_before_issue']); exit; }
-} else {
-  // v1 should not send valid_until; normalize to null for DB insert compatibility (will default sentinel by migration if missing)
-  $validUntil = null;
-}
+// v3 only
+if ($v !== 3) { http_response_code(422); echo json_encode(['error'=>'unsupported_version']); exit; }
+if(!$validUntil){ $validUntil = $sentinel; }
+if(!preg_match('/^\d{4}-\d{2}-\d{2}$/',$validUntil)) { http_response_code(422); echo json_encode(['error'=>'bad_valid_until']); exit; }
+// basic logical check: if not sentinel and earlier than issued_date
+if($validUntil !== $sentinel && $date && strcmp($validUntil,$date) < 0){ http_response_code(422); echo json_encode(['error'=>'expiry_before_issue']); exit; }
 
 try {
-  if($v===2){
-    $st = $pdo->prepare("INSERT INTO tokens (cid, version, h, course, grade, issued_date, valid_until) VALUES (?,?,?,?,?,?,?)");
-    $st->execute([$cid,$v,$h,$course,$grade,$date,$validUntil]);
-  } elseif($v===3) {
-    $st = $pdo->prepare("INSERT INTO tokens (cid, version, h, course, grade, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?,?,?)");
-    $st->execute([$cid,$v,$h,$course,$grade,$extra,$date,$validUntil]);
-  } else {
-    $st = $pdo->prepare("INSERT INTO tokens (cid, version, h, course, grade, issued_date) VALUES (?,?,?,?,?,?)");
-    $st->execute([$cid,$v,$h,$course,$grade,$date]);
-  }
+  $st = $pdo->prepare("INSERT INTO tokens (cid, version, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?)");
+  $st->execute([$cid,$v,$h,$extra,$date,$validUntil]);
   $tokenId = $pdo->lastInsertId();
   // Audit: creation event (no PII)
   try {

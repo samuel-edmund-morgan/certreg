@@ -1,12 +1,12 @@
-// Minimal client-side issuance logic (Variant A Step 2)
-// 1. Normalize name
+// Client-side issuance (v3-only, privacy-first)
+// 1. Normalize name (NFC, trim, uppercase, remove apostrophes)
 // 2. Generate per-certificate salt
-// 3. Build canonical string v1|NAME|COURSE|GRADE|DATE
+// 3. Build canonical string v3|PIB|ORG|CID|DATE|VALID_UNTIL|CANON_URL|EXTRA
 // 4. HMAC-SHA256(salt, canonical) -> hex h
 // 5. Generate cid
-// 6. POST /api/register (cid, v, h, course, grade, date)
-// 7. Build QR payload JSON {v,cid,s,course,grade,date} (base64url salt)
-// 8. Request server QR (non-PII) /qr.php?data=...
+// 6. POST /api/register (cid, v:3, h, date, valid_until, extra_info)
+// 7. Build QR payload JSON {v:3,cid,s,org,date,valid_until,canon,extra}
+// 8. Request server QR /qr.php?data=...
 // 9. Render certificate preview on canvas
 
 (function(){
@@ -77,21 +77,15 @@
     ctx.font = '28px sans-serif';
     const cName = coords.name || {x:600,y:420};
     const cId   = coords.id   || {x:600,y:445};
-  const cScore= coords.score|| {x:600,y:470};
-  const cCourse=coords.course||{x:600,y:520};
-  const cExtra = coords.extra || cCourse;
+    const cExtra = coords.extra || (coords.course||{x:600,y:520});
   const cDate = coords.date || {x:600,y:570};
   const cExp  = coords.expires || {x:600,y:600};
     const cQR   = coords.qr   || {x:150,y:420,size:220};
     ctx.fillText(currentData.pib, cName.x, cName.y);
     ctx.font = '20px sans-serif'; ctx.fillText(currentData.cid, cId.x, cId.y);
-    if(currentData.extra){
-      ctx.font = '24px sans-serif';
-      ctx.fillText(String(currentData.extra), cExtra.x, cExtra.y);
-    } else {
-      ctx.font = '24px sans-serif'; ctx.fillText('Оцінка: '+currentData.grade, cScore.x, cScore.y);
-      ctx.fillText('Курс: '+currentData.course, cCourse.x, cCourse.y);
-    }
+    // v3 only: render extra if provided
+    ctx.font = '24px sans-serif';
+    if(currentData.extra){ ctx.fillText(String(currentData.extra), cExtra.x, cExtra.y); }
     ctx.fillText('Дата: '+currentData.date, cDate.x, cDate.y);
     // Expiry line (uses sentinel for infinite)
     const expLabel = currentData.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : currentData.valid_until;
@@ -124,8 +118,8 @@
   const genBtn = document.getElementById('generateBtn');
   if(genBtn) genBtn.disabled = true;
     const pibRaw = form.pib.value;
-  const course = form.course.value.trim();
-  const grade  = form.grade.value.trim();
+  const course = '';
+  const grade  = '';
   const extra  = (form.extra && form.extra.value ? form.extra.value.trim() : '');
   const date   = form.date.value; // issued_date YYYY-MM-DD
   const infinite = form.infinite.checked;
@@ -133,7 +127,7 @@
   if(infinite){ validUntil = INFINITE_SENTINEL; }
   if(!infinite && !validUntil){ alert('Вкажіть дату "Дійсний до" або позначте Безтерміновий.'); return; }
   if(!infinite && validUntil < date){ alert('Дата закінчення не може бути раніше дати проходження.'); return; }
-    if(!pibRaw||!course||!grade||!date){ return; }
+    if(!pibRaw || !date){ if(genBtn) genBtn.disabled=false; return; }
     if(hasHomoglyphRisk(pibRaw)){
       const risk = homoglyphLatinLetters(pibRaw).join(', ');
       alert('У ПІБ виявлено можливі латинські символи: '+risk+' разом із кирилицею. Замініть їх кириличними аналогами (А, В, С, Е, Н, І, К, М, О, Р, Т, Х, У).');
@@ -142,27 +136,19 @@
   const pibNorm = normName(pibRaw); // normalized (uppercase) used in canonical
     const salt = crypto.getRandomValues(new Uint8Array(32));
   const cid = genCid();
-  let version, canonical, qrPayload;
-  if(extra){
-    // v3 canonical: v3|PIB|ORG|CID|DATE|VALID_UNTIL|CANON_URL|EXTRA
-    version = 3;
-    canonical = `v3|${pibNorm}|${ORG}|${cid}|${date}|${validUntil}|${CANON_URL}|${extra}`;
-  } else {
-    // v2 canonical: v2|PIB|ORG|CID|COURSE|GRADE|DATE|VALID_UNTIL
-    version = 2;
-    canonical = `v2|${pibNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
-  }
+  const version = 3;
+  const canonical = `v3|${pibNorm}|${ORG}|${cid}|${date}|${validUntil}|${CANON_URL}|${extra}`;
   const sig = await hmacSha256(salt, canonical);
   const h = toHex(sig);
     // Prepare render data early
-  currentData = {pib:pibNorm,cid:cid,grade:grade,course:course,extra:extra,date:date,h:h,valid_until:validUntil};
+  currentData = {pib:pibNorm,cid:cid,extra:extra,date:date,h:h,valid_until:validUntil};
     // In test mode: trigger immediate download within user gesture (without waiting for QR load)
     if(window.__TEST_MODE){
       try { generatePdfFromCanvas(); } catch(_e){}
     }
     // Register (no PII)
   const csrf = window.__CSRF_TOKEN || document.querySelector('meta[name="csrf"]')?.content || '';
-  const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify({cid:cid, v:version, h:h, course:course, grade:grade, date:date, valid_until:validUntil, extra_info: extra || null})});
+  const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify({cid:cid, v:3, h:h, date:date, valid_until:validUntil, extra_info: extra || null})});
     if(!res.ok){
       alert('Помилка реєстрації: '+res.status);
       return;
@@ -172,12 +158,8 @@
   // Build QR payload (JSON) then embed as base64url in verification URL
   const saltB64 = b64url(salt);
   let payloadObj;
-  if(version===3){
-    // QR payload includes canon and extra, but no PII
-    payloadObj = {v:3,cid:cid,s:saltB64,org:ORG,date:date,valid_until:validUntil,canon:CANON_URL,extra:extra};
-  } else {
-    payloadObj = {v:2,cid:cid,s:saltB64,org:ORG,course:course,grade:grade,date:date,valid_until:validUntil};
-  }
+  // v3-only QR payload includes canon URL and extra
+  payloadObj = {v:3,cid:cid,s:saltB64,org:ORG,date:date,valid_until:validUntil,canon:CANON_URL,extra:extra};
     const payloadStr = JSON.stringify(payloadObj);
     function b64urlStr(str){
       return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -215,8 +197,6 @@
       regMeta.dataset.cid = cid;
       regMeta.dataset.salt = saltB64;
       regMeta.dataset.nameNorm = pibNorm; // normalized name used in canonical
-      regMeta.dataset.course = course;
-      regMeta.dataset.grade = grade;
   regMeta.dataset.date = date;
   regMeta.dataset.validUntil = validUntil;
   regMeta.dataset.version = String(version);
@@ -377,4 +357,5 @@
     }
   });
   resetBtn.addEventListener('click', ()=>{ form.reset(); resultWrap.classList.add('d-none'); advancedBlock.classList.add('d-none'); toggleDetails.classList.add('d-none'); toggleDetails.textContent='Показати технічні деталі'; });
+  // No course/grade in v3-only model
 })();

@@ -48,8 +48,12 @@
   const resultsBox = document.getElementById('bulkResults');
   const INFINITE_SENTINEL = window.__INFINITE_SENTINEL || '4000-01-01';
   const ORG = window.__ORG_CODE || 'ORG-CERT';
-  const VERSION = 2;
-  let rows = []; // {id, name, grade, status, cid, h, error, int}
+  // v3-only flow
+  const VERSION = 3;
+  const CANON_URL = (window.__CANON_URL)
+    || ((document.body && document.body.dataset && document.body.dataset.canon) ? document.body.dataset.canon : '')
+    || (window.location.origin + '/verify.php');
+  let rows = []; // {id, name, status, cid, h, error, int}
   let nextId = 1;
   const MAX_ROWS = 100;
   let lastErrors = []; // collect error objects {name, error}
@@ -91,15 +95,14 @@
     return new Uint8Array(sig);
   }
 
-  function addRow(name='', grade=''){
+  function addRow(name=''){
     if(rows.length>=MAX_ROWS){ alert('Досягнуто ліміт '+MAX_ROWS); return; }
     const id = nextId++;
-    const row = {id, name, grade, status:'idle'};
+    const row = {id, name, status:'idle'};
     rows.push(row);
     const tr = document.createElement('tr'); tr.dataset.id = id;
     tr.innerHTML = `<td class="fs-12">${id}</td>
       <td><input name="name" placeholder="Прізвище Ім'я" value="${escapeHtml(name)}" autocomplete="off"></td>
-      <td><input name="grade" maxlength="16" value="${escapeHtml(grade)}" placeholder="A"></td>
       <td class="fs-12"><span class="status-badge">—</span></td>
       <td><button type="button" class="btn btn-sm" data-act="del" aria-label="Видалити">✕</button></td>`;
     tableBody.appendChild(tr);
@@ -120,7 +123,7 @@
   });
 
   tableBody.addEventListener('input', e=>{
-    if(e.target.name==='name' || e.target.name==='grade'){
+    if(e.target.name==='name'){
       const tr = e.target.closest('tr');
       const id = Number(tr.dataset.id);
       const r = rows.find(r=>r.id===id); if(!r) return;
@@ -134,7 +137,6 @@
   function validateRow(r){
     if(!r.name.trim()) return 'Порожнє імʼя';
     if(hasMixedRisk(r.name)) return 'Мішані лат./кирил.';
-    if(r.grade && r.grade.length>16) return 'Grade >16';
     return null;
   }
   function updateGenerateState(){
@@ -145,7 +147,7 @@
       const norm = r.name.trim()? normName(r.name) : null; if(norm){ if(!dupMap.has(norm)) dupMap.set(norm, []); dupMap.get(norm).push(r.id); }
     });
     if(window.__TEST_MODE){
-      try { console.debug('[bulk] state', {rows: rows.map(r=>({id:r.id,name:r.name,grade:r.grade,status:r.status})), validCount}); } catch(_e){}
+  try { console.debug('[bulk] state', {rows: rows.map(r=>({id:r.id,name:r.name,status:r.status})), validCount}); } catch(_e){}
     }
     // highlight duplicates
     const duplicateIds = new Set();
@@ -160,15 +162,13 @@
   addRowBtn.addEventListener('click', ()=>addRow());
   clearAllBtn.addEventListener('click', ()=>{ if(!rows.length) return; if(!confirm('Очистити усі рядки?')) return; rows=[]; tableBody.innerHTML=''; updateGenerateState(); resultsBox.classList.add('d-none'); resultsBox.innerHTML=''; });
   pasteBtn.addEventListener('click', ()=>{
-    const txt = prompt('Вставте список:\nКожен рядок: ПІБ[;GRADE]');
+    const txt = prompt('Вставте список:\nКожен рядок: ПІБ');
     if(!txt) return;
     const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
     lines.forEach(line=>{
       if(rows.length>=MAX_ROWS) return;
-      let name=line, grade='';
-      const semi=line.indexOf(';');
-      if(semi>0){ name=line.slice(0,semi).trim(); grade=line.slice(semi+1).trim(); }
-      addRow(name, grade);
+      let name=line;
+      addRow(name);
     });
     updateGenerateState();
   });
@@ -176,6 +176,9 @@
   const infiniteCb = form.querySelector('input[name="infinite"]');
   const validUntilInput = form.querySelector('input[name="valid_until"]');
   const validWrap = document.getElementById('bulkValidUntilWrap');
+  const extraInput = form.querySelector('input[name="extra"]');
+  function syncV3Bulk(){ /* v3-only: no course/grade toggling */ }
+  if(extraInput){ extraInput.addEventListener('input', ()=>{ syncV3Bulk(); updateGenerateState(); }); setTimeout(syncV3Bulk,0); }
   function syncExpiry(){
     if(infiniteCb.checked){ validUntilInput.disabled=true; validUntilInput.value=''; validWrap.classList.add('hidden-slot'); }
     else { validUntilInput.disabled=false; validWrap.classList.remove('hidden-slot'); }
@@ -201,12 +204,12 @@
       } catch(_e){}
     }, 1500);
     function clearWatch(){ try { clearInterval(watchdog); } catch(_e){} }
-    const course = form.course.value.trim();
+  const extra = (form.extra && typeof form.extra.value === 'string') ? form.extra.value.trim() : '';
     const date = form.date.value;
     const infinite = form.infinite.checked;
     let validUntil = form.valid_until.value;
     if(infinite) validUntil = INFINITE_SENTINEL; else if(!validUntil) validUntil = INFINITE_SENTINEL; // fallback to sentinel to avoid abort
-    if(!course || !date){ alert('Заповніть курс і дату.'); return; }
+  if(!date){ alert('Заповніть дату.'); return; }
     if(!infinite && validUntil < date){ alert('Дата завершення раніше дати проходження.'); return; }
   const metaCsrf = document.querySelector('meta[name="csrf"]');
   const csrf = window.__CSRF_TOKEN || (metaCsrf && metaCsrf.content) || '';
@@ -228,22 +231,27 @@
         logBulk('worker.pick', {id: r && r.id, status: r && r.status});
         picks++;
         const err = validateRow(r);
-  if(err){ r.status='error'; r.error=err; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); continue; }
+        if(err){ r.status='error'; r.error=err; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); continue; }
         const pibNorm = normName(r.name);
-  const grade = (r.grade||'').trim();
-  if(!grade){ r.status='error'; r.error='Немає grade'; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); continue; }
+        // v3: grade not used
         try {
           let cid = r.cid; if(!cid){ cid = genCid(); r.cid=cid; }
+          const ver = 3;
+          r.ver = ver;
           if(!r.h || !r.saltB64){
             const salt = crypto.getRandomValues(new Uint8Array(32));
-            const canonical = `v${VERSION}|${pibNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
+            let canonical;
+            // v3 canonical: v3|PIB|ORG|CID|DATE|VALID_UNTIL|CANON_URL|EXTRA
+            canonical = `v3|${pibNorm}|${ORG}|${cid}|${date}|${validUntil}|${CANON_URL}|${extra}`;
+            r.canon = canonical;
+            r.extra = extra;
             const sig = await hmacSha256(salt, canonical);
             r.h = toHex(sig);
             r.saltB64 = b64url(salt);
             r.int = r.h.slice(0,10).toUpperCase();
           }
           logBulk('register.fetch', {id: r.id, cid: r.cid});
-          const reqPayload = {cid,v:VERSION,h:r.h,course,grade,date,valid_until:validUntil};
+          const reqPayload = {cid, v:3, h:r.h, date, valid_until:validUntil, extra_info: extra};
           let res, js, textSnippet='';
           try {
             const ctrl = new AbortController();
@@ -320,7 +328,9 @@
         div.dataset.salt = r.saltB64 || '';
         div.dataset.nameOrig = r.name || '';
         div.dataset.nameNorm = r.name ? normName(r.name) : '';
-        div.dataset.grade = r.grade || '';
+  // v3 only; no grade in dataset
+        if(r.ver){ div.dataset.ver = String(r.ver); }
+        if(r.extra){ div.dataset.extra = r.extra; }
       } catch(_){ }
       div.innerHTML = `<span class="token-chip" title="CID">${r.cid}</span> <span class="mono">INT ${short}</span> <span class="text-muted">${escapeHtml(r.name)}</span> <button type="button" class="btn btn-sm" data-act="pdf" data-cid="${r.cid}">PDF</button> <button type="button" class="btn btn-sm" data-act="jpg" data-cid="${r.cid}">JPG</button>`;
       linesBox.appendChild(div);
@@ -371,14 +381,11 @@
             if(rows.length && document.getElementById('bulkGenerateBtn').disabled){
               const first = rows[0];
               if(!first.name){ first.name = 'AUTO Тест'; }
-              if(!first.grade){ first.grade = 'A'; }
               // Reflect into DOM inputs
               const tr = document.querySelector('#bulkTable tbody tr[data-id="'+first.id+'"]');
               if(tr){
                 const nm = tr.querySelector('input[name="name"]');
-                const gr = tr.querySelector('input[name="grade"]');
                 if(nm && nm.value!==first.name){ nm.value = first.name; }
-                if(gr && gr.value!==first.grade){ gr.value = first.grade; }
                 updateGenerateState();
                 logBulk('auto.populate.testMode', {id:first.id});
               }
@@ -400,20 +407,27 @@
   function exportCsv(){
     const okRows = rows.filter(r=>r.status==='ok');
     if(!okRows.length){ alert('Немає успішних записів'); return; }
-    const course = form.course.value.trim();
     const date = form.date.value;
-  const infinite = form.infinite.checked;
-  const validUntil = infinite? INFINITE_SENTINEL : form.valid_until.value || '';
-    const header = ['NAME_ORIG','CID','INT','COURSE','GRADE','ISSUED_DATE','VALID_UNTIL'];
-  const lines = [header.join(',')];
+    const infinite = form.infinite.checked;
+    const validUntil = infinite? INFINITE_SENTINEL : form.valid_until.value || '';
+    const extraVal = (form.extra && typeof form.extra.value === 'string') ? form.extra.value.trim() : '';
+    const header = ['NAME_ORIG','CID','INT','ORG','ISSUED_DATE','VALID_UNTIL','EXTRA'];
+    const lines = [header.join(',')];
     okRows.forEach(r=>{
-  const row = [r.name.replace(/"/g,'""'), r.cid, r.int, course, (r.grade||'').replace(/"/g,'""'), date, validUntil];
-      lines.push(row.map(f=>'"'+f+'"').join(','));
+      const row = [
+        (r.name||'').replace(/"/g,'""'),
+        r.cid,
+        r.int,
+        ORG,
+        date,
+        validUntil,
+        (r.extra || extraVal || '').replace(/"/g,'""')
+      ];
+      lines.push(row.map(f=>'"'+String(f)+'"').join(','));
     });
-  // Use CRLF for Excel friendliness and prepend UTF-8 BOM so Excel detects encoding
-  const csv = lines.join('\r\n');
-  const BOM = '\uFEFF';
-  const blob = new Blob([BOM+csv], {type:'text/csv;charset=utf-8'});
+    const csv = lines.join('\r\n');
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM+csv], {type:'text/csv;charset=utf-8'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'bulk_issue_'+ new Date().toISOString().replace(/[:T]/g,'-').slice(0,16) + '.csv';
@@ -471,7 +485,7 @@
   logBulk && logBulk('batchPdf.start', {count: okRows.length});
     // In test mode ensure ticket exists; if not yet, retry shortly (race safety)
   // In updated test mode flow we skip waiting for a ticket: manual click occurs after rows OK; if a ticket exists (single-row path) we'll fulfill it, otherwise we proceed to direct POST/GET fallback below.
-    const course = form.course.value.trim(); const date=form.date.value; const infinite=form.infinite.checked; const validUntil=infinite?INFINITE_SENTINEL:(form.valid_until.value||'');
+    const date=form.date.value; const infinite=form.infinite.checked; const validUntil=infinite?INFINITE_SENTINEL:(form.valid_until.value||'');
     ensureBg(()=>{
       // Sequentially render each to same canvas and capture JPEG buffers
       const canvas = getRenderCanvas(); const ctx = canvas.getContext('2d'); const coords = window.__CERT_COORDS || {}; const cQR = coords.qr || {x:150,y:420,size:220};
@@ -480,7 +494,7 @@
         for(const r of okRows){
           await new Promise(res=>{
             // Build QR for row then render
-            const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||'', course, date, valid_until:validUntil, h:r.h, salt:r.saltB64};
+            const data = {ver:3, pib:normName(r.name), cid:r.cid, extra: (r.extra||extra||''), date, valid_until:validUntil, h:r.h, salt:r.saltB64, canon: CANON_URL};
             buildQrForRow(data, (qrImgEl)=>{
               renderCertToCanvas(data); ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
               const jpg = canvas.toDataURL('image/jpeg',0.92).split(',')[1];
@@ -597,15 +611,16 @@
     ctx.font='28px sans-serif';
     const cName = coords.name || {x:600,y:420};
     const cId   = coords.id   || {x:600,y:445};
-    const cScore= coords.score|| {x:600,y:470};
-    const cCourse=coords.course||{x:600,y:520};
+    const cExtra = coords.extra || (coords.course||{x:600,y:520});
     const cDate = coords.date || {x:600,y:570};
     const cExp  = coords.expires || {x:600,y:600};
     const cQR   = coords.qr || {x:150,y:420,size:220};
     ctx.fillText(data.pib, cName.x, cName.y);
     ctx.font='20px sans-serif'; ctx.fillText(data.cid, cId.x, cId.y);
-    ctx.font='24px sans-serif'; ctx.fillText('Оцінка: '+data.grade, cScore.x, cScore.y);
-    ctx.fillText('Курс: '+data.course, cCourse.x, cCourse.y);
+    // v3 only: render extra if provided
+    ctx.font='24px sans-serif';
+    const extraText = (data.extra||'').trim();
+    if(extraText){ ctx.fillText(extraText, cExtra.x, cExtra.y); }
     ctx.fillText('Дата: '+data.date, cDate.x, cDate.y);
     const expLabel = data.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : data.valid_until;
     ctx.font=(cExp.size?cExp.size:20)+'px sans-serif';
@@ -682,7 +697,7 @@
   function buildQrForRow(data, cb){
     // Generate lightweight QR via server (same endpoint). We need a temporary img.
     // Include salt (critical for offline / name-based verification). Fallback to empty string if absent (legacy rows before fix).
-    const payloadObj = {v:VERSION,cid:data.cid,s:data.salt||'',org:ORG,course:data.course,grade:data.grade,date:data.date,valid_until:data.valid_until};
+    const payloadObj = {v:3, cid:data.cid, s:data.salt||'', org:ORG, date:data.date, valid_until:data.valid_until, canon: data.canon || CANON_URL, extra: (data.extra||'')};
     const payloadStr = JSON.stringify(payloadObj);
     const packed = btoa(unescape(encodeURIComponent(payloadStr))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
     const tmp = new Image();
@@ -698,16 +713,16 @@
     };
     // timeout fallback
     setTimeout(()=>{ if(!settled) tmp.onerror(); }, 1500);
-    tmp.src='/qr.php?data='+encodeURIComponent(window.location.origin+'/verify.php?p='+packed);
+    tmp.src='/qr.php?data='+encodeURIComponent(CANON_URL + (CANON_URL.includes('?') ? '&' : '?') + 'p='+packed);
   }
   function handleDownload(kind, cid){
     const r = rows.find(x=>x.cid===cid);
     if(!r){ alert('Не знайдено рядок'); return; }
-  const course = form.course.value.trim();
   const date = form.date.value;
   const infinite = form.infinite.checked;
   const validUntil = infinite? INFINITE_SENTINEL : (form.valid_until.value||'');
-  const data = {pib:normName(r.name), cid:r.cid, grade:r.grade||'', course, date, valid_until:validUntil, h:r.h, salt:r.saltB64};
+  const extra = (form.extra && typeof form.extra.value === 'string') ? form.extra.value.trim() : (r.extra||'');
+  const data = {ver:3, pib:normName(r.name), cid:r.cid, extra, date, valid_until:validUntil, h:r.h, salt:r.saltB64, canon: CANON_URL};
     // Trigger QR request immediately; render once QR and background are ready
     buildQrForRow(data, (qrImgEl)=>{
       ensureBg(()=>{
