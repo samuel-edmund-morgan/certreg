@@ -5,11 +5,16 @@
 require_once __DIR__.'/config.php';
 require_once __DIR__.'/auth.php'; // ensure csrf_token() available before emitting <head>
 $cfg = require __DIR__.'/config.php';
+
+// Generate a nonce for the inline script.
+$nonce = base64_encode(random_bytes(16));
+
 // --- Security headers (no inline scripts) ---
 if (!headers_sent()) {
   // Strict CSP: no inline scripts or styles. All inline style attributes have been removed from templates.
   // Allow blob: for client-side PDF/JPG downloads (object URLs).
-  $csp = "default-src 'self' blob:; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
+  // Allow the inline script by adding the nonce.
+  $csp = "default-src 'self' blob:; script-src 'self' 'nonce-{$nonce}'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
   header('Content-Security-Policy: ' . $csp);
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: DENY');
@@ -38,6 +43,19 @@ $csrfMeta = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
   <link rel="preload" href="/fonts/Montserrat-Light.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="/fonts/Montserrat-SemiBold.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="/assets/css/styles.css">
+  <script nonce="<?= $nonce ?>">
+    // Synchronously set test mode flag if URL param is present. This is the most reliable way.
+    // The script is placed here to run before any other JS but after the body tag is available.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('test_mode') === '1') {
+        window.__TEST_MODE = true;
+        console.log('Test mode enabled via inline script.');
+      }
+    } catch (e) {
+      console.error('Failed to check for test mode:', e);
+    }
+  </script>
 <body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-inf='<?= $infSent ?>' data-test='<?= (isset($_GET['test_mode']) && $_GET['test_mode'] === '1') ? '1' : '0' ?>'>
 <header class="topbar">
   <div class="topbar__inner">
