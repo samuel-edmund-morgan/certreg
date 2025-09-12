@@ -28,6 +28,8 @@ return [
 
     'org_code' => 'ORG-CERT',
     'infinite_sentinel' => '4000-01-01',
+    // Base URL of the public verification page, used in v3 canonical string
+    'canonical_verify_url' => 'https://example.org/verify.php',
 
     // Central rate limiting thresholds (actions per window seconds)
     'rate_limits' => [

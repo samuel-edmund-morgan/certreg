@@ -15,7 +15,7 @@ $page = max(1,(int)($_GET['page'] ?? 1));
 $perPage = 50;
 $offset = ($page-1)*$perPage;
 
-$allowedSorts = ['id', 'cid', 'version', 'course', 'grade', 'issued_date', 'created_at', 'status', 'lookup_count'];
+$allowedSorts = ['id', 'cid', 'version', 'course', 'grade', 'extra_info', 'issued_date', 'created_at', 'status', 'lookup_count'];
 if(!in_array($sort, $allowedSorts, true)) {
     $sort = 'id';
 }
@@ -23,7 +23,7 @@ $dir = strtolower($dir) === 'asc' ? 'asc' : 'desc';
 
 $where = '';$params=[];$conds=[];
 if($q!==''){
-  $conds[] = "(cid LIKE :q OR course LIKE :q OR grade LIKE :q)";
+  $conds[] = "(cid LIKE :q OR course LIKE :q OR grade LIKE :q OR extra_info LIKE :q)";
   $params[':q'] = "%$q%";
 }
 if($state==='active'){
@@ -45,7 +45,7 @@ foreach($params as $k=>$v) $totalSt->bindValue($k,$v);
 $totalSt->execute();
 $total = (int)$totalSt->fetchColumn();
 
-$st = $pdo->prepare("SELECT cid, version, course, grade, issued_date, revoked_at, revoke_reason, created_at, lookup_count, last_lookup_at FROM tokens $where {$orderBy} LIMIT :lim OFFSET :off");
+$st = $pdo->prepare("SELECT cid, version, course, grade, extra_info, issued_date, revoked_at, revoke_reason, created_at, lookup_count, last_lookup_at FROM tokens $where {$orderBy} LIMIT :lim OFFSET :off");
 foreach($params as $k=>$v) $st->bindValue($k,$v);
 $st->bindValue(':lim',$perPage,PDO::PARAM_INT);
 $st->bindValue(':off',$offset,PDO::PARAM_INT);
@@ -115,6 +115,7 @@ function render_sort_arrow($column, $sort, $dir) {
           <th><a href="#" class="sort<?= sort_arrow('version', $sort, $dir) ?>" data-sort="version">Версія <?= render_sort_arrow('version', $sort, $dir) ?></a></th>
           <th><a href="#" class="sort<?= sort_arrow('course', $sort, $dir) ?>" data-sort="course">Курс <?= render_sort_arrow('course', $sort, $dir) ?></a></th>
           <th><a href="#" class="sort<?= sort_arrow('grade', $sort, $dir) ?>" data-sort="grade">Оцінка <?= render_sort_arrow('grade', $sort, $dir) ?></a></th>
+          <th><a href="#" class="sort<?= sort_arrow('extra_info', $sort, $dir) ?>" data-sort="extra_info">Дод. інформація <?= render_sort_arrow('extra_info', $sort, $dir) ?></a></th>
           <th><a href="#" class="sort<?= sort_arrow('issued_date', $sort, $dir) ?>" data-sort="issued_date">Дата <?= render_sort_arrow('issued_date', $sort, $dir) ?></a></th>
           <th><a href="#" class="sort<?= sort_arrow('created_at', $sort, $dir) ?>" data-sort="created_at">Створено <?= render_sort_arrow('created_at', $sort, $dir) ?></a></th>
           <th><a href="#" class="sort<?= sort_arrow('status', $sort, $dir) ?>" data-sort="status">Статус <?= render_sort_arrow('status', $sort, $dir) ?></a></th>
@@ -130,6 +131,7 @@ function render_sort_arrow($column, $sort, $dir) {
           <td><?= (int)$r['version'] ?></td>
           <td><?= htmlspecialchars($r['course'] ?? '') ?></td>
           <td><?= htmlspecialchars($r['grade'] ?? '') ?></td>
+          <td><?= htmlspecialchars($r['extra_info'] ?? '') ?></td>
           <td><?= htmlspecialchars($r['issued_date'] ?? '') ?></td>
           <td><?= htmlspecialchars($r['created_at']) ?></td>
           <td>

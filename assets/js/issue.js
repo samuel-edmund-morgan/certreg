@@ -24,8 +24,8 @@
   const canvas = document.getElementById('certCanvas');
   const ctx = canvas.getContext('2d');
   const coords = window.__CERT_COORDS || {};
-  const VERSION = 2; // canonical v2 with expiry & org
   const ORG = window.__ORG_CODE || 'ORG-CERT';
+  const CANON_URL = (document.body && document.body.dataset.canon) ? document.body.dataset.canon : (window.location.origin + '/verify.php');
   const INFINITE_SENTINEL = window.__INFINITE_SENTINEL || '4000-01-01';
 
   function normName(s){
@@ -77,15 +77,21 @@
     ctx.font = '28px sans-serif';
     const cName = coords.name || {x:600,y:420};
     const cId   = coords.id   || {x:600,y:445};
-    const cScore= coords.score|| {x:600,y:470};
-    const cCourse=coords.course||{x:600,y:520};
+  const cScore= coords.score|| {x:600,y:470};
+  const cCourse=coords.course||{x:600,y:520};
+  const cExtra = coords.extra || cCourse;
   const cDate = coords.date || {x:600,y:570};
   const cExp  = coords.expires || {x:600,y:600};
     const cQR   = coords.qr   || {x:150,y:420,size:220};
     ctx.fillText(currentData.pib, cName.x, cName.y);
     ctx.font = '20px sans-serif'; ctx.fillText(currentData.cid, cId.x, cId.y);
-    ctx.font = '24px sans-serif'; ctx.fillText('Оцінка: '+currentData.grade, cScore.x, cScore.y);
-    ctx.fillText('Курс: '+currentData.course, cCourse.x, cCourse.y);
+    if(currentData.extra){
+      ctx.font = '24px sans-serif';
+      ctx.fillText(String(currentData.extra), cExtra.x, cExtra.y);
+    } else {
+      ctx.font = '24px sans-serif'; ctx.fillText('Оцінка: '+currentData.grade, cScore.x, cScore.y);
+      ctx.fillText('Курс: '+currentData.course, cCourse.x, cCourse.y);
+    }
     ctx.fillText('Дата: '+currentData.date, cDate.x, cDate.y);
     // Expiry line (uses sentinel for infinite)
     const expLabel = currentData.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : currentData.valid_until;
@@ -120,6 +126,7 @@
     const pibRaw = form.pib.value;
   const course = form.course.value.trim();
   const grade  = form.grade.value.trim();
+  const extra  = (form.extra && form.extra.value ? form.extra.value.trim() : '');
   const date   = form.date.value; // issued_date YYYY-MM-DD
   const infinite = form.infinite.checked;
   let validUntil = form.valid_until.value;
@@ -134,20 +141,28 @@
     }
   const pibNorm = normName(pibRaw); // normalized (uppercase) used in canonical
     const salt = crypto.getRandomValues(new Uint8Array(32));
-  // canonical v2: v2|NAME|ORG|CID|COURSE|GRADE|ISSUED_DATE|VALID_UNTIL built after CID known
   const cid = genCid();
-  const canonical = `v${VERSION}|${pibNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
+  let version, canonical, qrPayload;
+  if(extra){
+    // v3 canonical: v3|PIB|ORG|CID|DATE|VALID_UNTIL|CANON_URL|EXTRA
+    version = 3;
+    canonical = `v3|${pibNorm}|${ORG}|${cid}|${date}|${validUntil}|${CANON_URL}|${extra}`;
+  } else {
+    // v2 canonical: v2|PIB|ORG|CID|COURSE|GRADE|DATE|VALID_UNTIL
+    version = 2;
+    canonical = `v2|${pibNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
+  }
   const sig = await hmacSha256(salt, canonical);
   const h = toHex(sig);
     // Prepare render data early
-  currentData = {pib:pibNorm,cid:cid,grade:grade,course:course,date:date,h:h,valid_until:validUntil};
+  currentData = {pib:pibNorm,cid:cid,grade:grade,course:course,extra:extra,date:date,h:h,valid_until:validUntil};
     // In test mode: trigger immediate download within user gesture (without waiting for QR load)
     if(window.__TEST_MODE){
       try { generatePdfFromCanvas(); } catch(_e){}
     }
     // Register (no PII)
   const csrf = window.__CSRF_TOKEN || document.querySelector('meta[name="csrf"]')?.content || '';
-  const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify({cid:cid, v:VERSION, h:h, course:course, grade:grade, date:date, valid_until:validUntil})});
+  const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify({cid:cid, v:version, h:h, course:course, grade:grade, date:date, valid_until:validUntil, extra_info: extra || null})});
     if(!res.ok){
       alert('Помилка реєстрації: '+res.status);
       return;
@@ -156,13 +171,19 @@
     if(!js.ok){ alert('Не вдалося створити запис'); return; }
   // Build QR payload (JSON) then embed as base64url in verification URL
   const saltB64 = b64url(salt);
-  const payloadObj = {v:VERSION,cid:cid,s:saltB64,org:ORG,course:course,grade:grade,date:date,valid_until:validUntil};
+  let payloadObj;
+  if(version===3){
+    // QR payload includes canon and extra, but no PII
+    payloadObj = {v:3,cid:cid,s:saltB64,org:ORG,date:date,valid_until:validUntil,canon:CANON_URL,extra:extra};
+  } else {
+    payloadObj = {v:2,cid:cid,s:saltB64,org:ORG,course:course,grade:grade,date:date,valid_until:validUntil};
+  }
     const payloadStr = JSON.stringify(payloadObj);
     function b64urlStr(str){
       return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
     }
     const packed = b64urlStr(payloadStr);
-    const verifyUrl = window.location.origin + '/verify.php?p=' + packed;
+  const verifyUrl = (CANON_URL || (window.location.origin + '/verify.php')) + '?p=' + packed;
   qrPayloadEl.textContent = verifyUrl + "\n\n" + payloadStr;
     // Ensure onload handler is set BEFORE changing src to avoid race (cache instant load)
   // currentData already set above
@@ -186,7 +207,7 @@
   // In test mode (where we might intercept/404 QR), ensure manual buttons appear promptly
   if(window.__TEST_MODE){ ensureDownloadButtons(); }
   const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
-    regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>ORG:</strong> ${ORG}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${validUntil===INFINITE_SENTINEL?'∞':validUntil}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
+    regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>ORG:</strong> ${ORG}<br><strong>Версія:</strong> v${version}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${validUntil===INFINITE_SENTINEL?'∞':validUntil}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
     // Expose cryptographic data for automated test recomputation (non-PII: normalized name not stored server-side)
     try {
       regMeta.dataset.h = h;
@@ -196,8 +217,10 @@
       regMeta.dataset.nameNorm = pibNorm; // normalized name used in canonical
       regMeta.dataset.course = course;
       regMeta.dataset.grade = grade;
-      regMeta.dataset.date = date;
-      regMeta.dataset.validUntil = validUntil;
+  regMeta.dataset.date = date;
+  regMeta.dataset.validUntil = validUntil;
+  regMeta.dataset.version = String(version);
+  if(extra) regMeta.dataset.extra = extra;
       regMeta.dataset.org = ORG;
     } catch(_){}
   summary.innerHTML = `<div class=\"alert alert-ok mb-12\">Нагороду створено. CID <strong>${cid}</strong>. PDF-файл нагороди автоматично згенеровано та завантажено. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;

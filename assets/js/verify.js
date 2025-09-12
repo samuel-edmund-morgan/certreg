@@ -50,7 +50,12 @@
   const resolvedOrg = payload.org || ORG;
   if(orgOut) orgOut.textContent = resolvedOrg;
   const tech = document.getElementById('techData');
-  if(payload.v === 2){
+  if(payload.v === 3){
+    // v3 QR should include canon and extra
+    if(!payload.canon){
+      const info = document.createElement('div'); info.className='alert alert-warn fs-12'; info.textContent='Відсутнє поле canon у QR.'; if(tech) tech.prepend(info);
+    }
+  } else if(payload.v === 2){
     if(payload.org && payload.org !== ORG){
       const warn = document.createElement('div');
       warn.className='alert alert-error fs-12';
@@ -122,7 +127,7 @@
           ).join(' ');
         }
         let canonical;
-        if(payload.v===1){
+  if(payload.v===1){
           canonical = `v1|${pib}|${payload.course}|${payload.grade}|${payload.date}`;
           try {
             const calc = await hmac(b64urlToBytes(payload.s), canonical);
@@ -138,7 +143,7 @@
             }
           } catch(e){ ownResult.innerHTML='<div class="alert alert-error">Помилка обчислення.</div>'; }
           return;
-        } else if(payload.v===2){
+  } else if(payload.v===2){
           const vu = payload.valid_until || INFINITE_SENTINEL;
           // Try with possible org candidates (payload.org first if present, then server ORG if different)
           const orgCandidates = [];
@@ -164,6 +169,35 @@
           } else {
             mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
             ownResult.innerHTML='<div class="alert alert-error verify-fail" data-verdict="mismatch">Не збігається. Імʼя/формат не відповідає нагороді.</div>';
+          }
+          return;
+        } else if(payload.v===3){
+          const vu = payload.valid_until || INFINITE_SENTINEL;
+          const canonUrl = payload.canon || (window.location.origin + '/verify.php');
+          // Try org candidates similar to v2
+          const orgCandidates = [];
+          if(payload.org) orgCandidates.push(payload.org);
+          if(!payload.org || payload.org !== ORG) orgCandidates.push(ORG);
+          let matched = false;
+          for(const orgCandidate of orgCandidates){
+            const can = `v3|${pib}|${orgCandidate}|${payload.cid}|${payload.date}|${vu}|${canonUrl}|${payload.extra||''}`;
+            try {
+              const calc = await hmac(b64urlToBytes(payload.s), can);
+              const cmp = toHex(calc);
+              if(cmp===js.h){ matched = true; break; }
+            } catch(_){}
+          }
+          if(hasHomoglyphRisk(ownForm.pib.value)){
+            const risk = homoglyphLatinLetters(ownForm.pib.value).join(', ');
+            ownResult.innerHTML='<div class="alert alert-error">Можливі латинські символи: '+risk+' разом із кирилицею. Переконайтесь, що ці літери введені кирилицею (А, В, С, Е, Н, І, К, М, О, Р, Т, Х, У).</div>';
+            return;
+          }
+          if(matched){
+            const displayName = toNameCaseUk(ownForm.pib.value);
+            ownResult.innerHTML='<div class="alert alert-ok" data-verdict="match">Нагорода дійсно належить '+escapeHtml(displayName)+'.</div>';
+          } else {
+            mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
+            ownResult.innerHTML='<div class="alert alert-error verify-fail" data-verdict="mismatch">Не збігається. Ім’я/формат не відповідає нагороді.</div>';
           }
           return;
         } else {

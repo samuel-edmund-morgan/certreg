@@ -27,7 +27,7 @@ $cfg = require __DIR__.'/../config.php';
 $sentinel = $cfg['infinite_sentinel'] ?? '4000-01-01';
 $validUntil = $row['valid_until'] ?? null;
 $expired = false;
-if($row['version']==2 && $validUntil){
+if(($row['version']==2 || $row['version']==3) && $validUntil){
   if($validUntil !== $sentinel){
     $today = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d');
     if(strcmp($validUntil,$today) < 0) $expired = true;

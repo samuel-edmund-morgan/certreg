@@ -27,6 +27,10 @@ $coords = $cfg['coords'] ?? [];
     <label>Оцінка
       <input type="text" name="grade" required placeholder="A" maxlength="16">
     </label>
+    <label>Додаткова інформація (необов’язково)
+      <input type="text" name="extra" placeholder="напр., Номінація — Стійкість" maxlength="255">
+      <span class="fs-12 text-muted">Це поле зберігається у БД та додається у QR-пейлоад (без ПІБ). Якщо не потрібно — залиште порожнім.</span>
+    </label>
     <label>Дата проходження
       <input type="date" name="date" required>
     </label>
