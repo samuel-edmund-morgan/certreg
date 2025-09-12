@@ -7,19 +7,7 @@ body.admin-page .alert-banner {
 
   /* Висота липкого хедера та банера для коректних offsets */
   --topbar-h: 96px;
-  --alert-h: 36px; /* мінімальна висота банера; за пот    .table th a {
-  display: flex;
-  align-items: center;
-}
-
-.table th a svg {
-  width: 1em;
-  height: 1em;
-  margin-left: 0.25rem;
-  display: inline-block;
-}и відкоригуйте */
-  --sticky-stack: calc(var(--topbar-h) + var(--alert-h));
-}
+  --alert-h: 36px; /* мінімальна висота банера; за пот  /* === Revocation status styles === */
 
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -196,7 +184,7 @@ main{flex:1}
 }
 
 /* Pagination & misc */
-.pagination{display:flex;gap:6px;margin-top:12px}
+.pagination{display:flex;gap:6px;margin-top:12px;justify-content:center}
 .page{padding:6px 10px;border:1px solid var(--border);border-radius:10px;text-decoration:none;color:inherit}
 .page.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .page-dots{padding:6px 10px;color:var(--muted)}
@@ -280,11 +268,18 @@ main{flex:1}
     text-decoration:none !important;
     font-weight:600;
   }
+  /* Tiny sort icon next to header text */
+  .table th a .sort-icon{
+    display:inline-block;
+    width:12px; height:12px;
+    margin-left:6px;
+    vertical-align:middle;
+  }
   .table th a:hover,
   .table th a:focus,
   .table th a:active{ text-decoration:underline dotted; color:inherit !important; }
   /* In case browser applies default focus outline, keep accessibility */
-  .table th a:focus-visible{ outline:2px solid #94a3b8; outline-offset:2px; }
+  .table th a.active{ font-weight:bold; color: #2563eb !important; }
 
   /* === Utility classes (CSP inline-style cleanup) === */
   .mt-0{margin-top:0}
@@ -353,10 +348,6 @@ main{flex:1}
   body.has-bulk .table thead th{top:40px}
   .bulk-bar__inner{align-items:center}
   .row-selected td{background:#e0f2fe !important}
-  .table th a.sort{display:inline-block;position:relative;padding-right:14px}
-  .table th a.sort:after{content:'';position:absolute;right:2px;top:50%;width:6px;height:10px;background:linear-gradient(to bottom,#94a3b8 50%,transparent 50%);opacity:.35;transform:translateY(-50%)}
-  .table th a.sort.active.asc:after, .table th a.sort.asc:after{background:linear-gradient(to bottom,#2563eb 50%,transparent 50%); opacity: 1;}
-  .table th a.sort.active.desc:after, .table th a.sort.desc:after{background:linear-gradient(to top,#2563eb 50%,transparent 50%); opacity: 1;}
   /* Bulk bar reason field collapse logic */
   #bulkBar{gap:8px}
   #bulkReason{min-width:220px;}

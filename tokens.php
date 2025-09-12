@@ -60,6 +60,19 @@ function sort_arrow($column, $currentSort, $currentDir) {
     }
     return '';
 }
+function render_sort_arrow($column, $sort, $dir) {
+  // Use attribute-sized SVGs (no inline style) to avoid CSP issues
+  if ($sort !== $column) {
+    // Neutral (both directions) icon in gray
+    return '<svg class="sort-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M8 9l4-4 4 4M8 15l4 4 4-4" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  if ($dir === 'asc') {
+    // Up arrow filled
+    return '<svg class="sort-icon" width="12" height="12" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path fill="#2563eb" fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>';
+  }
+  // Down arrow filled
+  return '<svg class="sort-icon" width="12" height="12" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path fill="#2563eb" fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>';
+}
 ?>
 <section class="section">
   <h2 class="mt-0">Токени (анонімні сертифікати)</h2>
@@ -98,14 +111,14 @@ function sort_arrow($column, $currentSort, $currentDir) {
       <thead>
         <tr>
           <th><input type="checkbox" id="chkAll"></th>
-          <th><a href="#" class="sort<?= sort_arrow('cid', $sort, $dir) ?>" data-sort="cid">CID</a></th>
-          <th><a href="#" class="sort<?= sort_arrow('version', $sort, $dir) ?>" data-sort="version">Версія</a></th>
-          <th><a href="#" class="sort<?= sort_arrow('course', $sort, $dir) ?>" data-sort="course">Курс</a></th>
-          <th><a href="#" class="sort<?= sort_arrow('grade', $sort, $dir) ?>" data-sort="grade">Оцінка</a></th>
-          <th><a href="#" class="sort<?= sort_arrow('issued_date', $sort, $dir) ?>" data-sort="issued_date">Дата</a></th>
-          <th><a href="#" class="sort<?= sort_arrow('created_at', $sort, $dir) ?>" data-sort="created_at">Створено</a></th>
-          <th><a href="#" class="sort<?= sort_arrow('status', $sort, $dir) ?>" data-sort="status">Статус</a></th>
-          <th title="К-сть перевірок / остання"><a href="#" class="sort<?= sort_arrow('lookup_count', $sort, $dir) ?>" data-sort="lookup_count">Переглядів</a></th>
+          <th><a href="#" class="sort<?= sort_arrow('cid', $sort, $dir) ?>" data-sort="cid">CID <?= render_sort_arrow('cid', $sort, $dir) ?></a></th>
+          <th><a href="#" class="sort<?= sort_arrow('version', $sort, $dir) ?>" data-sort="version">Версія <?= render_sort_arrow('version', $sort, $dir) ?></a></th>
+          <th><a href="#" class="sort<?= sort_arrow('course', $sort, $dir) ?>" data-sort="course">Курс <?= render_sort_arrow('course', $sort, $dir) ?></a></th>
+          <th><a href="#" class="sort<?= sort_arrow('grade', $sort, $dir) ?>" data-sort="grade">Оцінка <?= render_sort_arrow('grade', $sort, $dir) ?></a></th>
+          <th><a href="#" class="sort<?= sort_arrow('issued_date', $sort, $dir) ?>" data-sort="issued_date">Дата <?= render_sort_arrow('issued_date', $sort, $dir) ?></a></th>
+          <th><a href="#" class="sort<?= sort_arrow('created_at', $sort, $dir) ?>" data-sort="created_at">Створено <?= render_sort_arrow('created_at', $sort, $dir) ?></a></th>
+          <th><a href="#" class="sort<?= sort_arrow('status', $sort, $dir) ?>" data-sort="status">Статус <?= render_sort_arrow('status', $sort, $dir) ?></a></th>
+          <th title="К-сть перевірок / остання"><a href="#" class="sort<?= sort_arrow('lookup_count', $sort, $dir) ?>" data-sort="lookup_count">Переглядів <?= render_sort_arrow('lookup_count', $sort, $dir) ?></a></th>
           <th></th>
         </tr>
       </thead>

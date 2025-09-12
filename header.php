@@ -33,8 +33,7 @@ $csrfMeta = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
   <?php if (isset($_GET['test_mode']) && $_GET['test_mode'] === '1'): ?>
     <meta name="test-mode" content="1">
   <?php endif; ?>
-  <link rel="preload" href="/fonts/Montserrat-Light.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="preload" href="/fonts/Montserrat-SemiBold.ttf" as="font" type="font/ttf" crossorigin>
+  <!-- Removed font preloads to avoid 'preloaded but not used' warnings; fonts load via @font-face -->
   <link rel="stylesheet" href="/assets/css/styles.css">
 <body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-inf='<?= $infSent ?>' data-test='<?= (isset($_GET['test_mode']) && $_GET['test_mode'] === '1') ? '1' : '0' ?>'>
 <header class="topbar">
