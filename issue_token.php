@@ -113,5 +113,4 @@ $coords = $cfg['coords'] ?? [];
  <!-- CSRF token now provided via <meta name="csrf"> in header (no inline script allowed by CSP) -->
  <script src="/assets/js/issue_page.js"></script>
 <script src="/assets/js/issue.js"></script>
- <script src="/assets/js/issue_bulk.js"></script>
 <?php require_once __DIR__.'/footer.php'; ?>
