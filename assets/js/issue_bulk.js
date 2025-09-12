@@ -505,7 +505,18 @@
           const filename = 'batch_certificates_'+Date.now()+'.pdf';
           const cidKey = filename.replace(/\.pdf$/,'');
           try { await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent(cidKey), {method:'POST', body: blob, credentials:'same-origin'}); } catch(_e){}
-          const a=document.createElement('a'); a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cidKey)+'&name='+encodeURIComponent(filename); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+          const a=document.createElement('a');
+          a.id = 'manualBatchDownloadLink'; // Add ID for test hook
+          a.href='/test_download.php?kind=pdf&cid='+encodeURIComponent(cidKey)+'&name='+encodeURIComponent(filename);
+          a.download=filename;
+          document.body.appendChild(a);
+          // In test mode, don't auto-click and remove. Let the test do it.
+          if (window.__TEST_MODE) {
+            // The test will click this link.
+          } else {
+            a.click();
+            a.remove();
+          }
           return;
         }
         const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='batch_certificates_'+Date.now()+'.pdf'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},4000);

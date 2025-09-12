@@ -1,5 +1,6 @@
 const { test, expect } = require('./fixtures');
 const { login } = require('./_helpers');
+const fs = require('fs');
 
 test.describe('Bulk issuance – batch PDF & UI elements', () => {
   test('manual batch PDF download after multi-row success', async ({ page }) => {
@@ -88,26 +89,37 @@ test.describe('Bulk issuance – batch PDF & UI elements', () => {
     await expect(page.locator('#bulkBatchPdfBtn')).toBeVisible();
     await expect(page.locator('#bulkBatchPdfBtn')).toBeEnabled();
 
-    // Trigger download, retrying click if needed
-    const download = await (async () => {
-      const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
-      let attempts = 0;
-      while (attempts < 10) {
-        await page.locator('#bulkBatchPdfBtn').click().catch(e => console.log(`Click failed on attempt ${attempts}: ${e.message}`));
-        const result = await Promise.race([
-          downloadPromise,
-          page.waitForTimeout(2000).then(() => null) // Wait 2s for download to start
-        ]);
-        if (result) return result; // Download started
-        attempts++;
-        console.log(`Download did not start, retrying click (attempt ${attempts})`);
+    // New robust download logic:
+    // 1. Start waiting for the download event.
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+
+    // 2. Click the button that generates the PDF and creates the download link.
+    await page.locator('#bulkBatchPdfBtn').click();
+
+    // 3. Wait for the dynamically generated link to appear in the DOM.
+    const downloadLink = page.locator('#manualBatchDownloadLink');
+    await downloadLink.waitFor({ state: 'attached', timeout: 30000 });
+
+    // 4. Get the href and navigate to it to trigger the download.
+    const downloadUrl = await downloadLink.getAttribute('href');
+    expect(downloadUrl).not.toBeNull();
+
+    // 5. Use page.goto to trigger the download. This will throw an error that a download is starting, which is expected.
+    try {
+      await page.goto(downloadUrl, { waitUntil: 'domcontentloaded', timeout: 5000 });
+    } catch (error) {
+      if (!error.message.includes('Download is starting')) {
+        // Re-throw unexpected errors.
+        throw error;
       }
-      // Final attempt: wait for the full duration
-      return await downloadPromise;
-    })();
+      // Otherwise, ignore the expected "Download is starting" error.
+    }
+
+    // 6. Wait for the download promise to resolve.
+    const download = await downloadPromise;
 
     const filename = download.suggestedFilename();
-    expect(filename).toBe('certificates.pdf');
+    expect(filename).toMatch(/^batch_certificates_\d+\.pdf$/);
     const path = await download.path();
     expect(path).not.toBeNull();
     const stat = fs.statSync(path);

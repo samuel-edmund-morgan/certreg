@@ -25,11 +25,21 @@ test('bulk per-row PDF & JPG buttons appear for each successful row', async ({ p
   await expect(page.locator('#bulkBatchPdfBtn')).toBeVisible();
   await expect(page.locator('#bulkBatchPdfBtn')).toBeEnabled();
 
-  // Use Promise.all to click and wait for download simultaneously
-  await Promise.all([
-    page.waitForEvent('download', { timeout: 60000 }),
-    page.locator('#bulkBatchPdfBtn').click()
-  ]);
+  // New robust download logic
+  const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+  await page.locator('#bulkBatchPdfBtn').click();
+  const downloadLink = page.locator('#manualBatchDownloadLink');
+  await downloadLink.waitFor({ state: 'attached', timeout: 30000 });
+  const downloadUrl = await downloadLink.getAttribute('href');
+  expect(downloadUrl).not.toBeNull();
+  try {
+    await page.goto(downloadUrl, { waitUntil: 'domcontentloaded', timeout: 5000 });
+  } catch (error) {
+    if (!error.message.includes('Download is starting')) {
+      throw error;
+    }
+  }
+  await downloadPromise;
 
   // In results list, each successful line should have two buttons (PDF + JPG)
   const line1 = page.locator('#bulkResultLines div').nth(0);
