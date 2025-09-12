@@ -11,7 +11,7 @@ return [
     'db_public_pass' => '',
 
     // Branding
-    'site_name' => "Реєстр сертифікатів\n Національної академії Служби безпеки України",
+    'site_name' => "Реєстр нагород\n Національної академії Служби безпеки України",
     'logo_path' => '/assets/logo.png',
 
     // Canvas coordinates for preview (client-side only)

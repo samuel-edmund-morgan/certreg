@@ -92,15 +92,15 @@
       }
       const dateLine = js.revoked_at ? `<p><strong>Дата відкликання:</strong> ${fmtDate(js.revoked_at)}</p>` : '';
       const reasonLine = `<p><strong>Причина:</strong> ${js.revoke_reason ? escapeHtml(js.revoke_reason) : '<em>(не вказано)</em>'}</p>`;
-    existBox.innerHTML = `<p>Сертифікат існує, але <strong class="text-danger">ВІДКЛИКАНО</strong>.</p>${dateLine}${reasonLine}`;
+  existBox.innerHTML = `<p>Нагорода існує, але <strong class="text-danger">ВІДКЛИКАНА</strong>.</p>${dateLine}${reasonLine}`;
       if(ownForm) ownForm.style.display='none';
     } else if(expired){
       existBox.className='alert alert-error';
       existBox.textContent='Реєстраційний номер існує, але строк дії минув.';
       if(ownForm) ownForm.style.display='block';
     } else {
-      existBox.className='alert';
-      existBox.textContent='Реєстраційний номер існує, сертифікат чинний. INT '+shortCode + (js.version===2 && js.valid_until ? (js.valid_until===INFINITE_SENTINEL?' (безтерміновий)':' (дійсний до '+js.valid_until+')') : '');
+  existBox.className='alert';
+  existBox.textContent='Реєстраційний номер існує, нагорода чинна. INT '+shortCode + (js.version===2 && js.valid_until ? (js.valid_until===INFINITE_SENTINEL?' (безстрокова)':' (чинна до '+js.valid_until+')') : '');
       if(ownForm) ownForm.style.display='block';
     }
     if(ownForm){
@@ -132,9 +132,9 @@
               ownResult.innerHTML='<div class="alert alert-error">Можливі латинські символи: '+risk+' разом із кирилицею. Переконайтесь, що ці літери введені кирилицею (А, В, С, Е, Н, І, К, М, О, Р, Т, Х, У).</div>';
               return;
             }
-            if(cmp===js.h){ const displayName = toNameCaseUk(ownForm.pib.value); ownResult.innerHTML='<div class="alert alert-ok" data-verdict="match">Сертифікат дійсно належить '+escapeHtml(displayName)+'.</div>'; } else {
+            if(cmp===js.h){ const displayName = toNameCaseUk(ownForm.pib.value); ownResult.innerHTML='<div class="alert alert-ok" data-verdict="match">Нагорода дійсно належить '+escapeHtml(displayName)+'.</div>'; } else {
               mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
-              ownResult.innerHTML='<div class="alert alert-error">Не збігається. Імʼя/формат не відповідає сертифікату.</div>';
+              ownResult.innerHTML='<div class="alert alert-error">Не збігається. Імʼя/формат не відповідає нагороді.</div>';
             }
           } catch(e){ ownResult.innerHTML='<div class="alert alert-error">Помилка обчислення.</div>'; }
           return;
@@ -160,10 +160,10 @@
           }
           if(matched){
             const displayName = toNameCaseUk(ownForm.pib.value);
-            ownResult.innerHTML='<div class="alert alert-ok" data-verdict="match">Сертифікат дійсно належить '+escapeHtml(displayName)+'.</div>';
+            ownResult.innerHTML='<div class="alert alert-ok" data-verdict="match">Нагорода дійсно належить '+escapeHtml(displayName)+'.</div>';
           } else {
             mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
-            ownResult.innerHTML='<div class="alert alert-error verify-fail" data-verdict="mismatch">Не збігається. Імʼя/формат не відповідає сертифікату.</div>';
+            ownResult.innerHTML='<div class="alert alert-error verify-fail" data-verdict="mismatch">Не збігається. Імʼя/формат не відповідає нагороді.</div>';
           }
           return;
         } else {

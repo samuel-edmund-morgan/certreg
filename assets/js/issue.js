@@ -200,7 +200,7 @@
       regMeta.dataset.validUntil = validUntil;
       regMeta.dataset.org = ORG;
     } catch(_){}
-  summary.innerHTML = `<div class=\"alert alert-ok mb-12\">Сертифікат створено. CID <strong>${cid}</strong>. PDF-файл сертифіката автоматично згенеровано та завантажено. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;
+  summary.innerHTML = `<div class=\"alert alert-ok mb-12\">Нагороду створено. CID <strong>${cid}</strong>. PDF-файл нагороди автоматично згенеровано та завантажено. Збережіть файл – ПІБ не відновлюється з бази.</div><div class=\"fs-13 flex align-center gap-8 flex-wrap\">Перевірка: <a href=\"${verifyUrl}\" target=\"_blank\" rel=\"noopener\">Відкрити сторінку перевірки</a><button type=\"button\" class=\"btn btn-sm\" id=\"copyLinkBtn\">Копіювати URL</button><span id=\"copyLinkStatus\" class=\"fs-11 text-success d-none\">Скопійовано</span></div>`;
   const copyBtn = document.getElementById('copyLinkBtn');
   const copyStatus = document.getElementById('copyLinkStatus');
   if(copyBtn){

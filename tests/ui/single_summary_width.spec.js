@@ -12,7 +12,7 @@ test('single issuance summary container has constrained width class', async ({ p
   await page.fill('input[name="date"]', today);
   const downloadPromise = page.waitForEvent('download');
   await page.click('#issueForm button[type="submit"]');
-  await page.waitForSelector('#summary:has-text("Сертифікат створено")');
+  await page.waitForSelector('#summary:has-text("Нагороду створено")');
   await downloadPromise;
   const hasClass = await page.evaluate(()=> document.getElementById('summary').classList.contains('maxw-760'));
   expect(hasClass).toBeTruthy();

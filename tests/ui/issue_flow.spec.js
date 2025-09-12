@@ -16,7 +16,7 @@ test.describe('Issuance flow (client-side generation + register)', () => {
     const downloadPromise = page.waitForEvent('download');
     await page.click('#issueForm button[type="submit"]');
     // Wait summary
-    await page.waitForSelector('#summary:has-text("Сертифікат створено")');
+  await page.waitForSelector('#summary:has-text("Нагороду створено")');
     // Wait for QR image natural size (may be hidden by CSS initially)
     await page.waitForFunction(() => {
       const img = document.getElementById('qrImg');

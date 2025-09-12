@@ -13,7 +13,7 @@ test.describe('Verify page status states', () => {
     await page.fill('input[name="date"]', today);
     const downloadPromise = page.waitForEvent('download');
     await page.click('#issueForm button[type="submit"]');
-    await page.waitForSelector('#summary:has-text("Сертифікат створено")');
+  await page.waitForSelector('#summary:has-text("Нагороду створено")');
     await downloadPromise; // ignore file validation here
     const cid = await page.locator('#summary strong').first().textContent();
     const verifyLink = await page.locator('#summary a[href*="verify.php"]').first().getAttribute('href');
@@ -87,7 +87,7 @@ test.describe('Verify page status states', () => {
     await page.fill('input[name="valid_until"]', pastStr);
     const downloadPromise = page.waitForEvent('download');
     await page.click('#issueForm button[type="submit"]');
-    await page.waitForSelector('#summary:has-text("Сертифікат створено")');
+  await page.waitForSelector('#summary:has-text("Нагороду створено")');
     await downloadPromise;
     const verifyLink = await page.locator('#summary a[href*="verify.php"]').first().getAttribute('href');
     await page.goto(verifyLink);

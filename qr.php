@@ -1,6 +1,6 @@
 <?php
 // Server-side QR generator (data contains NO PІБ).
-// Використовується тільки під час видачі сертифіката (issue_token.php) => робимо його адмінським.
+// Використовується тільки під час видачі нагороди (issue_token.php) => робимо його адмінським.
 require_once __DIR__.'/auth.php';
 require_admin();
 require_csrf();

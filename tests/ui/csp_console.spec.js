@@ -18,7 +18,7 @@ test.describe('CSP console', () => {
     await page.fill('input[name="date"]', today);
     const downloadPromise = page.waitForEvent('download');
     await page.click('#issueForm button[type="submit"]');
-    await page.waitForSelector('#summary:has-text("Сертифікат створено")');
+  await page.waitForSelector('#summary:has-text("Нагороду створено")');
     await downloadPromise;
     expect(cspErrors).toEqual([]);
   });

@@ -16,7 +16,7 @@ async function issueToken(page, { course='COURSE-LIFE', grade='A', date=new Date
 	}
 	const downloadPromise = page.waitForEvent('download');
 	await page.click('#issueForm button[type="submit"]');
-	await page.waitForSelector('#summary:has-text("Сертифікат створено")');
+	await page.waitForSelector('#summary:has-text("Нагороду створено")');
 	await downloadPromise;
 	const cid = await page.locator('#summary strong').first().textContent();
 	const verifyLink = await page.locator('#summary a[href*="verify.php"]').first().getAttribute('href');
