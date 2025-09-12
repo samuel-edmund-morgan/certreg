@@ -132,12 +132,43 @@ $csrf = csrf_token();
   </table>
   </form>
   </div>
-  <?php if($pages>1): ?>
-    <nav class="pagination">
-      <?php for($p=1;$p<=$pages;$p++): ?>
-  <a class="page <?= $p===$page?'active':'' ?>" href="?<?= http_build_query(['q'=>$q,'state'=>$state,'page'=>$p]) ?>"><?= $p ?></a>
-      <?php endfor; ?>
-    </nav>
+  <?php
+    // Helper function for smart pagination
+    function render_pagination($currentPage, $totalPages, $baseQuery) {
+        $delta = 2; // Number of pages to show around the current page
+        $range = [];
+        for ($i = 1; $i <= $totalPages; $i++) {
+            if ($i == 1 || $i == $totalPages || ($i >= $currentPage - $delta && $i <= $currentPage + $delta)) {
+                $range[] = $i;
+            }
+        }
+
+        $withDots = [];
+        $last = 0;
+        foreach ($range as $page) {
+            if (($page - $last) > 1) {
+                $withDots[] = '...';
+            }
+            $withDots[] = $page;
+            $last = $page;
+        }
+
+        echo '<nav class="pagination">';
+        foreach ($withDots as $p) {
+            if ($p === '...') {
+                echo '<span class="page-dots">...</span>';
+            } else {
+                $query = http_build_query(array_merge($baseQuery, ['page' => $p]));
+                $activeClass = ($p == $currentPage) ? 'active' : '';
+                echo "<a class=\"page {$activeClass}\" href=\"?{$query}\">{$p}</a>";
+            }
+        }
+        echo '</nav>';
+    }
+    ?>
+  <?php if($pages > 1):
+    render_pagination($page, $pages, ['q' => $q, 'state' => $state]);
+  ?>
   <?php endif; ?>
 </section>
 <script src="/assets/js/tokens_page.js"></script>
