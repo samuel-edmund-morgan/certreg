@@ -32,6 +32,9 @@ $csrfMeta = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title><?= htmlspecialchars($cfg['site_name']) ?></title>
   <meta name="csrf" content="<?= $csrfMeta ?>">
+  <?php if (isset($_GET['test_mode']) && $_GET['test_mode'] === '1'): ?>
+    <script>window.__TEST_MODE = true;</script>
+  <?php endif; ?>
   <link rel="preload" href="/fonts/Montserrat-Light.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="/fonts/Montserrat-SemiBold.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="/assets/css/styles.css">

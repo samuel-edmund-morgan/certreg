@@ -7,7 +7,7 @@ test.describe('Bulk issuance – batch PDF & UI elements', () => {
     test.setTimeout(120000); // 2 minute timeout for this test
 
     await login(page);
-    await page.goto('/issue_token.php');
+    await page.goto('/issue_token.php?test_mode=1');
     await page.click('.tab[data-tab="bulk"]');
     await page.waitForSelector('#bulkForm');
     const today = new Date().toISOString().slice(0,10);
