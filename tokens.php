@@ -135,19 +135,8 @@ function render_sort_arrow($column, $sort, $dir) {
           <td>
             <?php if($r['revoked_at']): ?>
               <span class="badge badge-danger" title="<?= htmlspecialchars($r['revoke_reason'] ?? '') ?>">Відкликано</span>
-              <form class="unrevoke-form mt-4" method="post" action="/api/unrevoke.php">
-                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-                <input type="hidden" name="cid" value="<?= htmlspecialchars($r['cid']) ?>">
-                <button type="submit" class="btn btn-xs btn-light">Відновити</button>
-              </form>
             <?php else: ?>
               <span class="badge badge-success">Активний</span>
-              <form class="revoke-form mt-4" method="post" action="/api/revoke.php">
-                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-                <input type="hidden" name="cid" value="<?= htmlspecialchars($r['cid']) ?>">
-                <input type="text" name="reason" maxlength="120" class="fs-11 mb-4" placeholder="Причина" autocomplete="off">
-                <button type="submit" class="btn btn-xs btn-danger">Відкликати</button>
-              </form>
             <?php endif; ?>
           </td>
           <td class="fs-11 nowrap">
