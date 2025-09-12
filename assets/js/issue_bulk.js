@@ -1,18 +1,7 @@
 // Bulk issuance logic (MVP) – sequential calls to /api/register.php reusing privacy model.
 (function(){
-  // Synchronous check for test mode is now handled by an inline script in header.php.
-  // This listener is kept for compatibility but the primary detection is now immediate.
-  document.addEventListener('DOMContentLoaded', () => {
-    if (window.__TEST_MODE) {
-      console.log('Test mode confirmed by DOMContentLoaded listener.');
-    } else {
-      const testModeMeta = document.querySelector('meta[name="test-mode"]');
-      if ((testModeMeta && testModeMeta.content === '1') || (document.body && document.body.dataset.test === '1')) {
-        try { window.__TEST_MODE = true; } catch(_e){}
-        console.log('Test mode enabled via DOMContentLoaded fallback.');
-      }
-    }
-  });
+  // Synchronous check for test mode is now handled by a conditional inline script in header.php.
+  // No fallback logic is needed here anymore.
 
   // Instrumentation & debug collection (non-invasive, capped size)
   const debugEvents = [];
