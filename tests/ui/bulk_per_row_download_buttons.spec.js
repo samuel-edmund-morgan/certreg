@@ -19,9 +19,11 @@ test('bulk per-row PDF & JPG buttons appear for each successful row', async ({ p
   await page.waitForSelector('#bulkTable tbody tr:nth-child(1) .status-badge.ok');
   await page.waitForSelector('#bulkTable tbody tr:nth-child(2) .status-badge.ok');
   // Manual batch PDF generation now
-  await page.waitForSelector('#bulkBatchPdfBtn');
-  await page.waitForTimeout(2000);
-  const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
+  await page.waitForSelector('#bulkBatchPdfBtn', { timeout: 120000 });
+  await expect(page.locator('#bulkBatchPdfBtn')).toBeEnabled({ timeout: 120000 });
+
+  // Manual batch PDF generation now
+  const downloadPromise = page.waitForEvent('download');
   await page.click('#bulkBatchPdfBtn');
   await downloadPromise;
   // In results list, each successful line should have two buttons (PDF + JPG)
