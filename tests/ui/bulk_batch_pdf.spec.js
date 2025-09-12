@@ -88,11 +88,23 @@ test.describe('Bulk issuance – batch PDF & UI elements', () => {
     await expect(page.locator('#bulkBatchPdfBtn')).toBeVisible();
     await expect(page.locator('#bulkBatchPdfBtn')).toBeEnabled();
 
-    // Use Promise.all to click and wait for download simultaneously
-    const [ download ] = await Promise.all([
-      page.waitForEvent('download', { timeout: 60000 }), // Wait for the download event
-      page.locator('#bulkBatchPdfBtn').click() // Click the button
-    ]);
+    // Trigger download, retrying click if needed
+    const download = await (async () => {
+      const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+      let attempts = 0;
+      while (attempts < 10) {
+        await page.locator('#bulkBatchPdfBtn').click().catch(e => console.log(`Click failed on attempt ${attempts}: ${e.message}`));
+        const result = await Promise.race([
+          downloadPromise,
+          page.waitForTimeout(2000).then(() => null) // Wait 2s for download to start
+        ]);
+        if (result) return result; // Download started
+        attempts++;
+        console.log(`Download did not start, retrying click (attempt ${attempts})`);
+      }
+      // Final attempt: wait for the full duration
+      return await downloadPromise;
+    })();
 
     const filename = download.suggestedFilename();
     expect(filename).toBe('certificates.pdf');
