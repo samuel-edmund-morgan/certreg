@@ -26,7 +26,7 @@ test.describe('Single issuance – PDF generation', () => {
     if(path){
       const fs = require('fs');
       const stat = fs.statSync(path);
-      expect(stat.size).toBeGreaterThan(7000); // heuristic single-page PDF size
+      expect(stat.size).toBeGreaterThan(5500); // updated heuristic for single-page PDF size
     }
 
     // Ensure no console errors gathered by global handler

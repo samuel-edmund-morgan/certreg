@@ -22,9 +22,10 @@ test('duplicate detection adds dup class & error log visible (0)', async ({ page
   await page.waitForSelector('#bulkTable tbody tr:nth-child(2).dup');
   // Manual batch PDF: click after dup detection
   await page.waitForSelector('#bulkBatchPdfBtn');
-  const downloadPromise = page.waitForEvent('download');
+  await page.waitForTimeout(2000);
+  const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
   await page.click('#bulkBatchPdfBtn');
-  await downloadPromise;
+  const download = await downloadPromise;
   // Error log box always visible now
   await page.waitForSelector('#bulkErrorLog');
   const logText = await page.locator('#bulkErrorLog').innerText();

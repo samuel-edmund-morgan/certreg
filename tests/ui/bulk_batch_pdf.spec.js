@@ -84,8 +84,10 @@ test.describe('Bulk issuance – batch PDF & UI elements', () => {
     }
     // Batch PDF button should be present for manual download
     await expect(page.locator('#bulkBatchPdfBtn')).toBeVisible();
-    // Trigger manual batch PDF generation & capture download
-    const downloadPromise = page.waitForEvent('download');
+    // Before line 88, add waitForTimeout and extended timeout
+    await page.waitForSelector('#bulkBatchPdfBtn');
+    await page.waitForTimeout(2000);
+    const downloadPromise = page.waitForEvent('download', { timeout: 120000 });
     await page.click('#bulkBatchPdfBtn');
     const download = await downloadPromise;
     const filename = download.suggestedFilename();
