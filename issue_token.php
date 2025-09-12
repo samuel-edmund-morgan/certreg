@@ -22,7 +22,7 @@ $coords = $cfg['coords'] ?? [];
       <input type="text" name="pib" required placeholder="Прізвище Ім'я" autocomplete="off">
     </label>
     <label>Курс
-      <input type="text" name="course" required placeholder="COURSE-101">
+      <input type="text" name="course" required placeholder="Курс з основ кібербезпеки">
     </label>
     <label>Оцінка
       <input type="text" name="grade" required placeholder="A" maxlength="16">
@@ -74,7 +74,7 @@ $coords = $cfg['coords'] ?? [];
     <form id="bulkForm" class="form flex-col gap-14 maxw-760" autocomplete="off">
   <fieldset class="flex flex-wrap gap-12">
         <label class="minw-200 flex-1">Курс (спільний)
-          <input type="text" name="course" required placeholder="COURSE-101">
+          <input type="text" name="course" required placeholder="Курс з основ кібербезпеки">
         </label>
         <label class="minw-200">Дата проходження
           <input type="date" name="date" required>

@@ -52,11 +52,21 @@ require_once __DIR__.'/header.php';
         </tr>
       </thead>
       <tbody>
+      <?php
+        // Localize event type codes to Ukrainian labels (defined once, not inside the loop)
+        $eventLabelMap = [
+          'create'   => 'Створено',
+          'revoke'   => 'Відкликано',
+          'unrevoke' => 'Відновлено',
+          'delete'   => 'Видалено',
+          'lookup'   => 'Перевірено',
+        ];
+      ?>
       <?php foreach($rows as $r): ?>
         <tr>
           <td><?= (int)$r['id'] ?></td>
           <td class="mono fs-12"><a class="link-plain" href="/token.php?cid=<?= urlencode($r['cid']) ?>"><?= htmlspecialchars($r['cid']) ?></a></td>
-          <td><?= htmlspecialchars($r['event_type']) ?></td>
+          <td><?php echo htmlspecialchars($eventLabelMap[$r['event_type']] ?? $r['event_type']); ?></td>
           <td class="ellipsis" title="<?= htmlspecialchars($r['reason'] ?? '') ?>"><?= htmlspecialchars($r['reason'] ?? '') ?></td>
           <td><?= htmlspecialchars($r['admin_user'] ?? '') ?></td>
           <td><?= htmlspecialchars($r['prev_revoked_at'] ?? '') ?></td>
@@ -67,12 +77,43 @@ require_once __DIR__.'/header.php';
       </tbody>
     </table>
   </div>
-  <?php if($pages>1): ?>
-    <nav class="pagination">
-      <?php for($p=1;$p<=$pages;$p++): ?>
-        <a class="page <?= $p===$page?'active':'' ?>" href="?<?= http_build_query(['cid'=>$cid,'page'=>$p]) ?>"><?= $p ?></a>
-      <?php endfor; ?>
-    </nav>
+  <?php
+    // Smart pagination identical to tokens.php
+    function render_pagination($currentPage, $totalPages, $baseQuery) {
+        $delta = 2; // Number of pages to show around the current page
+        $range = [];
+        for ($i = 1; $i <= $totalPages; $i++) {
+            if ($i == 1 || $i == $totalPages || ($i >= $currentPage - $delta && $i <= $currentPage + $delta)) {
+                $range[] = $i;
+            }
+        }
+
+        $withDots = [];
+        $last = 0;
+        foreach ($range as $p) {
+            if (($p - $last) > 1) {
+                $withDots[] = '...';
+            }
+            $withDots[] = $p;
+            $last = $p;
+        }
+
+        echo '<nav class="pagination">';
+        foreach ($withDots as $p) {
+            if ($p === '...') {
+                echo '<span class="page-dots">...</span>';
+            } else {
+                $query = http_build_query(array_merge($baseQuery, ['page' => $p]));
+                $activeClass = ($p == $currentPage) ? 'active' : '';
+                echo "<a class=\"page {$activeClass}\" href=\"?{$query}\">{$p}</a>";
+            }
+        }
+        echo '</nav>';
+    }
+  ?>
+  <?php if($pages>1):
+    render_pagination($page, $pages, ['cid' => $cid]);
+  ?>
   <?php endif; ?>
 </section>
 <?php require_once __DIR__.'/footer.php'; ?>

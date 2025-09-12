@@ -1,5 +1,6 @@
 (function(){
   // Robust UTF-8 aware base64url decode (original encoding used btoa(unescape(encodeURIComponent(str))))
+  function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
   function decodePayloadParam(){
     const params = new URLSearchParams(location.search);
     const p = params.get('p'); if(!p) return null;
@@ -83,7 +84,6 @@
     }
     if(js.revoked){
       existBox.className='alert alert-error';
-      function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;","\">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
       function fmtDate(str){
         if(!str) return '';
         const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
@@ -107,6 +107,20 @@
       ownForm.addEventListener('submit', async ev=>{
         ev.preventDefault(); ownResult.textContent='';
         const pib = normName(ownForm.pib.value); if(!pib) return;
+        // Pretty-print name for display only (does not affect HMAC normalization)
+        function toNameCaseUk(raw){
+          let s = String(raw || '').normalize('NFC').replace(/\s+/g,' ').trim();
+          if(!s) return s;
+          // Strategy: lowercase entire string (uk locale), then capitalize first letter of each word and each hyphenated part.
+          // Do NOT uppercase letters after apostrophes to avoid forms like "Мар’Яна".
+          s = s.toLocaleLowerCase('uk');
+          return s.split(' ').map(word =>
+            word.split('-').map(seg => {
+              if(!seg) return seg;
+              return seg.replace(/^\p{L}/u, ch => ch.toLocaleUpperCase('uk'));
+            }).join('-')
+          ).join(' ');
+        }
         let canonical;
         if(payload.v===1){
           canonical = `v1|${pib}|${payload.course}|${payload.grade}|${payload.date}`;
@@ -118,9 +132,9 @@
               ownResult.innerHTML='<div class="alert alert-error">Можливі латинські символи: '+risk+' разом із кирилицею. Переконайтесь, що ці літери введені кирилицею (А, В, С, Е, Н, І, К, М, О, Р, Т, Х, У).</div>';
               return;
             }
-            if(cmp===js.h){ ownResult.innerHTML='<div class="alert alert-ok">Так, сертифікат належить зазначеній особі.</div>'; } else {
+            if(cmp===js.h){ const displayName = toNameCaseUk(ownForm.pib.value); ownResult.innerHTML='<div class="alert alert-ok" data-verdict="match">Сертифікат дійсно належить '+escapeHtml(displayName)+'.</div>'; } else {
               mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
-              ownResult.innerHTML='<div class="alert alert-error">Не збігається. Імʼя/формат не відповідає сертифікату.<br><small>Нормалізований варіант: <code>'+pib+'</code></small></div>';
+              ownResult.innerHTML='<div class="alert alert-error">Не збігається. Імʼя/формат не відповідає сертифікату.</div>';
             }
           } catch(e){ ownResult.innerHTML='<div class="alert alert-error">Помилка обчислення.</div>'; }
           return;
@@ -145,10 +159,11 @@
             return;
           }
           if(matched){
-            ownResult.innerHTML='<div class="alert alert-ok" data-verdict="match">Так, сертифікат належить зазначеній особі.</div>';
+            const displayName = toNameCaseUk(ownForm.pib.value);
+            ownResult.innerHTML='<div class="alert alert-ok" data-verdict="match">Сертифікат дійсно належить '+escapeHtml(displayName)+'.</div>';
           } else {
             mismatchAttempts.push({raw:ownForm.pib.value,time:Date.now(),norm: pib});
-            ownResult.innerHTML='<div class="alert alert-error verify-fail" data-verdict="mismatch">Не збігається. Імʼя/формат не відповідає сертифікату.<br><small>Нормалізований варіант: <code>'+pib+'</code></small></div>';
+            ownResult.innerHTML='<div class="alert alert-error verify-fail" data-verdict="mismatch">Не збігається. Імʼя/формат не відповідає сертифікату.</div>';
           }
           return;
         } else {
