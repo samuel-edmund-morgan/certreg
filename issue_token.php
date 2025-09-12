@@ -3,7 +3,6 @@ require_once __DIR__.'/auth.php';
 require_admin();
 require_csrf();
 $isAdminPage = true;
-$isBulkIssuePage = true; // Flag for header.php to include test-mode script
 $cfg = require __DIR__.'/config.php';
 $csrf = csrf_token();
 require_once __DIR__.'/header.php';
@@ -113,4 +112,5 @@ $coords = $cfg['coords'] ?? [];
  <!-- CSRF token now provided via <meta name="csrf"> in header (no inline script allowed by CSP) -->
  <script src="/assets/js/issue_page.js"></script>
 <script src="/assets/js/issue.js"></script>
+<script src="/assets/js/issue_bulk.js" defer></script>
 <?php require_once __DIR__.'/footer.php'; ?>

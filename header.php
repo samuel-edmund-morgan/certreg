@@ -8,17 +8,7 @@ $cfg = require __DIR__.'/config.php';
 
 // --- Security headers (no inline scripts) ---
 if (!headers_sent()) {
-  // By default, a strict CSP without nonce.
-  $csp = "default-src 'self' blob:; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
-  
-  // If this is the bulk issue page and test mode is active, add a nonce for the inline script.
-  $isTestMode = isset($_GET['test_mode']) && $_GET['test_mode'] === '1';
-  if (isset($isBulkIssuePage) && $isBulkIssuePage && $isTestMode) {
-    $nonce = base64_encode(random_bytes(16));
-    $csp = "default-src 'self' blob:; script-src 'self' 'nonce-{$nonce}'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests";
-  }
-
-  header('Content-Security-Policy: ' . $csp);
+  header('Content-Security-Policy: default-src \'self\' blob:; script-src \'self\'; style-src \'self\'; img-src \'self\' data:; font-src \'self\'; object-src \'none\'; base-uri \'none\'; frame-ancestors \'none\'; form-action \'self\'; connect-src \'self\'; upgrade-insecure-requests');
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: DENY');
   header('Referrer-Policy: no-referrer');
@@ -46,22 +36,6 @@ $csrfMeta = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
   <link rel="preload" href="/fonts/Montserrat-Light.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="/fonts/Montserrat-SemiBold.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="/assets/css/styles.css">
-  <?php
-  // Conditionally add the inline script only on the bulk issue page in test mode.
-  if (isset($isBulkIssuePage) && $isBulkIssuePage && $isTestMode): ?>
-  <script nonce="<?= $nonce ?>">
-    // Synchronously set test mode flag if URL param is present. This is the most reliable way.
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('test_mode') === '1') {
-        window.__TEST_MODE = true;
-      }
-    } catch (e) {
-      console.error('Failed to check for test mode:', e);
-    }
-  </script>
-  <script src="/assets/js/issue_bulk.js"></script>
-  <?php endif; ?>
 <body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-inf='<?= $infSent ?>' data-test='<?= (isset($_GET['test_mode']) && $_GET['test_mode'] === '1') ? '1' : '0' ?>'>
 <header class="topbar">
   <div class="topbar__inner">
