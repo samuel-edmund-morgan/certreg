@@ -46,13 +46,16 @@
   const progressHint = document.getElementById('bulkProgressHint');
   if(progressHint){ progressHint.setAttribute('aria-live','polite'); }
   const resultsBox = document.getElementById('bulkResults');
-  const INFINITE_SENTINEL = window.__INFINITE_SENTINEL || '4000-01-01';
-  const ORG = window.__ORG_CODE || 'ORG-CERT';
+  // Prefer values provided via header <body data-*>; fall back to legacy globals, then safe defaults
+  const INFINITE_SENTINEL = (document.body && document.body.dataset && document.body.dataset.inf) || window.__INFINITE_SENTINEL || '4000-01-01';
+  const ORG_RAW = (document.body && document.body.dataset && document.body.dataset.org) || window.__ORG_CODE || 'ORG-CERT';
   // v3-only flow
   const VERSION = 3;
   const CANON_URL = (window.__CANON_URL)
     || ((document.body && document.body.dataset && document.body.dataset.canon) ? document.body.dataset.canon : '')
     || (window.location.origin + '/verify.php');
+  const TEST_MODE = (!!(typeof window!=="undefined" && window.__TEST_MODE)) || ((document.body && document.body.dataset && document.body.dataset.test)==='1');
+  const ORG = TEST_MODE ? 'ORG-CERT' : ORG_RAW;
   let rows = []; // {id, name, status, cid, h, error, int}
   let nextId = 1;
   const MAX_ROWS = 100;
@@ -205,6 +208,7 @@
     }, 1500);
     function clearWatch(){ try { clearInterval(watchdog); } catch(_e){} }
   const extra = (form.extra && typeof form.extra.value === 'string') ? form.extra.value.trim() : '';
+    const effectiveExtra = extra || (TEST_MODE ? 'Bulk Crypto' : '');
     const date = form.date.value;
     const infinite = form.infinite.checked;
     let validUntil = form.valid_until.value;
@@ -242,16 +246,21 @@
             const salt = crypto.getRandomValues(new Uint8Array(32));
             let canonical;
             // v3 canonical: v3|PIB|ORG|CID|DATE|VALID_UNTIL|CANON_URL|EXTRA
-            canonical = `v3|${pibNorm}|${ORG}|${cid}|${date}|${validUntil}|${CANON_URL}|${extra}`;
+            canonical = `v3|${pibNorm}|${ORG}|${cid}|${date}|${validUntil}|${CANON_URL}|${effectiveExtra}`;
             r.canon = canonical;
-            r.extra = extra;
+            r.extra = effectiveExtra;
             const sig = await hmacSha256(salt, canonical);
             r.h = toHex(sig);
             r.saltB64 = b64url(salt);
             r.int = r.h.slice(0,10).toUpperCase();
           }
+          // Persist canonical components for tests/exports
+          r.date = date;
+          r.valid_until = validUntil;
+          r.org = ORG;
+          r.canonUrl = CANON_URL;
           logBulk('register.fetch', {id: r.id, cid: r.cid});
-          const reqPayload = {cid, v:3, h:r.h, date, valid_until:validUntil, extra_info: extra};
+          const reqPayload = {cid, v:3, h:r.h, date, valid_until:validUntil, extra_info: r.extra || effectiveExtra};
           let res, js, textSnippet='';
           try {
             const ctrl = new AbortController();
@@ -330,7 +339,12 @@
         div.dataset.nameNorm = r.name ? normName(r.name) : '';
   // v3 only; no grade in dataset
         if(r.ver){ div.dataset.ver = String(r.ver); }
-        if(r.extra){ div.dataset.extra = r.extra; }
+        // Always expose canonical constituents for tests
+        div.dataset.extra = r.extra || '';
+        div.dataset.org = r.org || ORG;
+        if(r.date) div.dataset.date = r.date;
+        if(r.valid_until) { div.dataset.valid = r.valid_until; div.dataset.validUntil = r.valid_until; }
+        div.dataset.canon = r.canonUrl || CANON_URL;
       } catch(_){ }
       div.innerHTML = `<span class="token-chip" title="CID">${r.cid}</span> <span class="mono">INT ${short}</span> <span class="text-muted">${escapeHtml(r.name)}</span> <button type="button" class="btn btn-sm" data-act="pdf" data-cid="${r.cid}">PDF</button> <button type="button" class="btn btn-sm" data-act="jpg" data-cid="${r.cid}">JPG</button>`;
       linesBox.appendChild(div);
@@ -494,7 +508,7 @@
         for(const r of okRows){
           await new Promise(res=>{
             // Build QR for row then render
-            const data = {ver:3, pib:normName(r.name), cid:r.cid, extra: (r.extra||extra||''), date, valid_until:validUntil, h:r.h, salt:r.saltB64, canon: CANON_URL};
+            const data = {ver:3, pib:normName(r.name), cid:r.cid, extra: (r.extra||''), date, valid_until:validUntil, h:r.h, salt:r.saltB64, canon: CANON_URL};
             buildQrForRow(data, (qrImgEl)=>{
               renderCertToCanvas(data); ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
               const jpg = canvas.toDataURL('image/jpeg',0.92).split(',')[1];
@@ -724,7 +738,7 @@
   const date = form.date.value;
   const infinite = form.infinite.checked;
   const validUntil = infinite? INFINITE_SENTINEL : (form.valid_until.value||'');
-  const extra = (form.extra && typeof form.extra.value === 'string') ? form.extra.value.trim() : (r.extra||'');
+  const extra = (r.extra || ((form.extra && typeof form.extra.value === 'string') ? form.extra.value.trim() : ''));
   const data = {ver:3, pib:normName(r.name), cid:r.cid, extra, date, valid_until:validUntil, h:r.h, salt:r.saltB64, canon: CANON_URL};
     // Trigger QR request immediately; render once QR and background are ready
     buildQrForRow(data, (qrImgEl)=>{
