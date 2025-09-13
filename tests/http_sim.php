@@ -24,7 +24,7 @@ function do_json_include($file, $method='POST', $post=[], $jsonBody=null){
 
 // Create token via real register endpoint (using test override body)
 $cid='S'.bin2hex(random_bytes(4)); $h=bin2hex(random_bytes(32)); $issued=date('Y-m-d'); $valid='4000-01-01';
-$GLOBALS['__TEST_JSON_BODY']=json_encode(['cid'=>$cid,'v'=>2,'h'=>$h,'course'=>'SIM','grade'=>'A','date'=>$issued,'valid_until'=>$valid]);
+$GLOBALS['__TEST_JSON_BODY']=json_encode(['cid'=>$cid,'v'=>3,'h'=>$h,'date'=>$issued,'valid_until'=>$valid,'extra_info'=>'SIM']);
 $_SERVER['HTTP_X_CSRF_TOKEN']=csrf_token();
 $_SERVER['REQUEST_METHOD']='POST';
 ob_start(); include __DIR__.'/../api/register.php'; $regOut=ob_get_clean();

@@ -8,8 +8,7 @@ test.describe('Verify page status states', () => {
     await page.waitForSelector('#issueForm');
     const today = new Date().toISOString().slice(0,10);
     await page.fill('input[name="pib"]', 'ТЕСТ КОР КОРИСТУВАЧ');
-    await page.fill('input[name="course"]', 'COURSE-VERIFY');
-    await page.fill('input[name="grade"]', 'A');
+  await page.fill('input[name="extra"]', 'COURSE-VERIFY');
     await page.fill('input[name="date"]', today);
     const downloadPromise = page.waitForEvent('download');
     await page.click('#issueForm button[type="submit"]');
@@ -78,9 +77,8 @@ test.describe('Verify page status states', () => {
     const past = new Date(today.getTime() - 86400000); // yesterday
     const todayStr = today.toISOString().slice(0,10);
     const pastStr = past.toISOString().slice(0,10);
-    await page.fill('input[name="pib"]', 'ТЕСТ ПРОСРОЧЕНИЙ');
-    await page.fill('input[name="course"]', 'COURSE-EXP');
-    await page.fill('input[name="grade"]', 'C');
+  await page.fill('input[name="pib"]', 'ТЕСТ ПРОСРОЧЕНИЙ');
+  await page.fill('input[name="extra"]', 'COURSE-EXP');
     await page.fill('input[name="date"]', pastStr); // issue date yesterday
     // Disable infinite and set valid_until to yesterday (so considered expired today)
     await page.uncheck('input[name="infinite"]');

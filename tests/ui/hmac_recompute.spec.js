@@ -35,8 +35,7 @@ test('single issuance: recompute HMAC matches displayed hash + INT', async ({ pa
   if(await singleTabBtn.count()) await singleTabBtn.click();
   const today = new Date().toISOString().slice(0,10);
   await page.fill('#issueForm input[name="pib"]', 'Іван Тест');
-  await page.fill('#issueForm input[name="course"]', 'Crypto QA');
-  await page.fill('#issueForm input[name="grade"]', 'A');
+  await page.fill('#issueForm input[name="extra"]', 'Crypto QA');
   await page.fill('#issueForm input[name="date"]', today);
   await page.locator('#issueForm input[name="infinite"]').check();
   await page.click('#issueForm button[type="submit"]');
@@ -47,13 +46,14 @@ test('single issuance: recompute HMAC matches displayed hash + INT', async ({ pa
   const h = await meta.getAttribute('data-h');
   const saltB64 = await meta.getAttribute('data-salt');
   const cid = await meta.getAttribute('data-cid');
-  const grade = await meta.getAttribute('data-grade');
-  const course = await meta.getAttribute('data-course');
+  const extra = await meta.getAttribute('data-extra');
   const date = await meta.getAttribute('data-date');
   const validUntil = await meta.getAttribute('data-validuntil') || await meta.getAttribute('data-valid-until');
   const nameNorm = await meta.getAttribute('data-name-norm');
   expect(h && saltB64 && cid).toBeTruthy();
-  const canonical = `v2|${nameNorm}|${ORG}|${cid}|${course}|${grade}|${date}|${validUntil}`;
+    // Derive canonical verify URL from current origin
+    const verifyUrl = new URL('/verify.php', page.url()).toString();
+    const canonical = `v3|${nameNorm}|${ORG}|${cid}|${date}|${validUntil}|${verifyUrl}|${extra||''}`;
   const saltBytes = base64UrlToBytes(saltB64);
   expect(saltBytes.length).toBeGreaterThan(0);
   const recomputed = await hmacSHA256Hex(page, saltBytes, canonical);
@@ -68,16 +68,14 @@ test('bulk issuance: each row exposes data-* and HMAC recomputes', async ({ page
   await page.goto('/issue_token.php');
   await page.click('.tabs .tab[data-tab="bulk"]');
   const today = new Date().toISOString().slice(0,10);
-  await page.fill('#bulkTab input[name="course"]', 'Bulk Crypto');
+  await page.fill('#bulkTab input[name="extra"]', 'Bulk Crypto');
   await page.fill('#bulkTab input[name="date"]', today);
   await page.locator('#bulkTab input[name="infinite"]').check();
   const firstRow = page.locator('#bulkTable tbody tr').first();
   await firstRow.locator('input[name="name"]').fill('Марія Нормалізація');
-  await firstRow.locator('input[name="grade"]').fill('A');
   await page.click('#addRowBtn');
   const second = page.locator('#bulkTable tbody tr').nth(1);
   await second.locator('input[name="name"]').fill('Петро Комбінація');
-  await second.locator('input[name="grade"]').fill('B');
   await page.waitForSelector('#bulkGenerateBtn:not([disabled])');
   await page.click('#bulkGenerateBtn');
   await page.waitForSelector('#bulkResultLines div[data-h][data-salt]', { timeout: 20000 });
@@ -93,12 +91,13 @@ test('bulk issuance: each row exposes data-* and HMAC recomputes', async ({ page
     const h = await row.getAttribute('data-h');
     const saltB64 = await row.getAttribute('data-salt');
     const cid = await row.getAttribute('data-cid');
-    const grade = await row.getAttribute('data-grade');
+    const extra = await row.getAttribute('data-extra');
     const nameNorm = await row.getAttribute('data-name-norm');
     expect(h && saltB64 && cid && nameNorm).toBeTruthy();
   const saltBytes = base64UrlToBytes(saltB64||'');
   expect(saltBytes.length).toBeGreaterThan(0);
-  const canonical = `v2|${nameNorm}|${ORG}|${cid}|Bulk Crypto|${grade}|${today}|4000-01-01`;
+      const verifyUrl2 = new URL('/verify.php', page.url()).toString();
+      const canonical = `v3|${nameNorm}|${ORG}|${cid}|${today}|4000-01-01|${verifyUrl2}|${extra||'Bulk Crypto'}`;
   const recomputed = await hmacSHA256Hex(page, saltBytes, canonical);
     expect(recomputed).toBe(h);
     const intShort = h.slice(0,10).toUpperCase();
@@ -112,8 +111,7 @@ test('revocation: revoked certificate shows revoked status and hides owner form'
   await page.goto('/issue_token.php');
   const today = new Date().toISOString().slice(0,10);
   await page.fill('#issueForm input[name="pib"]', 'Степан Ревокація');
-  await page.fill('#issueForm input[name="course"]', 'Rev Course');
-  await page.fill('#issueForm input[name="grade"]', 'A');
+  await page.fill('#issueForm input[name="extra"]', 'Rev Course');
   await page.fill('#issueForm input[name="date"]', today);
   await page.locator('#issueForm input[name="infinite"]').check();
   await page.click('#issueForm button[type="submit"]');
@@ -122,8 +120,7 @@ test('revocation: revoked certificate shows revoked status and hides owner form'
   const meta = page.locator('#regMeta');
   const cid = await meta.getAttribute('data-cid');
   const salt = await meta.getAttribute('data-salt');
-  const course = await meta.getAttribute('data-course');
-  const grade = await meta.getAttribute('data-grade');
+  const extra = await meta.getAttribute('data-extra');
   const date = await meta.getAttribute('data-date');
   const validUntil = await meta.getAttribute('data-valid-until');
   await page.evaluate(async (cid)=>{
@@ -135,7 +132,8 @@ test('revocation: revoked certificate shows revoked status and hides owner form'
     let b64 = Buffer.from(json,'utf8').toString('base64');
     return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
   }
-  const pPacked = toB64Url({v:2,cid,s:salt,org:ORG,course,grade,date,valid_until:validUntil});
+  const verifyUrl3 = new URL('/verify.php', page.url()).toString();
+  const pPacked = toB64Url({v:3,cid,s:salt,org:ORG,date,valid_until:validUntil,canon: verifyUrl3, extra});
   await page.goto(`/verify.php?p=${pPacked}`);
   await page.waitForSelector('#existBox');
   const existText = await page.locator('#existBox').innerText();
@@ -150,8 +148,7 @@ test('normalization fuzz: combining marks & spacing variants yield same normaliz
   const today = new Date().toISOString().slice(0,10);
   const base = 'Ганна Проба';
   await page.fill('#issueForm input[name="pib"]', base);
-  await page.fill('#issueForm input[name="course"]', 'Norm Course');
-  await page.fill('#issueForm input[name="grade"]', 'B');
+  await page.fill('#issueForm input[name="extra"]', 'Norm Course');
   await page.fill('#issueForm input[name="date"]', today);
   await page.locator('#issueForm input[name="infinite"]').check();
   await page.click('#issueForm button[type="submit"]');

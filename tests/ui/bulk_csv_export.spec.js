@@ -7,15 +7,15 @@ test('bulk CSV export has BOM and correct headers', async ({ page }) => {
   await page.click('.tab[data-tab="bulk"]');
   await page.waitForSelector('#bulkForm');
   const today = new Date().toISOString().slice(0,10);
-  await page.fill('#bulkForm input[name="course"]', 'COURSE-CSV');
+  await page.fill('#bulkForm input[name="extra"]', 'COURSE-CSV');
   await page.fill('#bulkForm input[name="date"]', today);
   // Add second row
   await page.click('#addRowBtn');
   // Avoid Latin letters that trigger mixed script risk detection
   await page.fill('#bulkTable tbody tr:nth-child(1) input[name="name"]', 'Кириличний Перший');
-  await page.fill('#bulkTable tbody tr:nth-child(1) input[name="grade"]', 'A');
+  // no grade field in v3
   await page.fill('#bulkTable tbody tr:nth-child(2) input[name="name"]', 'Кириличний Другий');
-  await page.fill('#bulkTable tbody tr:nth-child(2) input[name="grade"]', 'B');
+  // no grade field in v3
   // Wait until button enabled and shows count (2)
   await page.waitForFunction(() => {
     const btn = document.getElementById('bulkGenerateBtn');
@@ -44,6 +44,6 @@ test('bulk CSV export has BOM and correct headers', async ({ page }) => {
   const text = buf.toString('utf8');
   // Remove potential BOM from the decoded string (already validated raw bytes above)
   const firstLine = text.split(/\r?\n/)[0].replace(/^\uFEFF/, '');
-  expect(firstLine).toBe('NAME_ORIG,CID,INT,COURSE,GRADE,ISSUED_DATE,VALID_UNTIL');
+  expect(firstLine).toBe('NAME_ORIG,CID,INT,ORG,ISSUED_DATE,VALID_UNTIL,EXTRA');
   }
 });

@@ -8,8 +8,7 @@ test.describe('Issuance flow (client-side generation + register)', () => {
     await page.waitForSelector('#issueForm');
     const today = new Date().toISOString().slice(0,10);
     await page.fill('input[name="pib"]', 'ТЕСТ КОРИСТУВАЧ');
-    await page.fill('input[name="course"]', 'COURSE-PLAY');
-    await page.fill('input[name="grade"]', 'A');
+  await page.fill('input[name="extra"]', 'COURSE-PLAY');
     await page.fill('input[name="date"]', today);
   // Ensure single-issuance infinite checkbox (in expiryBlock) is checked
   await expect(page.locator('#expiryBlock input[name="infinite"]')).toBeChecked();

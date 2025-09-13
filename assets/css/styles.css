@@ -396,6 +396,5 @@ main{flex:1}
 
   /* Bulk table column widths (replacing inline styles) */
   #bulkTable th.col-n{width:40px}
-  #bulkTable th.col-grade{width:140px}
   #bulkTable th.col-status{width:110px}
   #bulkTable th.col-actions{width:54px}

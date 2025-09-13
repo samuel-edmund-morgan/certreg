@@ -65,10 +65,10 @@ sudo chown -R www-data:www-data /var/www/certreg
 cd /var/www/certreg
 cp config.php.example config.php
 ```
-Заповніть у `config.php`: параметри БД (`db_host`,`db_name`,`db_user`,`db_pass`), `site_name`, `logo_path`, `org_code`, `infinite_sentinel`.
+Заповніть у `config.php`: параметри БД (`db_host`,`db_name`,`db_user`,`db_pass`), `site_name`, `logo_path`, `org_code`, `infinite_sentinel`, `canonical_verify_url`.
 
-### 5. Створення таблиць (без міграцій)
-Схема створюється одразу SQL-скриптом. Виконайте (налаштувавши БД):
+### 5. Створення таблиць (v3)
+Початкова v3-схема. Виконайте (налаштувавши БД):
 
 ```sql
 USE certreg;
@@ -82,10 +82,9 @@ CREATE TABLE creds (
 CREATE TABLE tokens (
    id INT AUTO_INCREMENT PRIMARY KEY,
    cid VARCHAR(64) NOT NULL,
-   version TINYINT NOT NULL DEFAULT 1,
+   version TINYINT NOT NULL DEFAULT 3,
    h CHAR(64) NOT NULL,
-   course VARCHAR(100) DEFAULT NULL,
-   grade VARCHAR(32) DEFAULT NULL,
+   extra_info VARCHAR(255) DEFAULT NULL,
    issued_date DATE DEFAULT NULL,
    valid_until DATE DEFAULT NULL,
    revoked_at DATETIME DEFAULT NULL,
@@ -201,35 +200,17 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
 7. Увімкнути rate limiting / резервні копії.
 
 ## API
-- `POST /api/register.php` – створення токена `{cid,v,h,course,grade,date,valid_until}`.
-- `GET /api/status.php?cid=...` – перевірка статусу `{h, revoked_at?, revoke_reason?}`.
+- `POST /api/register.php` – створення токена `{ cid, v:3, h, date, valid_until, extra_info? }`.
+- `GET /api/status.php?cid=...` – перевірка статусу `{ h, revoked?, revoked_at?, revoke_reason?, valid_until }`.
 - `POST /api/bulk_action.php` – пакетні операції `revoke | unrevoke | delete`.
 - `GET /api/events.php?cid=...` – журнал подій.
 
 ## Міграції
-Перехід між версіями описано в [MIGRATION.md](MIGRATION.md). Поточна канонічна схема:
+Докладно в [MIGRATION.md](MIGRATION.md). Поточна канонічна схема (v3):
 ```
-v2|NAME|ORG|CID|COURSE|GRADE|ISSUED_DATE|VALID_UNTIL
+v3|NAME|ORG|CID|ISSUED_DATE|VALID_UNTIL|CANON_URL|EXTRA
 ```
-
-### Швидкі нотатки переходу v1 → v2 (TL;DR)
-- Додано поля `ORG`, `CID`, `VALID_UNTIL` у canonical рядок; `date` перейменовано у `issued_date`.
-- Схема: додати колонку `valid_until DATE NOT NULL DEFAULT '4000-01-01'` та (за потреби) перейменувати `date`.
-- Старі QR (v1) продовжують валідуватися без змін.
-- Ранні v2 QR без явного `org` у payload – fallback на `org_code` (`config.php`) → після цього `org_code` не змінювати.
-- Sentinel `4000-01-01` = "без експірації"; прострочення = `valid_until < today` && != sentinel.
-
-Перевірка стану міграції:
-```sql
-SHOW COLUMNS FROM tokens LIKE 'valid_until';
-SELECT COUNT(*) AS expired FROM tokens WHERE valid_until <> '4000-01-01' AND valid_until < CURDATE();
-```
-Визначення версії canonical у PHP:
-```php
-function detect_canonical_version(string $payload): int {
-   return str_starts_with($payload, 'v2|') ? 2 : 1; // v1 історично без префікса або з 'v1|'
-}
-```
+Сервер зберігає тільки `{cid,version,h,issued_date,valid_until,extra_info?}`.
 
 ## Безпека
 Докладні рекомендації, модель загроз та чеклісти наведено у [SECURITY.md](SECURITY.md). Ключові принципи:

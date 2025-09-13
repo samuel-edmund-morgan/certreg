@@ -1,7 +1,7 @@
 <?php
 // Safe DB migration runner for v3 changes
 // - Adds tokens.extra_info if missing
-// - Drops legacy tokens.course and tokens.grade (v3-only model)
+// - Removes legacy token fields no longer used in v3-only model
 // Usage: php scripts/migrate.php
 
 $cfg = require __DIR__.'/../config.php';
@@ -21,19 +21,17 @@ try {
     echo "Checking migrations for DB '{$dbName}'...\n";
     $changed = false;
 
-    // 1) Add tokens.extra_info if missing
+    // 1) Add tokens.extra_info if missing (place after `h`)
     if (!column_exists($pdo, $dbName, 'tokens', 'extra_info')) {
         echo " - Adding column tokens.extra_info... ";
-        // If grade column no longer exists, fallback to position after h
-        $afterCol = column_exists($pdo, $dbName, 'tokens', 'grade') ? 'grade' : 'h';
-        $pdo->exec("ALTER TABLE `tokens` ADD COLUMN `extra_info` VARCHAR(255) NULL AFTER `{$afterCol}`");
+        $pdo->exec("ALTER TABLE `tokens` ADD COLUMN `extra_info` VARCHAR(255) NULL AFTER `h`");
         echo "done.\n";
         $changed = true;
     } else {
         echo " - Column tokens.extra_info already exists.\n";
     }
 
-    // 2) Drop legacy columns course and grade if present
+    // 2) Drop legacy columns if present
     if (column_exists($pdo, $dbName, 'tokens', 'course')) {
         echo " - Dropping column tokens.course... ";
         $pdo->exec("ALTER TABLE `tokens` DROP COLUMN `course`");

@@ -18,7 +18,7 @@ function call_json_endpoint($path, $method='POST', $json=null, $post=null){
 $issued=date('Y-m-d'); $valid='4000-01-01'; $cids=[]; $hashes=[];
 for($i=0;$i<3;$i++){
   $cid='F'.bin2hex(random_bytes(4)); $cids[]=$cid; $h=bin2hex(random_bytes(32)); $hashes[$cid]=$h;
-  $resp = call_json_endpoint('api/register.php','POST', json_encode(['cid'=>$cid,'v'=>2,'h'=>$h,'course'=>'FLOW','grade'=>'A','date'=>$issued,'valid_until'=>$valid]) );
+  $resp = call_json_endpoint('api/register.php','POST', json_encode(['cid'=>$cid,'v'=>3,'h'=>$h,'extra_info'=>'FLOW','date'=>$issued,'valid_until'=>$valid]) );
   $j=json_decode($resp,true); jassert(isset($j['ok'])&&$j['ok']===true,"register $cid");
 }
 

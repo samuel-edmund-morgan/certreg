@@ -77,7 +77,7 @@
     ctx.font = '28px sans-serif';
     const cName = coords.name || {x:600,y:420};
     const cId   = coords.id   || {x:600,y:445};
-    const cExtra = coords.extra || (coords.course||{x:600,y:520});
+  const cExtra = coords.extra || {x:600,y:520};
   const cDate = coords.date || {x:600,y:570};
   const cExp  = coords.expires || {x:600,y:600};
     const cQR   = coords.qr   || {x:150,y:420,size:220};
@@ -118,8 +118,6 @@
   const genBtn = document.getElementById('generateBtn');
   if(genBtn) genBtn.disabled = true;
     const pibRaw = form.pib.value;
-  const course = '';
-  const grade  = '';
   const extra  = (form.extra && form.extra.value ? form.extra.value.trim() : '');
   const date   = form.date.value; // issued_date YYYY-MM-DD
   const infinite = form.infinite.checked;

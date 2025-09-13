@@ -30,7 +30,7 @@ test.describe('API negative cases', () => {
     const invalid = await page.request.fetch('/api/register.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-      data: JSON.stringify({ cid: 'Cinvalid-zz', v: 2, h: '1234', course: 'TEST', grade: 'A', date: '2025-09-09', valid_until: '4000-01-01' })
+      data: JSON.stringify({ cid: 'Cinvalid-zz', v: 3, h: '1234', date: '2025-09-09', valid_until: '4000-01-01', extra_info: 'TEST' })
     });
     expect(invalid.status()).toBe(422);
     const invBody = await invalid.json();
@@ -41,7 +41,7 @@ test.describe('API negative cases', () => {
     const badExpiry = await page.request.fetch('/api/register.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-      data: JSON.stringify({ cid: 'Cbadexp-'+Date.now().toString(36), v: 2, h: shortHash, course: 'TEST', grade: 'A', date: '2025-09-09', valid_until: '2025-09-01' })
+      data: JSON.stringify({ cid: 'Cbadexp-'+Date.now().toString(36), v: 3, h: shortHash, date: '2025-09-09', valid_until: '2025-09-01', extra_info: 'TEST' })
     });
     expect(badExpiry.status()).toBe(422);
     const beBody = await badExpiry.json();

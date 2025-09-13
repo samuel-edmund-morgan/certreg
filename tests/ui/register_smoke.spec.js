@@ -9,10 +9,9 @@ test('register endpoint smoke', async ({ page }) => {
   const today = new Date().toISOString().slice(0,10);
   const payload = {
     cid: 'TESTCID'+Date.now().toString(36)+Math.random().toString(36).slice(2,10),
-    v: 2,
+    v: 3,
     h: crypto.randomBytes(32).toString('hex'), // unique 64 hex chars
-    course: 'SMOKE',
-    grade: 'A',
+    extra_info: 'SMOKE',
     date: today,
     valid_until: today
   };

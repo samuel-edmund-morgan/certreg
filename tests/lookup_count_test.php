@@ -13,9 +13,9 @@ function call_json_endpoint($path,$method='POST',$json=null){
 }
 
 $cid = 'LCT'.bin2hex(random_bytes(4));
-$course='LC-COURSE'; $grade='A'; $date=date('Y-m-d'); $valid='4000-01-01';
+$date=date('Y-m-d'); $valid='4000-01-01';
 $h = bin2hex(random_bytes(32));
-$payload = json_encode(['cid'=>$cid,'v'=>2,'h'=>$h,'course'=>$course,'grade'=>$grade,'date'=>$date,'valid_until'=>$valid]);
+$payload = json_encode(['cid'=>$cid,'v'=>3,'h'=>$h,'date'=>$date,'valid_until'=>$valid,'extra_info'=>'LC']);
 $reg = call_json_endpoint('api/register.php','POST',$payload); $rj=json_decode($reg,true);
 if(empty($rj['ok'])){ echo "[FAIL] register failed: $reg\n"; exit(1);} else echo "[OK] register $cid\n";
 

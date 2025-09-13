@@ -24,7 +24,7 @@ approach.
 ## Core Properties
 * Zero PII storage: NAME never leaves client, only HMAC digest `h` and metadata stored.
 * Per-certificate random 32B salt in QR only (not stored) defeats offline brute-force on leaked DB alone.
-* HMAC-SHA256 over canonical v2 string binds NAME, ORG, CID, course, grade, issued_date, valid_until.
+* HMAC-SHA256 over canonical v3 string binds NAME, ORG, CID, issued_date, valid_until, canonical verify URL, and optional extra.
 * Short Integrity Code (INT) = first 10 hex of HMAC (display convenience, not security boundary).
 
 ## Threat Scenarios
@@ -46,11 +46,11 @@ approach.
 ## NAME Normalisation
 Unchanged from v1: NFC, remove apostrophes, collapse spaces, trim, uppercase, homoglyph guard (mixed Cyrillic + Latin T/O/C). Future: expand homoglyph set (A,E,K,M,H,O,P,C,T,X,Y,B).
 
-## Canonical v2 Format
+## Canonical v3 Format
 ```
-v2|NAME|ORG|CID|COURSE|GRADE|ISSUED_DATE|VALID_UNTIL
+v3|NAME|ORG|CID|ISSUED_DATE|VALID_UNTIL|CANON_URL|EXTRA
 ```
-ORG from config (or payload if present) – do not rotate casually.
+ORG from config; CANON_URL is the canonical verification endpoint. EXTRA is optional free-text (no PII).
 
 ## Expiry Sentinel
 `4000-01-01` chosen to avoid dedicated boolean; simplifies single index and comparisons. Expired => valid_until < today && != sentinel.

@@ -11,22 +11,22 @@ function assert_true($cond, $msg){
 
 // 1. Ensure schema columns exist (tokens)
 $cols = $pdo->query("SHOW COLUMNS FROM tokens")->fetchAll(PDO::FETCH_COLUMN,0);
-foreach(['cid','h','version','issued_date','created_at','lookup_count','last_lookup_at','valid_until'] as $c){
+foreach(['cid','h','version','issued_date','created_at','lookup_count','last_lookup_at','valid_until','extra_info'] as $c){
   assert_true(in_array($c,$cols,true),"tokens column $c present");
 }
 
 // 2. Use register API (simulated internal include) to create token (emulates POST JSON)
 $cid = 'T'.bin2hex(random_bytes(4));
 $h = bin2hex(random_bytes(32));
-$course='TEST-COURSE'; $grade='A'; $issued=date('Y-m-d'); $valid='4000-01-01';
+$extra_info='TEST-EXTRA'; $issued=date('Y-m-d'); $valid='4000-01-01';
 $_SERVER['REQUEST_METHOD']='POST';
 $_SESSION['admin_id']=1; $_SESSION['admin_user']='admin_test';
-$payload = json_encode(['cid'=>$cid,'v'=>2,'h'=>$h,'course'=>$course,'grade'=>$grade,'date'=>$issued,'valid_until'=>$valid]);
+$payload = json_encode(['cid'=>$cid,'v'=>3,'h'=>$h,'extra_info'=>$extra_info,'date'=>$issued,'valid_until'=>$valid]);
 // Inject JSON body for register
 file_put_contents(sys_get_temp_dir().'/__req_body.json',$payload);
 // Monkey patch php://input via stream wrapper not trivial; instead directly call DB insert like API would already validated.
-$stmt = $pdo->prepare("INSERT INTO tokens (cid,version,h,course,grade,issued_date,valid_until) VALUES (?,?,?,?,?,?,?)");
-$stmt->execute([$cid,2,$h,$course,$grade,$issued,$valid]);
+$stmt = $pdo->prepare("INSERT INTO tokens (cid,version,h,extra_info,issued_date,valid_until) VALUES (?,?,?,?,?,?)");
+$stmt->execute([$cid,3,$h,$extra_info,$issued,$valid]);
 assert_true($pdo->lastInsertId()>0,'register token row (simulated)');
 
 // 3. Call status endpoint internally
@@ -55,7 +55,7 @@ $_GET['cid']=$cid; ob_start(); include __DIR__.'/../api/status.php'; $json3 = ob
 assert_true($data3['revoked']===false,'unrevoked flag false');
 
 // 6. Bulk actions simulation: create 3 tokens then revoke 2, unrevoke 1, delete 1
-$bulkCids=[]; for($i=0;$i<3;$i++){ $bc='B'.bin2hex(random_bytes(3)); $bulkCids[]=$bc; $stmt=$pdo->prepare("INSERT INTO tokens (cid,version,h,issued_date,valid_until) VALUES (?,?,?,?,?)"); $stmt->execute([$bc,2,bin2hex(random_bytes(32)),$issued,$valid]); $pdo->prepare("INSERT INTO token_events (cid,event_type) VALUES (?,?)")->execute([$bc,'create']); }
+$bulkCids=[]; for($i=0;$i<3;$i++){ $bc='B'.bin2hex(random_bytes(3)); $bulkCids[]=$bc; $stmt=$pdo->prepare("INSERT INTO tokens (cid,version,h,issued_date,valid_until) VALUES (?,?,?,?,?)"); $stmt->execute([$bc,3,bin2hex(random_bytes(32)),$issued,$valid]); $pdo->prepare("INSERT INTO token_events (cid,event_type) VALUES (?,?)")->execute([$bc,'create']); }
 // Revoke first two
 foreach(array_slice($bulkCids,0,2) as $rc){ $pdo->prepare("UPDATE tokens SET revoked_at=NOW(), revoke_reason='bulk' WHERE cid=?")->execute([$rc]); $pdo->prepare("INSERT INTO token_events (cid,event_type,reason) VALUES (?,?,?)")->execute([$rc,'revoke','bulk']); }
 // Unrevoke second

@@ -1,124 +1,98 @@
-# MIGRATION
+# MIGRATION (to v3, privacy-first)
 
-This guide describes how to migrate the certificate registry from
-canonical format v1 to v2, covering compatibility, schema changes and
-operational steps.
+This guide documents the migration to canonical format v3 and the strict privacy model where PІІ (ПІБ) never leaves the browser, is never stored on the server, and never appears in QR payloads.
 
 ## Contents
-- [v1 → v2 Overview](#v1--v2-overview)
-- [Backward Compatibility](#backward-compatibility)
-- [Expiry Model](#expiry-model)
+- [v3 Overview](#v3-overview)
 - [Data Model Changes](#data-model-changes)
-- [Migration Steps](#migration-steps)
-- [Canonical Reconstruction Pseudocode](#canonical-reconstruction-pseudocode)
-- [NAME Normalisation (unchanged)](#name-normalisation-unchanged)
-- [Testing Checklist](#testing-checklist)
-- [Rollback Plan](#rollback-plan)
-- [Future Extensions (v3 placeholder considerations)](#future-extensions-v3-placeholder-considerations)
+- [Database Migration](#database-migration)
+- [Application Changes](#application-changes)
+- [Canonical Reconstruction (reference)](#canonical-reconstruction-reference)
+- [NAME Normalisation](#name-normalisation)
+- [Validation & Smoke Checks](#validation--smoke-checks)
+- [Rollback](#rollback)
 
-## v1 → v2 Overview
-v2 canonical string adds ORG, CID, VALID_UNTIL while keeping NAME normalisation identical.
+## v3 Overview
+v3 removes legacy "course/grade" fields and introduces two key concepts:
+- Canonical verify URL included in the canonical string (binds signatures to the verification domain)
+- Optional `EXTRA` field (free-form, non-PII) that can be stored in DB and embedded in QR
+
+Canonical string (v3):
 ```
-v1: v1|NAME|COURSE|GRADE|DATE
-v2: v2|NAME|ORG|CID|COURSE|GRADE|ISSUED_DATE|VALID_UNTIL
+v3|PIB|ORG|CID|ISSUED_DATE|VALID_UNTIL|CANON_URL|EXTRA
 ```
-Reasons:
-* ORG binds certificates to issuing organisation (prevents silent domain relocation ambiguity)
-* CID inside canonical allows HMAC to cover identifier (prevents token swapping edge cases)
-* VALID_UNTIL introduces expiry (optional) using sentinel `4000-01-01` instead of boolean
 
-### TL;DR (Operational Snapshot)
-| Step | Action | Command / Note |
-|------|--------|----------------|
-| 1 | Backup DB | `mysqldump certreg > pre_v2.sql` |
-| 2 | Freeze `org_code` | Ensure `config.php` stable |
-| 3 | Deploy code (fallback logic) | Pull commit with dual-path verify |
-| 4 | Schema alter | `ALTER TABLE tokens ADD valid_until DATE NOT NULL DEFAULT '4000-01-01' AFTER issued_date;` |
-| 5 | (Rename date→issued_date) | `ALTER TABLE tokens CHANGE date issued_date DATE NOT NULL;` |
-| 6 | Smoke test v1 + early v2 | Use sample payloads | 
-| 7 | Start issuing with expiry | UI optional field |
-| 8 | Tag release | `git tag v2-migration` |
-| 9 | Announce & document | Link README + this file |
+- `PIB` is the normalized name (client-side only; not stored server-side)
+- `ORG` is the issuing organisation code from `config.php`
+- `CID` is a client-generated identifier
+- `ISSUED_DATE` and `VALID_UNTIL` are ISO dates; unlimited validity uses sentinel `4000-01-01`
+- `CANON_URL` is the canonical verify URL from config (e.g., `https://example.org/verify.php`)
+- `EXTRA` is optional metadata (e.g., nomination), no PІІ
 
-Rollback = restore dump + revert code. v2 certs лишаються криптографічно валідними (можна відкликати політично).
-
-## Backward Compatibility
-Early v2 QR codes may lack the `org` field in payload. Verification logic:
-1. If `org` present in QR → use it in canonical reconstruction.
-2. Else → fall back to current `org_code` from `config.php`.
-3. Compare computed HMAC with stored `h`.
-
-Implication: changing `org_code` after issuing any payloads that did not embed `org` will invalidate those certificates. Therefore freeze `org_code` once production issuance starts.
-
-## Expiry Model
-`valid_until` stores either real ISO date or sentinel `4000-01-01` meaning "no expiry".
-Front-end considers certificate expired if `valid_until < today` and not sentinel. This keeps query logic simple (single DATE column, index friendly).
+QR payload (v3) contains no PІІ and is a compact JSON packed into the verify URL:
+```
+{ v:3, cid, s, org, date, valid_until, canon, extra }
+```
+where `s` is the per-certificate HMAC salt (base64url).
 
 ## Data Model Changes
-Table `tokens` fields impacted:
-* add `valid_until` DATE (default '4000-01-01')
-* (existing) `issued_date` used instead of generic `date`
-* no storage of ORG (comes from config)
-* CID already present
+Table `tokens` (final shape relevant for v3):
+- `version` (INT) defaults to 3 for new rows
+- `h` (CHAR(64)) HMAC hex
+- `extra_info` (VARCHAR(255) NULL) replaces any legacy `course`/`grade`
+- `issued_date` (DATE)
+- `valid_until` (DATE, sentinel `4000-01-01` means no expiry)
 
-## Migration Steps
+All legacy `course` and `grade` columns must be dropped.
 
-### Preparation
-1. Freeze `org_code` value (write once) in `config.php`.
-2. Deploy code supporting fallback verification.
+## Database Migration
+Use the provided migration script:
+```
+php scripts/migrate.php
+```
+It will:
+1. Add `extra_info` after `h` if missing
+2. Drop `course` and `grade` if present
 
-### Database Schema Updates
-Run:
-
+If you maintain SQL manually, the essential steps are:
 ```sql
-ALTER TABLE tokens
-    ADD COLUMN valid_until DATE NOT NULL DEFAULT '4000-01-01' AFTER issued_date;
+ALTER TABLE tokens ADD COLUMN extra_info VARCHAR(255) NULL AFTER h;
+ALTER TABLE tokens DROP COLUMN course;
+ALTER TABLE tokens DROP COLUMN grade;
 ```
 
-If your previous column name was `date` rename it for clarity:
+## Application Changes
+- `config.php` must define `canonical_verify_url` and stable `org_code`
+- Issuance UI only asks for: PIB (not sent to server), optional EXTRA, dates
+- Register API accepts only v3 payload: `{ cid, v:3, h, date, valid_until, extra_info? }`
+- Verification recomputes canonical locally (no PІІ on server) and compares HMAC
+- Admin UI shows `extra_info`, dates, status and events; no course/grade anywhere
 
-```sql
-ALTER TABLE tokens CHANGE COLUMN date issued_date DATE NOT NULL;
-```
-
-### Application Updates
-1. Update issuance UI to request optional expiry and include ORG + CID in canonical.
-2. Regenerate README / docs references.
- 3. Add monitoring query:
-```sql
-SELECT COUNT(*) AS expired FROM tokens WHERE valid_until <> '4000-01-01' AND valid_until < CURDATE();
-```
-
-## Canonical Reconstruction Pseudocode
+## Canonical Reconstruction (reference)
 ```php
-$org = $payload['org'] ?? $CONFIG['org_code'];
-$canonical = "v2|$NAME_NORM|$org|$cid|$course|$grade|$issued|$validUntil";
+$pibNorm = '...'; // client-only normalized name
+$org = $CONFIG['org_code'];
+$canonUrl = $CONFIG['canonical_verify_url'];
+$canonical = "v3|$pibNorm|$org|$cid|$issued|$validUntil|$canonUrl|$extra";
 $h = hmac_sha256_hex($salt, $canonical);
 ```
 
-## NAME Normalisation (unchanged)
+## NAME Normalisation
 1. NFC
 2. Remove apostrophes ("'", "’", "`", U+02BC)
 3. Collapse whitespace → single space
-4. trim
+4. Trim
 5. Uppercase
-6. Block mixed Cyrillic + Latin suspicious (T,O,C baseline)
+6. Heuristic to warn about mixed Latin/Cyrillic homoglyphs (client-side only)
 
-## Testing Checklist
-- [ ] Existing v1 certificates still verify (code path for version 1 unchanged)
-- [ ] Early v2 (without org in QR) verify after deployment
-- [ ] New v2 (with org) verify with frozen org_code
-- [ ] Expired sample (set yesterday) shows expired status and not valid
-- [ ] Revocation still works (revoke/unrevoke/delete) and logs events
-- [ ] Bulk operations unaffected by added column
- - [ ] self_check asserts presence of `valid_until`
+## Validation & Smoke Checks
+- Issue one award via UI; ensure auto-download works and QR opens verify page
+- Verify API `/api/register.php` rejects non-v3 `v` values
+- Verify `/api/status.php` returns `exists`, `h`, `valid_until`
+- Revoke/unrevoke/delete flows update `token_events` as expected
+- `self_check.php` (if present) passes
 
-## Rollback Plan
-If critical issue appears post-migration:
-1. Keep DB backup pre-alter.
-2. Revert application code to commit before v2 merge.
-3. Drop `valid_until` column if added (optional cleanup).
-4. Certificates issued as v2 remain cryptographically valid; if you must invalidate them, mass revoke via bulk endpoint.
-
-## Future Extensions (v3 placeholder considerations)
-Potential future fields (not active): template_version, issuer role, additional anti-homoglyph set, signature algorithm agility. Keep v2 stable to avoid churn.
+## Rollback
+1. Keep a DB backup prior to schema changes
+2. Revert to a commit before v3 if needed
+3. Note: v3-issued records remain cryptographically valid; revoke them via bulk action if policy requires
