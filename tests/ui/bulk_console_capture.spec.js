@@ -18,10 +18,8 @@ test('bulk console capture', async ({ page }) => {
   await page.click('#addRowBtn');
   await page.click('#addRowBtn');
   const names=['Cons Один','Cons Два','Cons Три'];
-  const grades=['A','B','C'];
   for(let i=0;i<3;i++){
     await page.fill(`#bulkTable tbody tr:nth-child(${i+1}) input[name="name"]`, names[i]);
-    await page.fill(`#bulkTable tbody tr:nth-child(${i+1}) input[name="grade"]`, grades[i]);
     await page.waitForTimeout(50);
   }
   // Give updateGenerateState time to run

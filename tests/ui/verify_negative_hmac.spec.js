@@ -1,14 +1,13 @@
 const { test, expect } = require('@playwright/test');
 const { login } = require('./_helpers');
 
-// Tamper with payload (course) so canonical derivation breaks while status hash remains original.
+// Tamper with payload (extra) so canonical derivation breaks while status hash remains original.
 test('verify: tampered payload causes mismatch when user verifies name', async ({ page }) => {
   await login(page);
   await page.goto('/issue_token.php');
   // Fill minimal fields (single issuance form)
   await page.fill('#issueForm input[name="pib"]', 'Іван Тестовий');
-  await page.fill('#issueForm input[name="course"]', 'COURSE-ORIG');
-  await page.fill('#issueForm input[name="grade"]', 'A');
+  await page.fill('#issueForm input[name="extra"]', 'EXTRA-ORIG');
   const today = new Date().toISOString().slice(0,10);
   await page.fill('#issueForm input[name="date"]', today);
   await page.check('#issueForm input[name="infinite"]');
@@ -27,8 +26,8 @@ test('verify: tampered payload causes mismatch when user verifies name', async (
     return Buffer.from(b64,'base64').toString('utf8');
   }
   const obj = JSON.parse(b64urlDecode(p));
-  // Tamper course
-  obj.course = 'COURSE-TAMPERED';
+  // Tamper extra (v3)
+  obj.extra = 'EXTRA-TAMPERED';
   const tamperedStr = JSON.stringify(obj);
   function b64urlEncode(str){return Buffer.from(str,'utf8').toString('base64').replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');}
   const tamperedParam = b64urlEncode(tamperedStr);

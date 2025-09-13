@@ -8,16 +8,14 @@ test.describe('Bulk debug dump', () => {
     await page.click('.tab[data-tab="bulk"]');
     await page.waitForSelector('#bulkForm');
     const today = new Date().toISOString().slice(0,10);
-    await page.fill('#bulkForm input[name="course"]', 'COURSE-DBG');
+  await page.fill('#bulkForm input[name="extra"]', 'COURSE-DBG');
     await page.fill('#bulkForm input[name="date"]', today);
     // Add rows (2 extra; 1 default)
     await page.click('#addRowBtn');
     await page.click('#addRowBtn');
     const names = ['Dbg Один','Dbg Два','Dbg Три'];
-    const grades = ['A','B','C'];
     for(let i=0;i<3;i++){
       await page.fill(`#bulkTable tbody tr:nth-child(${i+1}) input[name="name"]`, names[i]);
-      await page.fill(`#bulkTable tbody tr:nth-child(${i+1}) input[name="grade"]`, grades[i]);
     }
     await page.click('#bulkGenerateBtn');
     await page.waitForTimeout(4000); // give some time for workers (should have progressed)

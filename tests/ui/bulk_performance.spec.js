@@ -14,7 +14,7 @@ test('bulk performance for '+N+' entries < '+THRESHOLD_MS+'ms', async ({ page })
   await page.getByRole('tab', { name: 'Масова генерація' }).click();
   // Fill shared fields
   const today = new Date().toISOString().slice(0,10);
-  await page.locator('#bulkForm input[name="course"]').fill('COURSEP');
+  await page.locator('#bulkForm input[name="extra"]').fill('COURSEP');
   await page.locator('#bulkForm input[name="date"]').fill(today);
   // Ensure infinite checked (default is checked)
   // Add rows via + Рядок button (one row already exists)
@@ -24,11 +24,9 @@ test('bulk performance for '+N+' entries < '+THRESHOLD_MS+'ms', async ({ page })
   }
   // Fill names & grades
   const nameInputs = page.locator('#bulkTable tbody tr input[name="name"]');
-  const gradeInputs = page.locator('#bulkTable tbody tr input[name="grade"]');
   await expect(nameInputs).toHaveCount(N);
   for(let i=0;i<N;i++){
     await nameInputs.nth(i).fill('Тест Перф'+i);
-    await gradeInputs.nth(i).fill('A');
   }
   // Wait for generate button to enable and show correct count
   const genBtn = page.locator('#bulkGenerateBtn');

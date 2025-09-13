@@ -14,14 +14,15 @@ test.describe('Verify page status states', () => {
     await page.click('#issueForm button[type="submit"]');
   await page.waitForSelector('#summary:has-text("Нагороду створено")');
     await downloadPromise; // ignore file validation here
-    const cid = await page.locator('#summary strong').first().textContent();
-    const verifyLink = await page.locator('#summary a[href*="verify.php"]').first().getAttribute('href');
+  const cid = await page.locator('#summary strong').first().textContent();
+  const externalLink = await page.locator('#summary a[href*="verify.php"]').first().getAttribute('href');
+  const verifyLink = externalLink ? ('/verify.php?p=' + new URL(externalLink).searchParams.get('p')) : '';
     expect(verifyLink).toBeTruthy();
     // Open verify page and confirm active message
     await page.goto(verifyLink);
     await page.waitForSelector('#existBox');
-    const txtActive = await page.locator('#existBox').textContent();
-    expect(txtActive).toMatch(/чинний/i);
+  const txtActive = await page.locator('#existBox').textContent();
+  expect(txtActive).toMatch(/чинн(ий|а)/i);
     // Revoke via tokens page
     await page.goto('/tokens.php');
     // Find row with CID
@@ -65,8 +66,8 @@ test.describe('Verify page status states', () => {
     // Re-open verify page
     await page.goto(verifyLink);
     await page.waitForSelector('#existBox');
-    const txtRevoked = await page.locator('#existBox').innerText();
-    expect(txtRevoked).toMatch(/ВІДКЛИКАНО/i);
+  const txtRevoked = await page.locator('#existBox').innerText();
+  expect(txtRevoked).toMatch(/ВІДКЛИКАН(О|А)/i);
   });
 
   test('expired certificate displays expiry message', async ({ page }) => {
@@ -87,8 +88,9 @@ test.describe('Verify page status states', () => {
     await page.click('#issueForm button[type="submit"]');
   await page.waitForSelector('#summary:has-text("Нагороду створено")');
     await downloadPromise;
-    const verifyLink = await page.locator('#summary a[href*="verify.php"]').first().getAttribute('href');
-    await page.goto(verifyLink);
+  const externalLink = await page.locator('#summary a[href*="verify.php"]').first().getAttribute('href');
+  const verifyLink = externalLink ? ('/verify.php?p=' + new URL(externalLink).searchParams.get('p')) : '';
+  await page.goto(verifyLink);
     await page.waitForSelector('#existBox');
     const txt = await page.locator('#existBox').textContent();
     expect(txt).toMatch(/строк дії минув/i);

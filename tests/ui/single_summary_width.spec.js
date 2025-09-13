@@ -7,8 +7,7 @@ test('single issuance summary container has constrained width class', async ({ p
   await page.waitForSelector('#issueForm');
   const today = new Date().toISOString().slice(0,10);
   await page.fill('input[name="pib"]', 'ШИРИНА ТЕСТ');
-  await page.fill('input[name="course"]', 'COURSE-WIDTH');
-  await page.fill('input[name="grade"]', 'A');
+  await page.fill('input[name="extra"]', 'COURSE-WIDTH');
   await page.fill('input[name="date"]', today);
   const downloadPromise = page.waitForEvent('download');
   await page.click('#issueForm button[type="submit"]');

@@ -1,12 +1,11 @@
 const { test, expect } = require('./fixtures');
 const { login } = require('./_helpers');
 
-async function issueToken(page, { course='COURSE-LIFE', grade='A', date=new Date().toISOString().slice(0,10), infinite=true, validUntil } = {}) {
+async function issueToken(page, { extra='COURSE-LIFE', date=new Date().toISOString().slice(0,10), infinite=true, validUntil } = {}) {
 	await page.goto('/issue_token.php');
 	await page.waitForSelector('#issueForm');
 	await page.fill('input[name="pib"]', 'ТЕСТ ЖИТТЄВИЙ');
-	await page.fill('input[name="course"]', course);
-	await page.fill('input[name="grade"]', grade);
+	await page.fill('input[name="extra"]', extra);
 	await page.fill('input[name="date"]', date);
 	if(!infinite){
 		await page.uncheck('input[name="infinite"]');
@@ -19,7 +18,9 @@ async function issueToken(page, { course='COURSE-LIFE', grade='A', date=new Date
 	await page.waitForSelector('#summary:has-text("Нагороду створено")');
 	await downloadPromise;
 	const cid = await page.locator('#summary strong').first().textContent();
-	const verifyLink = await page.locator('#summary a[href*="verify.php"]').first().getAttribute('href');
+	const externalLink = await page.locator('#summary a[href*="verify.php"]').first().getAttribute('href');
+	// Use local verify.php to avoid external navigation (extract p=...)
+	const verifyLink = externalLink ? ('/verify.php?p=' + new URL(externalLink).searchParams.get('p')) : '';
 	return { cid, verifyLink };
 }
 
@@ -95,29 +96,29 @@ test.describe('Token lifecycle (revoke / unrevoke / delete)', () => {
 		// Active
 		await page.goto(verifyLink);
 		await page.waitForSelector('#existBox');
-		let txt = await page.locator('#existBox').textContent();
-		expect(txt).toMatch(/чинний/i);
+	let txt = await page.locator('#existBox').textContent();
+	expect(txt).toMatch(/чинн(ий|а)/i);
 		// Revoke
 		await revokeInline(page, cid);
 		await page.goto(verifyLink);
 		await page.waitForSelector('#existBox');
-		txt = await page.locator('#existBox').innerText();
-		expect(txt).toMatch(/ВІДКЛИКАНО/i);
+	txt = await page.locator('#existBox').innerText();
+	expect(txt).toMatch(/ВІДКЛИКАН(О|А)/i);
 		// Unrevoke
 		await unrevokeInline(page, cid);
 		await page.goto(verifyLink);
 		await page.waitForSelector('#existBox');
-		txt = await page.locator('#existBox').textContent();
-		expect(txt).toMatch(/чинний/i);
+	txt = await page.locator('#existBox').textContent();
+	expect(txt).toMatch(/чинн(ий|а)/i);
 	});
 
 	test('delete removes certificate so verification reports not found', async ({ page }) => {
 		await login(page);
-		const { cid, verifyLink } = await issueToken(page, { course: 'COURSE-DEL' });
+		const { cid, verifyLink } = await issueToken(page, { extra: 'COURSE-DEL' });
 		await page.goto(verifyLink);
 		await page.waitForSelector('#existBox');
 		let txt = await page.locator('#existBox').textContent();
-		expect(txt).toMatch(/чинний/i);
+		expect(txt).toMatch(/чинн(ий|а)/i);
 		await deleteViaBulk(page, cid);
 		await page.goto(verifyLink);
 		await page.waitForSelector('#existBox');

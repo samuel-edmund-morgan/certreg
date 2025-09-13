@@ -4,8 +4,7 @@ const { login } = require('./_helpers');
 async function generateSingle(page){
   await page.goto('/issue_token.php');
   await page.fill('#issueForm input[name="pib"]', 'Структурний Тест');
-  await page.fill('#issueForm input[name="course"]', 'PDFTEST');
-  await page.fill('#issueForm input[name="grade"]', 'A');
+  await page.fill('#issueForm input[name="extra"]', 'PDFTEST');
   const today = new Date().toISOString().slice(0,10);
   await page.fill('#issueForm input[name="date"]', today);
   await page.check('#issueForm input[name="infinite"]');

@@ -12,9 +12,8 @@ test.describe('CSP console', () => {
     await page.goto('/issue_token.php');
     await page.waitForSelector('#issueForm');
     const today = new Date().toISOString().slice(0,10);
-    await page.fill('input[name="pib"]', 'ТЕСТ КОРИСТУВАЧ');
-    await page.fill('input[name="course"]', 'COURSE-CSP');
-    await page.fill('input[name="grade"]', 'A');
+  await page.fill('input[name="pib"]', 'ТЕСТ КОРИСТУВАЧ');
+  await page.fill('input[name="extra"]', 'COURSE-CSP');
     await page.fill('input[name="date"]', today);
     const downloadPromise = page.waitForEvent('download');
     await page.click('#issueForm button[type="submit"]');

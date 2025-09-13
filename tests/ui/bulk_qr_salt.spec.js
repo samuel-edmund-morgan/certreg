@@ -31,8 +31,8 @@ test('bulk: each QR payload has salt and HMAC recomputation matches INT prefix',
   const bulkTab = page.locator('button.tab[data-tab="bulk"]');
   await bulkTab.click();
 
-  // Fill common form fields
-  await page.locator('#bulkTab input[name="course"]').fill('QA Course');
+  // Fill common form fields (v3 extra)
+  await page.locator('#bulkTab input[name="extra"]').fill('QA Course');
   const today = new Date().toISOString().slice(0,10);
   await page.locator('#bulkTab input[name="date"]').fill(today);
   // infinite validity
@@ -41,13 +41,11 @@ test('bulk: each QR payload has salt and HMAC recomputation matches INT prefix',
   // Add two rows (first empty row exists already)
   const nameInput1 = page.locator('#bulkTable tbody tr').first().locator('input[name="name"]');
   await nameInput1.fill('Іван Тест Один');
-  await nameInput1.press('Tab'); // focus grade
-  await page.keyboard.type('A');
+  // no grade input in v3
 
   await page.locator('#addRowBtn').click();
   const secondRow = page.locator('#bulkTable tbody tr').nth(1);
   await secondRow.locator('input[name="name"]').fill('Петро Тест Два');
-  await secondRow.locator('input[name="grade"]').fill('B');
 
   // Generate
   await page.locator('#bulkGenerateBtn').click();
@@ -84,13 +82,7 @@ test('bulk: each QR payload has salt and HMAC recomputation matches INT prefix',
     expect(js.s).toBeTruthy();
     const saltBytes = base64UrlToBytes(js.s);
     expect(saltBytes.length).toBe(32);
-    // Recompute canonical and HMAC, compare INT prefix (first 10 chars)
-    // We need displayed INT (without dash) to compare
-    const intRaw = r.intText.replace(/INT\s+/,'').replace(/-/,'');
-    // Canonical string reconstruction (matches version 2 format)
-    const canonical = `v${js.v}|${js.pib ? js.pib : ''}|${js.org}|${js.cid}|${js.course}|${js.grade}|${js.date}|${js.valid_until}`; // pib not in bulk QR, we can't recompute full canonical without name
-    // Since PIB isn't in QR (privacy), we cannot recompute full HMAC here reliably. Assert only salt presence and format.
-    // (Optional future: expose r.h via data-* attribute for full recompute.)
+    // v3: cannot recompute full canonical without name; assert only salt presence and format.
   }
 });
 
@@ -102,13 +94,12 @@ test('bulk: tampered salt in QR payload leads to verification failure', async ({
   await page.goto('/issue_token.php');
   const bulkTab = page.locator('button.tab[data-tab="bulk"]');
   await bulkTab.click();
-  await page.locator('#bulkTab input[name="course"]').fill('Salt Tamper');
+  await page.locator('#bulkTab input[name="extra"]').fill('Salt Tamper');
   const today = new Date().toISOString().slice(0,10);
   await page.locator('#bulkTab input[name="date"]').fill(today);
   await page.locator('#bulkTab input[name="infinite"]').check();
   const nameInput1 = page.locator('#bulkTable tbody tr').first().locator('input[name="name"]');
   await nameInput1.fill('Марія Перевірка');
-  await page.locator('#bulkTable tbody tr').first().locator('input[name="grade"]').fill('A');
   await page.locator('#bulkGenerateBtn').click();
   await expect(page.locator('#bulkResultLines .token-chip')).toHaveCount(1, { timeout: 15000 });
   // Intercept a QR request to get original p

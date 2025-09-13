@@ -8,9 +8,7 @@ test.describe('Homoglyph detection', () => {
     await page.waitForSelector('#issueForm');
     const today = new Date().toISOString().slice(0,10);
     // Name with Latin A + Cyrillic letters (first char Latin A U+0041, second Cyrillic А U+0410)
-    await page.fill('input[name="pib"]', 'AАндрій Тест');
-    await page.fill('input[name="course"]', 'COURSE-HOMO');
-    await page.fill('input[name="grade"]', 'B');
+  await page.fill('input[name="pib"]', 'AАндрій Тест');
     await page.fill('input[name="date"]', today);
     const dialogPromise = new Promise(resolve => page.once('dialog', d => { d.accept(); resolve(d.message()); }));
     await page.click('#issueForm button[type="submit"]');

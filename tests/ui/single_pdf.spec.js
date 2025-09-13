@@ -11,9 +11,8 @@ test.describe('Single issuance – PDF generation', () => {
   await page.waitForSelector('#issueForm');
     const today = new Date().toISOString().slice(0,10);
   await page.fill('#issueForm input[name="pib"]', 'Тест Одинарний');
-  await page.fill('#issueForm input[name="course"]', 'COURSE-SINGLE');
+  await page.fill('#issueForm input[name="extra"]', 'COURSE-SINGLE');
   await page.fill('#issueForm input[name="date"]', today);
-  await page.fill('#issueForm input[name="grade"]', 'A');
 
     // Prepare to capture download triggered automatically in single issuance
   const downloadPromise = page.waitForEvent('download');

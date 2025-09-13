@@ -51,8 +51,8 @@ test('single issuance: recompute HMAC matches displayed hash + INT', async ({ pa
   const validUntil = await meta.getAttribute('data-validuntil') || await meta.getAttribute('data-valid-until');
   const nameNorm = await meta.getAttribute('data-name-norm');
   expect(h && saltB64 && cid).toBeTruthy();
-    // Derive canonical verify URL from current origin
-    const verifyUrl = new URL('/verify.php', page.url()).toString();
+    // Use configured canonical verify URL exposed on <body data-canon>
+    const verifyUrl = await page.evaluate(() => document.body?.dataset?.canon || (location.origin + '/verify.php'));
     const canonical = `v3|${nameNorm}|${ORG}|${cid}|${date}|${validUntil}|${verifyUrl}|${extra||''}`;
   const saltBytes = base64UrlToBytes(saltB64);
   expect(saltBytes.length).toBeGreaterThan(0);
@@ -96,7 +96,7 @@ test('bulk issuance: each row exposes data-* and HMAC recomputes', async ({ page
     expect(h && saltB64 && cid && nameNorm).toBeTruthy();
   const saltBytes = base64UrlToBytes(saltB64||'');
   expect(saltBytes.length).toBeGreaterThan(0);
-      const verifyUrl2 = new URL('/verify.php', page.url()).toString();
+      const verifyUrl2 = await page.evaluate(() => document.body?.dataset?.canon || (location.origin + '/verify.php'));
       const canonical = `v3|${nameNorm}|${ORG}|${cid}|${today}|4000-01-01|${verifyUrl2}|${extra||'Bulk Crypto'}`;
   const recomputed = await hmacSHA256Hex(page, saltBytes, canonical);
     expect(recomputed).toBe(h);
@@ -132,12 +132,12 @@ test('revocation: revoked certificate shows revoked status and hides owner form'
     let b64 = Buffer.from(json,'utf8').toString('base64');
     return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
   }
-  const verifyUrl3 = new URL('/verify.php', page.url()).toString();
+  const verifyUrl3 = await page.evaluate(() => document.body?.dataset?.canon || (location.origin + '/verify.php'));
   const pPacked = toB64Url({v:3,cid,s:salt,org:ORG,date,valid_until:validUntil,canon: verifyUrl3, extra});
   await page.goto(`/verify.php?p=${pPacked}`);
   await page.waitForSelector('#existBox');
   const existText = await page.locator('#existBox').innerText();
-  expect(existText).toMatch(/ВІДКЛИКАНО/i);
+  expect(existText).toMatch(/ВІДКЛИКАН(О|А)/i);
   const ownFormDisplay = await page.evaluate(()=>{ const f=document.getElementById('ownForm'); return f?getComputedStyle(f).display:'absent'; });
   expect(['none','absent']).toContain(ownFormDisplay);
 });

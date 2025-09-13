@@ -8,8 +8,7 @@ test('issue: fallback when QR 404 still provides manual download', async ({ page
   await page.route('**/qr.php**', route => route.fulfill({ status: 404, body: 'NF' }));
   await page.goto('/issue_token.php');
   await page.fill('#issueForm input[name="pib"]', 'Петро БезQR');
-  await page.fill('#issueForm input[name="course"]', 'NOQR');
-  await page.fill('#issueForm input[name="grade"]', 'A');
+  await page.fill('#issueForm input[name="extra"]', 'NOQR');
   const today = new Date().toISOString().slice(0,10);
   await page.fill('#issueForm input[name="date"]', today);
   await page.check('#issueForm input[name="infinite"]');

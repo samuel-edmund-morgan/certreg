@@ -28,7 +28,7 @@ test('bulk stress: 24 rows complete and expose data-h without timeouts', async (
   await page.goto('/issue_token.php');
   await page.click('.tabs .tab[data-tab="bulk"]');
   const today = new Date().toISOString().slice(0,10);
-  await page.fill('#bulkTab input[name="course"]', 'Stress Crypto');
+  await page.fill('#bulkTab input[name="extra"]', 'Stress Crypto');
   await page.fill('#bulkTab input[name="date"]', today);
   await page.locator('#bulkTab input[name="infinite"]').check();
 
@@ -38,7 +38,6 @@ test('bulk stress: 24 rows complete and expose data-h without timeouts', async (
     if(i>0) await page.click('#addRowBtn');
     const row = tbody.locator('tr').nth(i);
     await row.locator('input[name="name"]').fill(nameFor(i));
-    await row.locator('input[name="grade"]').fill(i%2===0?'A':'B');
   }
 
   await page.waitForSelector('#bulkGenerateBtn:not([disabled])');
