@@ -599,7 +599,10 @@
   bulkBgImg.onerror = flush; // proceed without background on error
   // Timeout fallback in case neither onload nor onerror fires
   setTimeout(flush, 1500);
-  bulkBgImg.src = '/files/cert_template.jpg';
+  try {
+    const tpl = (document.body && document.body.dataset && document.body.dataset.template) ? document.body.dataset.template : '/files/cert_template.jpg';
+    bulkBgImg.src = tpl || '/files/cert_template.jpg';
+  } catch(_e){ bulkBgImg.src = '/files/cert_template.jpg'; }
   }
   function renderCertToCanvas(data){
     const canvas = getRenderCanvas();

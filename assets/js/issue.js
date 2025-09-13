@@ -224,7 +224,13 @@
   }
   let bgImage = new Image();
   bgImage.onload = ()=>{ renderAll(); };
-  bgImage.src = '/files/cert_template.jpg'; // may 404 if not present
+  // Use configurable template path exposed via <body data-template> (falls back to default)
+  (function(){
+    try {
+      const tpl = (document.body && document.body.dataset && document.body.dataset.template) ? document.body.dataset.template : '/files/cert_template.jpg';
+      bgImage.src = tpl || '/files/cert_template.jpg';
+    } catch(_e){ bgImage.src = '/files/cert_template.jpg'; }
+  })();
   form.addEventListener('submit', handleSubmit);
     // Toggle expiry input
     const infiniteCb = form.querySelector('input[name="infinite"]');

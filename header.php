@@ -22,6 +22,7 @@ $orgCode = htmlspecialchars($cfg['org_code'] ?? 'ORG-CERT', ENT_QUOTES | ENT_SUB
 $infSent = htmlspecialchars($cfg['infinite_sentinel'] ?? '4000-01-01', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $csrfMeta = htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $canonUrl = htmlspecialchars($cfg['canonical_verify_url'] ?? '/verify.php', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.jpg', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 ?>
 <!doctype html>
 <html lang="uk">
@@ -36,7 +37,7 @@ $canonUrl = htmlspecialchars($cfg['canonical_verify_url'] ?? '/verify.php', ENT_
   <?php endif; ?>
   <!-- Removed font preloads to avoid 'preloaded but not used' warnings; fonts load via @font-face -->
   <link rel="stylesheet" href="/assets/css/styles.css">
-<body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-inf='<?= $infSent ?>' data-canon='<?= $canonUrl ?>' data-test='<?= (isset($_GET['test_mode']) && $_GET['test_mode'] === '1') ? '1' : '0' ?>'>
+<body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-inf='<?= $infSent ?>' data-canon='<?= $canonUrl ?>' data-template='<?= $tplPath ?>' data-test='<?= (isset($_GET['test_mode']) && $_GET['test_mode'] === '1') ? '1' : '0' ?>'>
 <header class="topbar">
   <div class="topbar__inner">
     <?php require_once __DIR__.'/auth.php'; ?>
