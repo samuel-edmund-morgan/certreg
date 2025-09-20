@@ -67,6 +67,27 @@ cp config.php.example config.php
 ```
 Заповніть у `config.php`: параметри БД (`db_host`,`db_name`,`db_user`,`db_pass`), `site_name`, `logo_path`, `org_code`, `infinite_sentinel`, `canonical_verify_url`.
 
+#### Брендування (логотип, favicon, кольори)
+Початкові значення беруться з `config.php` (`site_name`, `logo_path`, `favicon_path`). Після завантаження налаштувань у вкладці "Брендування" ( `settings.php?tab=branding` ) значення з таблиці `branding_settings` мають пріоритет.
+
+Пріоритет (від найвищого):
+1. Значення у таблиці `branding_settings` (`site_name`, `logo_path`, `favicon_path`, `primary_color`, `accent_color`).
+2. Значення у `config.php` (`site_name`, `logo_path`, `favicon_path`).
+3. Статичні дефолти (`/assets/logo.png`, `/assets/favicon.ico`).
+
+Файли завантажуються у папку `/files/branding/` з унікальними іменами (`logo_YYYYmmdd_HHMMSS.ext`, `favicon_YYYYmmdd_HHMMSS.ext`).
+
+Обмеження:
+- Логотип: PNG/JPG/SVG ≤ 2MB
+- Favicon: ICO/PNG/SVG ≤ 128KB
+- Кольори: HEX формат `#RRGGBB`
+
+Після успішного збереження, якщо логотип або favicon змінено, сторінка перезавантажується для оновлення кешу браузера. `header.php` інʼєктує `<meta name="theme-color">` та динамічно задає `--color-primary` / `--color-accent` (поки що обмежено інлайном; у майбутньому можна винести в окремий CSS).
+
+Self‑check (`php self_check.php`) тепер перевіряє наявність файлів логотипу та favicon (секція Branding checks B1).
+
+Перенос рядків у назві сайту: введіть буквально `\\n` там, де потрібен розрив. Напр.: `Перша частина\\nДруга частина\\nТретя` → буде показано у 3 рядки в шапці, але теги `<title>` у браузері лишаються однорядковими.
+
 ### 5. Створення таблиць (v3)
 Початкова v3-схема. Виконайте (налаштувавши БД):
 

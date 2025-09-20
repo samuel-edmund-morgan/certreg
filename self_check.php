@@ -7,7 +7,7 @@ $whitelist = [
   // Public / functional entrypoints
   'index.php','admin.php','login.php','logout.php','issue_token.php','tokens.php','token.php','verify.php','qr.php','events.php',
   // API endpoints
-  'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php','api/bulk_action.php',
+  'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php','api/bulk_action.php','api/branding_save.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php','common_pagination.php',
   // Infrastructure helpers
@@ -344,3 +344,32 @@ try {
 } catch(Throwable $e){
   echo "[WARN] H10 audit section error: ".$e->getMessage()."\n";
 }
+
+// === Branding checks (B1) ===
+echo "[SECTION] Branding checks (B1)\n";
+try {
+  // Ensure branding_settings table exists
+  try { $pdo->query("SELECT 1 FROM branding_settings LIMIT 1"); echo "[OK] branding_settings table present.\n"; }
+  catch(Throwable $e){ echo "[WARN] branding_settings table missing or inaccessible: ".$e->getMessage()."\n"; }
+  // Load overrides
+  $branding = [];
+  try {
+    $st = $pdo->query("SELECT setting_key, setting_value FROM branding_settings");
+    foreach($st->fetchAll(PDO::FETCH_ASSOC) as $r){ $branding[$r['setting_key']] = $r['setting_value']; }
+  } catch(Throwable $e){ /* ignore */ }
+  $logoPath = $branding['logo_path'] ?? ($cfg['logo_path'] ?? null);
+  $favPath  = $branding['favicon_path'] ?? ($cfg['favicon_path'] ?? '/assets/favicon.ico');
+  $checkFile = function($rel, $label){
+    if(!$rel){ echo "[WARN] $label path empty.\n"; return; }
+    $fs = __DIR__.$rel;
+    if(!file_exists($fs)) echo "[WARN] $label file missing ($rel).\n"; else echo "[OK] $label file exists ($rel).\n";
+  };
+  $checkFile($logoPath,'Logo');
+  $checkFile($favPath,'Favicon');
+  if(isset($branding['primary_color'])){
+    if(!preg_match('/^#[0-9A-Fa-f]{6}$/',$branding['primary_color'])) echo "[WARN] primary_color invalid format.\n"; else echo "[OK] primary_color format valid.\n";
+  }
+  if(isset($branding['accent_color'])){
+    if(!preg_match('/^#[0-9A-Fa-f]{6}$/',$branding['accent_color'])) echo "[WARN] accent_color invalid format.\n"; else echo "[OK] accent_color format valid.\n";
+  }
+} catch(Throwable $e){ echo "[WARN] Branding checks error: ".$e->getMessage()."\n"; }

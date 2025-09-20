@@ -13,6 +13,7 @@ return [
     // Branding
     'site_name' => "Реєстр нагород\n Національної академії Служби безпеки України",
     'logo_path' => '/assets/logo.png',
+    'favicon_path' => '/assets/favicon.ico',
     // Certificate background template (client-side rendering)
     'cert_template_path' => '/files/cert_template.jpg',
 
