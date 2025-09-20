@@ -55,20 +55,23 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
     <nav class="topbar__actions">
   <?php // auth already required above ?>
     <?php if (is_admin_logged()): ?>
-  <a class="btn btn-light mr-8" href="/issue_token.php">Видача</a>
-  <a class="btn btn-light mr-8" href="/tokens.php">Нагороди</a>
-  <a class="btn btn-light mr-8" href="/events.php">Журнал</a>
-        <form action="/logout.php" method="post" class="d-inline">
-          <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
-          <button class="btn btn-light" type="submit">Вийти</button>
-        </form>
-      <?php else:
+      <?php if (is_admin()): ?>
+        <a class="btn btn-light mr-8" href="/settings.php">Налаштування</a>
+      <?php endif; ?>
+      <a class="btn btn-light mr-8" href="/issue_token.php">Видача</a>
+      <a class="btn btn-light mr-8" href="/tokens.php">Нагороди</a>
+      <a class="btn btn-light mr-8" href="/events.php">Журнал</a>
+      <form action="/logout.php" method="post" class="d-inline">
+        <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
+        <button class="btn btn-light" type="submit">Вийти</button>
+      </form>
+    <?php else:
         // show login link only when user is on admin.php (public pages like checkCert should not show it)
         $current = basename($_SERVER['SCRIPT_NAME'] ?? '');
         if ($current === 'admin.php'): ?>
           <a class="btn btn-light" href="/admin.php">Увійти</a>
       <?php endif; ?>
-      <?php endif; ?>
+    <?php endif; ?>
     </nav>
   </div>
 </header>
