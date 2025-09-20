@@ -526,5 +526,14 @@ main{flex:1}
   }
   /* Narrow text under color fields */
   .color-field + .text-muted{display:block;margin-top:4px}
+  /* Password field with eye toggle */
+  .pw-field{position:relative;display:flex;align-items:stretch}
+  .pw-field input[type=password],
+  .pw-field input[type=text]{padding-right:44px}
+  .pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;cursor:pointer;padding:4px 6px;font-size:16px;line-height:1;border-radius:6px}
+  .pw-toggle:focus-visible{outline:2px solid var(--accent,#2563eb);}
+  .pw-toggle[aria-pressed=true]{background:#e2e8f0}
+  /* Password strength meter */
+  .pw-strength{display:block;margin-top:4px;margin-bottom:6px}
 /* NOTE: Removed temporary canonical override with !important for .topbar__actions .btn
    (kept single definition near top). This comment left intentionally for audit trace. */

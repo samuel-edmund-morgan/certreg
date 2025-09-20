@@ -11,6 +11,7 @@
 - [Ліцензія](#ліцензія)
 - [Автоматичні тести](#автоматичні-тести)
 - [Ігноровані файли / артефакти](#ігноровані-файли--артефакти)
+ - [Налаштування (AJAX) та акаунт](#налаштування-ajax-та-акаунт)
 
 ## Установка
 
@@ -198,6 +199,27 @@ php -r "echo password_hash('YourStrongPass', PASSWORD_DEFAULT), PHP_EOL;"
 INSERT INTO creds (username, passhash, `role`) VALUES ('admin','<HASH>', 'admin');
 ```
 
+### Налаштування (AJAX) та акаунт
+
+Сторінка `settings.php` використовує AJAX-навігацію: при переході між вкладками (Брендування / Шаблони / Оператори / Акаунт) довантажується лише внутрішній вміст через `settings_section.php?tab=...` без повного перезавантаження. Це зменшує навантаження й робить форму брендування/акаунта більш чуйною.
+
+Вкладка «Акаунт» дозволяє змінити пароль поточного користувача (admin або operator). Форма надсилає POST на `/api/account_change_password.php` з полями:
+```
+_csrf         – токен CSRF
+old_password  – поточний пароль
+new_password  – новий пароль
+new_password2 – підтвердження
+```
+Правила:
+* Мінімум 8 символів
+* Принаймні одна літера та одна цифра (простий евристичний чек)
+* Після успіху – `session_regenerate_id(true)` для захисту від fixation.
+
+У разі помилки повертається JSON `{ ok:false, errors:{ field:"reason" } }`, при успіху `{ ok:true }`.
+Фронтенд показує статус у полі `#accountPwdStatus` й простий індикатор сили (дуже слабкий → надійний).
+
+AJAX кешує вкладки в памʼяті (in-memory cache) – повторний перехід не робить додатковий HTTP запит, доки не буде перезавантажено сторінку.
+
 ### 6. Nginx
 Приклад конфігурації знаходиться у `docs/nginx/certreg.conf`.
 
@@ -277,6 +299,7 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
 - `GET /api/status.php?cid=...` – перевірка статусу `{ h, revoked?, revoked_at?, revoke_reason?, valid_until }`.
 - `POST /api/bulk_action.php` – пакетні операції `revoke | unrevoke | delete`.
 - `GET /api/events.php?cid=...` – журнал подій.
+- `POST /api/account_change_password.php` – зміна паролю (аутентифікований admin/operator).
 
 ## Міграції
 Докладно в [MIGRATION.md](MIGRATION.md). Поточна канонічна схема (v3):

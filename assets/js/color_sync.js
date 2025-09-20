@@ -9,14 +9,14 @@
     return '';
   }
   function attach(hexInput){
+    if(hexInput.__colorSyncAttached) return; // idempotent
+    hexInput.__colorSyncAttached = true;
     const peerId = hexInput.getAttribute('data-color-peer');
     if(!peerId) return;
     const picker = document.getElementById(peerId);
     if(!picker) return;
-    // Init picker from hex (fallback if invalid)
     const init = normHex(hexInput.value) || picker.value || '#000000';
     picker.value = init;
-    // When hex input changes, update picker if valid; auto-prepend '#'
     hexInput.addEventListener('input', ()=>{
       let raw = hexInput.value.trim();
       if(/^([0-9a-fA-F]{6})$/.test(raw)){
@@ -26,7 +26,6 @@
       const n = normHex(hexInput.value);
       if(n){ picker.value = n; }
     });
-    // When picker changes, update hex input
     picker.addEventListener('input', ()=>{
       const v = picker.value;
       if(/^#[0-9a-fA-F]{6}$/.test(v)){
@@ -34,7 +33,15 @@
       }
     });
   }
+  function initScope(scope){
+    scope.querySelectorAll('input.color-hex[data-color-peer]').forEach(attach);
+  }
   document.addEventListener('DOMContentLoaded', ()=>{
-    document.querySelectorAll('input.color-hex[data-color-peer]').forEach(attach);
+    initScope(document);
+  });
+  // Re-init when settings section changes (AJAX loaded)
+  document.addEventListener('settings:section-loaded', (e)=>{
+    const container = document.getElementById('settingsContent');
+    if(container){ initScope(container); }
   });
 })();

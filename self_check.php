@@ -8,8 +8,10 @@ $whitelist = [
   'index.php','admin.php','login.php','logout.php','issue_token.php','tokens.php','token.php','verify.php','qr.php','events.php',
   // API endpoints
   'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php','api/bulk_action.php','api/branding_save.php',
+  'api/account_change_password.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php','common_pagination.php',
+  'settings.php','settings_section.php',
   // Infrastructure helpers
   'rate_limit.php',
   // Test-only endpoint for CI/browser tests

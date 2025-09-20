@@ -11,7 +11,12 @@ if(!is_admin_logged()){
       <form class="form" method="post" action="/login.php" autocomplete="off">
         <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
         <label>Логін <input type="text" name="username" required></label>
-        <label>Пароль <input type="password" name="password" required></label>
+        <label>Пароль 
+          <div class="pw-field">
+            <input type="password" name="password" required autocomplete="current-password">
+            <button type="button" class="pw-toggle" aria-label="Показати пароль" data-target="password">👁</button>
+          </div>
+        </label>
         <button class="btn btn-primary" type="submit">Увійти</button>
       </form>
     </div>

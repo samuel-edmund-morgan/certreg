@@ -78,6 +78,7 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
     $cssVer = @filemtime($cssPath) ?: time();
   ?>
   <link rel="stylesheet" href="/assets/css/styles.css?v=<?= $cssVer ?>">
+  <script src="/assets/js/password_toggle.js" defer></script>
   <?php
     $primaryBrand = $cfg['primary_color'] ?? '';
     if($primaryBrand){ echo '<meta name="theme-color" content="'.htmlspecialchars($primaryBrand,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8').'">'; }
