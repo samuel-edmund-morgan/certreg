@@ -76,7 +76,8 @@ USE certreg;
 CREATE TABLE creds (
    id INT AUTO_INCREMENT PRIMARY KEY,
    username VARCHAR(64) NOT NULL UNIQUE,
-   passhash VARCHAR(255) NOT NULL
+   passhash VARCHAR(255) NOT NULL,
+   `role` ENUM('admin', 'operator') NOT NULL DEFAULT 'operator'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE tokens (
@@ -111,6 +112,23 @@ CREATE TABLE token_events (
    INDEX idx_cid (cid),
    INDEX idx_event (event_type),
    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE templates (
+   id INT AUTO_INCREMENT PRIMARY KEY,
+   name VARCHAR(255) NOT NULL,
+   filename VARCHAR(255) NOT NULL,
+   coordinates JSON DEFAULT NULL,
+   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   created_by INT NULL,
+   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+   INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE branding_settings (
+   setting_key VARCHAR(100) PRIMARY KEY,
+   setting_value TEXT,
+   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
