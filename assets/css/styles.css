@@ -464,5 +464,22 @@ main{flex:1}
   .mb-20 {
     margin-bottom: 20px;
   }
+  /* Settings specific tweaks */
+  .settings-layout{align-items:flex-start}
+  .settings-sidebar{max-width:240px}
+  .settings-nav .list-group-item{white-space:normal;word-break:break-word;line-height:1.25;font-size:15px;padding:.85rem 1rem}
+  /* widen and shift left by pulling container inward */
+  .settings-sidebar .list-group{min-width:220px}
+  @media (min-width:992px){
+    .settings-layout{margin-left:0}
+  }
+  /* active state refinement */
+  .settings-nav .list-group-item.active{font-weight:600}
+  /* Horizontal settings tabs */
+  .settings-tabs-wrapper{max-width:920px;margin:0 auto;padding:4px 4px 32px 4px}
+  .settings-tabs .tab{min-width:140px;text-align:center}
+  .settings-panel{background:#fff;border:1px solid var(--border);border-top:none;padding:18px 22px;border-bottom-left-radius:12px;border-bottom-right-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.04)}
+  .settings-tabs .tab{user-select:none}
+  .settings-tabs .tab.active{position:relative}
 /* NOTE: Removed temporary canonical override with !important for .topbar__actions .btn
    (kept single definition near top). This comment left intentionally for audit trace. */

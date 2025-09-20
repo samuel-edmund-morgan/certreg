@@ -11,24 +11,23 @@ include $_SERVER['DOCUMENT_ROOT'] . '/header.php';
 
 <h1 class="mb-20">Налаштування</h1>
 
-<div class="row">
-    <div class="col-md-3">
-        <div class="list-group">
-            <a href="/settings.php?tab=branding" class="list-group-item list-group-item-action active">Брендування</a>
-            <a href="/settings.php?tab=templates" class="list-group-item list-group-item-action">Шаблони</a>
-            <a href="/settings.php?tab=users" class="list-group-item list-group-item-action">Користувачі</a>
-        </div>
+<?php $tab = $_GET['tab'] ?? 'branding'; ?>
+
+<div class="settings-tabs-wrapper">
+    <div class="tabs settings-tabs">
+        <a class="tab<?= $tab==='branding' ? ' active' : '' ?>" href="/settings.php?tab=branding">Брендування</a>
+        <a class="tab<?= $tab==='templates' ? ' active' : '' ?>" href="/settings.php?tab=templates">Шаблони</a>
+        <a class="tab<?= $tab==='users' ? ' active' : '' ?>" href="/settings.php?tab=users">Користувачі</a>
     </div>
-    <div class="col-md-9">
+    <div class="tab-panel settings-panel">
         <?php
-        $tab = $_GET['tab'] ?? 'branding';
-        if ($tab === 'branding') {
-            echo "<h2>Брендування</h2><p>Налаштування брендування системи.</p>";
-        } elseif ($tab === 'templates') {
-            echo "<h2>Шаблони</h2><p>Управління шаблонами сертифікатів.</p>";
-        } elseif ($tab === 'users') {
-            echo "<h2>Користувачі</h2><p>Управління користувачами системи.</p>";
-        }
+            if ($tab === 'branding') {
+                    echo "<h2>Брендування</h2><p>Налаштування брендування системи.</p>";
+            } elseif ($tab === 'templates') {
+                    echo "<h2>Шаблони</h2><p>Управління шаблонами сертифікатів.</p>";
+            } elseif ($tab === 'users') {
+                    echo "<h2>Користувачі</h2><p>Управління користувачами системи.</p>";
+            }
         ?>
     </div>
 </div>
