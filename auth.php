@@ -22,7 +22,22 @@ function is_admin_logged(): bool {
     return !empty($_SESSION['admin_id']);
 }
 
+function is_admin(): bool {
+    return ($_SESSION['admin_role'] ?? '') === 'admin';
+}
+
+function is_operator(): bool {
+    return ($_SESSION['admin_role'] ?? '') === 'operator';
+}
+
 function require_admin() {
+    if (!is_admin_logged() || !is_admin()) {
+        header('Location: /admin.php');
+        exit;
+    }
+}
+
+function require_operator() {
     if (!is_admin_logged()) {
         header('Location: /admin.php');
         exit;
@@ -40,7 +55,7 @@ function login_admin(string $u, string $p): bool {
         error_log('DB not initialized in login_admin');
         return false;
     }
-    $st = $pdo->prepare("SELECT id, passhash FROM creds WHERE username=?");
+    $st = $pdo->prepare("SELECT id, passhash, role FROM creds WHERE username=?");
     $st->execute([$u]);
     $row = $st->fetch();
     if ($row && password_verify($p, $row['passhash'])) {
@@ -71,6 +86,7 @@ function login_admin(string $u, string $p): bool {
         session_regenerate_id(true);
         $_SESSION['admin_id'] = (int)$row['id'];
         $_SESSION['admin_user'] = $u;
+        $_SESSION['admin_role'] = $row['role'];
         return true;
     }
     return false;
