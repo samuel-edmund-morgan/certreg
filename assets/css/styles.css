@@ -500,6 +500,11 @@ main{flex:1}
   .settings-tabs-wrapper{max-width:920px;margin:0 auto;padding:4px 4px 32px 4px}
   .settings-tabs .tab{min-width:140px;text-align:center}
   .settings-panel{background:#fff;border:1px solid var(--border);border-top:none;padding:18px 22px;border-bottom-left-radius:12px;border-bottom-right-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.04)}
+  .settings-panel{width:100%;}
+  .settings-panel__inner{max-width:1100px;margin:0 auto;}
+  .settings-panel__content{max-width:760px;margin:0 auto;}
+  /* Ensure empty tabs still reserve vertical space */
+  .settings-panel__content:empty{min-height:120px;display:block}
   .settings-tabs .tab{user-select:none}
   .settings-tabs .tab.active{position:relative}
   /* Accent underline on active horizontal settings tab */
@@ -515,9 +520,9 @@ main{flex:1}
   .ml-6{margin-left:6px}
   .btn-cluster .btn + .btn{margin-left:6px}
   /* Ensure consistent panel width across settings tabs even when empty */
-  .settings-panel{min-height:260px;min-width:100%;}
+  .settings-panel{min-height:260px;}
   @media (min-width:640px){
-    .settings-panel{min-width:560px}
+  /* unified via inner container now */
   }
   /* Narrow text under color fields */
   .color-field + .text-muted{display:block;margin-top:4px}

@@ -17,9 +17,10 @@ include $_SERVER['DOCUMENT_ROOT'] . '/header.php';
         <button type="button" class="tab<?= $tab==='templates' ? ' active' : '' ?>" role="tab" aria-selected="<?= $tab==='templates' ? 'true':'false' ?>" data-tab="templates" data-url="/settings.php?tab=templates">Шаблони</button>
         <button type="button" class="tab<?= $tab==='users' ? ' active' : '' ?>" role="tab" aria-selected="<?= $tab==='users' ? 'true':'false' ?>" data-tab="users" data-url="/settings.php?tab=users">Оператори</button>
     </div>
-    <div class="tab-panel settings-panel" role="tabpanel" data-panel="<?= htmlspecialchars($tab) ?>">
-        <?php
-        if ($tab === 'branding') {
+        <div class="tab-panel settings-panel" role="tabpanel" data-panel="<?= htmlspecialchars($tab) ?>">
+            <div class="settings-panel__inner">
+                <?php
+    if ($tab === 'branding') {
                         // Load existing branding settings into associative array
                         $branding = [];
                         $st = $pdo->query("SELECT setting_key, setting_value FROM branding_settings");
@@ -32,9 +33,10 @@ include $_SERVER['DOCUMENT_ROOT'] . '/header.php';
                         $curFavicon= $branding['favicon_path'] ?? ($cfg['favicon_path'] ?? '/assets/favicon.ico');
                         $csrf = csrf_token();
                         ?>
-                        <h2 class="mt-0">Брендування</h2>
-                        <p class="fs-14 text-muted">Оновіть назву сайту, кольори, логотип і favicon. Кольори у форматі HEX (наприклад #102d4e). Для переносу рядка у назві використовуйте буквально послідовність <code>\n</code> (наприклад: <code>Перша частина\nДруга частина</code>).</p>
-                        <form id="brandingForm" class="form maxw-520" method="post" action="/api/branding_save.php" enctype="multipart/form-data" autocomplete="off">
+                                                <div class="settings-panel__content">
+                                                    <h2 class="mt-0">Брендування</h2>
+                                                    <p class="fs-14 text-muted">Оновіть назву сайту, кольори, логотип і favicon. Кольори у форматі HEX (наприклад #102d4e). Для переносу рядка у назві використовуйте буквально послідовність <code>\n</code> (наприклад: <code>Перша частина\nДруга частина</code>).</p>
+                                                    <form id="brandingForm" class="form" method="post" action="/api/branding_save.php" enctype="multipart/form-data" autocomplete="off">
                             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
                             <label>Назва сайту
                                 <input type="text" name="site_name" value="<?= htmlspecialchars($curSite) ?>" required maxlength="255">
@@ -90,15 +92,17 @@ include $_SERVER['DOCUMENT_ROOT'] . '/header.php';
                                 <button class="btn btn-primary" type="submit" id="brandingSaveBtn">Зберегти</button>
                                 <span id="brandingStatus" class="fs-13 text-muted ml-4"></span>
                             </div>
-                        </form>
+                                                    </form>
+                                                </div>
                         <!-- JS moved to /assets/js/branding.js to comply with CSP -->
                         <?php
     } elseif ($tab === 'templates') {
-        echo "<h2>Шаблони</h2><p>Управління шаблонами сертифікатів.</p>";
+        echo '<div class="settings-panel__content"><h2>Шаблони</h2><p>Управління шаблонами сертифікатів.</p></div>';
     } elseif ($tab === 'users') {
-        echo "<h2>Оператори</h2><p>Управління користувачами системи.</p>";
+        echo '<div class="settings-panel__content"><h2>Оператори</h2><p>Управління користувачами системи.</p></div>';
     }
     ?>
+      </div>
   </div>
 </div>
 
