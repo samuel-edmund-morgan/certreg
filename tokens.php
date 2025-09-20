@@ -5,6 +5,7 @@ require_csrf();
 $isAdminPage = true;
 $cfg = require __DIR__.'/config.php';
 require_once __DIR__.'/header.php';
+require_once __DIR__.'/common_pagination.php';
 require_once __DIR__.'/db.php';
 
 $q = trim($_GET['q'] ?? '');
@@ -152,40 +153,7 @@ function render_sort_arrow($column, $sort, $dir) {
   </table>
   </form>
   </div>
-  <?php
-    // Helper function for smart pagination
-    function render_pagination($currentPage, $totalPages, $baseQuery) {
-        $delta = 2; // Number of pages to show around the current page
-        $range = [];
-        for ($i = 1; $i <= $totalPages; $i++) {
-            if ($i == 1 || $i == $totalPages || ($i >= $currentPage - $delta && $i <= $currentPage + $delta)) {
-                $range[] = $i;
-            }
-        }
-
-        $withDots = [];
-        $last = 0;
-        foreach ($range as $page) {
-            if (($page - $last) > 1) {
-                $withDots[] = '...';
-            }
-            $withDots[] = $page;
-            $last = $page;
-        }
-
-        echo '<nav class="pagination">';
-        foreach ($withDots as $p) {
-            if ($p === '...') {
-                echo '<span class="page-dots">...</span>';
-            } else {
-                $query = http_build_query(array_merge($baseQuery, ['page' => $p]));
-                $activeClass = ($p == $currentPage) ? 'active' : '';
-                echo "<a class=\"page {$activeClass}\" href=\"?{$query}\">{$p}</a>";
-            }
-        }
-        echo '</nav>';
-    }
-    ?>
+  <?php // Pagination now provided by common_pagination.php ?>
   <?php if($pages > 1):
     render_pagination($page, $pages, ['q' => $q, 'state' => $state, 'sort' => $sort, 'dir' => $dir]);
   ?>
