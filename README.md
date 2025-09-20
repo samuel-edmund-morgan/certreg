@@ -140,7 +140,7 @@ php -r "echo password_hash('YourStrongPass', PASSWORD_DEFAULT), PHP_EOL;"
 Вставте хеш у SQL:
 
 ```sql
-INSERT INTO creds (username, passhash) VALUES ('admin','<HASH>');
+INSERT INTO creds (username, passhash, `role`) VALUES ('admin','<HASH>', 'admin');
 ```
 
 ### 6. Nginx
