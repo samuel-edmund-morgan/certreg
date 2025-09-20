@@ -68,25 +68,59 @@ cp config.php.example config.php
 Заповніть у `config.php`: параметри БД (`db_host`,`db_name`,`db_user`,`db_pass`), `site_name`, `logo_path`, `org_code`, `infinite_sentinel`, `canonical_verify_url`.
 
 #### Брендування (логотип, favicon, кольори)
-Початкові значення беруться з `config.php` (`site_name`, `logo_path`, `favicon_path`). Після завантаження налаштувань у вкладці "Брендування" ( `settings.php?tab=branding` ) значення з таблиці `branding_settings` мають пріоритет.
+Початкові значення беруться з `config.php` (`site_name`, `logo_path`, `favicon_path`). Після збереження у вкладці "Брендування" (`settings.php?tab=branding`) значення з таблиці `branding_settings` повністю перекривають конфіг.
 
 Пріоритет (від найвищого):
-1. Значення у таблиці `branding_settings` (`site_name`, `logo_path`, `favicon_path`, `primary_color`, `accent_color`).
-2. Значення у `config.php` (`site_name`, `logo_path`, `favicon_path`).
+1. Таблиця `branding_settings` (`site_name`, `logo_path`, `favicon_path`, `primary_color`, `accent_color`, `secondary_color`).
+2. `config.php` (`site_name`, `logo_path`, `favicon_path`).
 3. Статичні дефолти (`/assets/logo.png`, `/assets/favicon.ico`).
 
-Файли завантажуються у папку `/files/branding/` з унікальними іменами (`logo_YYYYmmdd_HHMMSS.ext`, `favicon_YYYYmmdd_HHMMSS.ext`).
+Файли зберігаються у `/files/branding/` з унікальними іменами (`logo_YYYYmmdd_HHMMSS.ext`, `favicon_YYYYmmdd_HHMMSS.ext`).
 
 Обмеження:
 - Логотип: PNG/JPG/SVG ≤ 2MB
 - Favicon: ICO/PNG/SVG ≤ 128KB
-- Кольори: HEX формат `#RRGGBB`
+- Кольори: HEX `#RRGGBB`
 
-Після успішного збереження, якщо логотип або favicon змінено, сторінка перезавантажується для оновлення кешу браузера. `header.php` інʼєктує `<meta name="theme-color">` та динамічно задає `--color-primary` / `--color-accent` (поки що обмежено інлайном; у майбутньому можна винести в окремий CSS).
+Після збереження кольорів генерується детермінований файл `branding_colors.css` у `/files/branding/` який містить, напр.:
+```css
+:root{ --primary:#102d4e; --accent:#d12d8a; --secondary:#6b7280; }
+```
+`header.php` підключає його ПІСЛЯ базового `assets/css/styles.css` з cache-busting параметром `?v=<mtime>`, що гарантує застосування без inline-override. Якщо жоден з кольорів не заданий – файл видаляється.
 
-Self‑check (`php self_check.php`) тепер перевіряє наявність файлів логотипу та favicon (секція Branding checks B1).
+Ролі кольорів:
+- `--primary` – структурний фон / базові основні кнопки.
+- `--accent` – акцент для інтеракцій (сортування, прогрес, active таби, hover, пагінація).
+- `--secondary` – альтернативний бренд‑тон для другорядних дій (`.btn-secondary`). Якщо не заданий – fallback до `--primary`.
+- Семантичні (не бренд): успіх (`.status-badge.ok`, зелений), помилка (`.status-badge.err`, червоний), небезпечні дії (`.btn-danger`), попередження (жовтий дублікат / outline). Вони залишаються сталими для когнітивної впізнаваності.
 
-Перенос рядків у назві сайту: введіть буквально `\\n` там, де потрібен розрив. Напр.: `Перша частина\\nДруга частина\\nТретя` → буде показано у 3 рядки в шапці, але теги `<title>` у браузері лишаються однорядковими.
+Куди дивитись, щоб підтвердити роботу accent:
+1. Посортуйте таблицю – заголовок активного стовпця стане кольору accent.
+2. Статус «processing» (`.status-badge.proc`) у bulk видачі.
+3. Синя смужка прогресу в bulk – змінює колір.
+4. Активна вкладка горизонтальних налаштувань має підкреслення accent.
+5. Наведіть курсор на кнопку у topbar – фон стає accent.
+6. Активна сторінка пагінації і hover по неактивних.
+
+Кнопки / палітра:
+```text
+.btn-primary   -> --primary
+.btn-accent    -> --accent
+.btn-secondary -> --secondary (fallback primary)
+.btn-success   -> (DEPRECATED alias) now styled як accent для уніфікації; не використовуйте в новому коді
+.btn-danger    -> semantic danger (червоний, НЕ бренд)
+```
+
+Utility:
+```html
+<button class="btn btn-accent">Accent</button>
+<span class="text-accent">Акцентований текст</span>
+<a class="link-accent" href="#">Акцентоване посилання</a>
+```
+
+Self‑check (`php self_check.php`) перевіряє: існування логотипу, favicon, валідність HEX для primary/accent/secondary і синтаксис `branding_colors.css` (наявність відповідних значень).
+
+Перенос рядків у назві сайту: введіть буквально `\\n` де потрібен розрив. Напр.: `Перша частина\\nДруга частина` → у шапці два рядки, у `<title>` один.
 
 ### 5. Створення таблиць (v3)
 Початкова v3-схема. Виконайте (налаштувавши БД):

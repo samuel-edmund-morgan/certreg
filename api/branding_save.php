@@ -9,6 +9,9 @@ if(!headers_sent()) header('Content-Type: application/json; charset=utf-8');
 $siteName = trim($_POST['site_name'] ?? '');
 $primary  = trim($_POST['primary_color'] ?? '');
 $accent   = trim($_POST['accent_color'] ?? '');
+$secondary = trim($_POST['secondary_color'] ?? '');
+$footerText = trim($_POST['footer_text'] ?? '');
+$supportContact = trim($_POST['support_contact'] ?? '');
 $errors = [];
 if($siteName===''){ $errors['site_name']='empty'; }
 // Basic HEX validation (# optional)
@@ -21,6 +24,7 @@ function norm_hex($v){
 }
 $primaryHex = norm_hex($primary); if($primary!=='' && $primaryHex===false){ $errors['primary_color']='bad_format'; }
 $accentHex  = norm_hex($accent); if($accent!=='' && $accentHex===false){ $errors['accent_color']='bad_format'; }
+$secondaryHex = norm_hex($secondary); if($secondary!=='' && $secondaryHex===false){ $errors['secondary_color']='bad_format'; }
 
 // Handle logo upload
 $logoRelPath = null; $uploadField = 'logo_file';
@@ -88,8 +92,35 @@ try {
   if($siteName!=='') branding_upsert($pdo,'site_name',$siteName);
   if($primaryHex!=='' && $primaryHex!==false) branding_upsert($pdo,'primary_color',$primaryHex);
   if($accentHex!=='' && $accentHex!==false) branding_upsert($pdo,'accent_color',$accentHex);
+  if($secondaryHex!=='' && $secondaryHex!==false) branding_upsert($pdo,'secondary_color',$secondaryHex);
   if($logoRelPath) branding_upsert($pdo,'logo_path',$logoRelPath);
   if($faviconRelPath) branding_upsert($pdo,'favicon_path',$faviconRelPath);
+  if($footerText!=='') branding_upsert($pdo,'footer_text',$footerText);
+  if($supportContact!=='') branding_upsert($pdo,'support_contact',$supportContact);
+  // After DB writes, (re)generate external branding CSS for deterministic override.
+  try {
+    $targetDir = $_SERVER['DOCUMENT_ROOT'].'/files/branding';
+    if(!is_dir($targetDir)) @mkdir($targetDir,0755,true);
+    $cssFile = $targetDir.'/branding_colors.css';
+    // Load current values to decide content
+    $map = [];
+  $st2 = $pdo->query("SELECT setting_key, setting_value FROM branding_settings WHERE setting_key IN ('primary_color','accent_color','secondary_color')");
+    foreach($st2->fetchAll(PDO::FETCH_ASSOC) as $r){ $map[$r['setting_key']] = $r['setting_value']; }
+    $p = $map['primary_color'] ?? '';
+    $a = $map['accent_color'] ?? '';
+    $s = $map['secondary_color'] ?? '';
+  if($p || $a || $s){
+      $lines = [':root{'];
+      if($p) $lines[] = '--primary: '.$p.';';
+      if($a) $lines[] = '--accent: '.$a.';';
+      if($s) $lines[] = '--secondary: '.$s.';';
+      $lines[]='}';
+      $css = implode('', $lines)."\n";
+      file_put_contents($cssFile,$css,LOCK_EX);
+    } else {
+      if(is_file($cssFile)) @unlink($cssFile);
+    }
+  } catch(Throwable $e){ /* swallow generation errors; do not block primary response */ }
   echo json_encode(['ok'=>true,'logo'=>$logoRelPath,'favicon'=>$faviconRelPath]);
 } catch(Throwable $e){
   http_response_code(500); echo json_encode(['ok'=>false,'error'=>'server']);

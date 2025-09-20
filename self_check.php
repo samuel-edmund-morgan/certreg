@@ -372,4 +372,25 @@ try {
   if(isset($branding['accent_color'])){
     if(!preg_match('/^#[0-9A-Fa-f]{6}$/',$branding['accent_color'])) echo "[WARN] accent_color invalid format.\n"; else echo "[OK] accent_color format valid.\n";
   }
+  if(isset($branding['secondary_color'])){
+    if(!preg_match('/^#[0-9A-Fa-f]{6}$/',$branding['secondary_color'])) echo "[WARN] secondary_color invalid format.\n"; else echo "[OK] secondary_color format valid.\n";
+  }
+  // branding_colors.css validation
+  $colorsSet = !empty($branding['primary_color']) || !empty($branding['accent_color']) || !empty($branding['secondary_color']);
+  $colorsCss = __DIR__.'/files/branding/branding_colors.css';
+  if($colorsSet){
+    if(is_file($colorsCss)){
+      echo "[OK] branding_colors.css present.\n";
+      $cssContent = @file_get_contents($colorsCss);
+      if($cssContent===false) echo "[WARN] Cannot read branding_colors.css.\n"; else {
+  if(!empty($branding['primary_color']) && !str_contains($cssContent,$branding['primary_color'])) echo "[WARN] primary_color not found in branding_colors.css.\n";
+  if(!empty($branding['accent_color']) && !str_contains($cssContent,$branding['accent_color'])) echo "[WARN] accent_color not found in branding_colors.css.\n";
+  if(!empty($branding['secondary_color']) && !str_contains($cssContent,$branding['secondary_color'])) echo "[WARN] secondary_color not found in branding_colors.css.\n";
+      }
+    } else {
+      echo "[FAIL] branding_colors.css missing while colors are set.\n";
+    }
+  } else {
+    if(is_file($colorsCss)) echo "[WARN] branding_colors.css exists but no colors set (stale).\n"; else echo "[OK] No colors set; no branding_colors.css (expected).\n";
+  }
 } catch(Throwable $e){ echo "[WARN] Branding checks error: ".$e->getMessage()."\n"; }

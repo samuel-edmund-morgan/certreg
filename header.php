@@ -17,6 +17,9 @@ try {
   if(isset($branding['favicon_path'])) $cfg['favicon_path'] = $branding['favicon_path'];
   if(isset($branding['primary_color'])) $cfg['primary_color'] = $branding['primary_color'];
   if(isset($branding['accent_color']))  $cfg['accent_color']  = $branding['accent_color'];
+  if(isset($branding['secondary_color'])) $cfg['secondary_color'] = $branding['secondary_color'];
+  if(isset($branding['footer_text'])) $cfg['footer_text'] = $branding['footer_text'];
+  if(isset($branding['support_contact'])) $cfg['support_contact'] = $branding['support_contact'];
 } catch(Throwable $e){ /* ignore DB/branding failures; fall back to config */ }
 
 // --- Security headers (no inline scripts) ---
@@ -42,17 +45,28 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
 <head>
   <meta charset="utf-8">
   <?php
-    $favicon = htmlspecialchars($cfg['favicon_path'] ?? '/assets/favicon.ico', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $rawFavicon = $cfg['favicon_path'] ?? '/assets/favicon.ico';
+    if(!$rawFavicon || !is_string($rawFavicon)) $rawFavicon = '/assets/favicon.ico';
+    $absFav = $_SERVER['DOCUMENT_ROOT'] . $rawFavicon;
+    if(!is_file($absFav)) { // fallback hard
+      $rawFavicon = '/assets/favicon.ico';
+      $absFav = $_SERVER['DOCUMENT_ROOT'] . $rawFavicon;
+    }
+    $favVer = @filemtime($absFav) ?: time();
+    $ext = strtolower(pathinfo(parse_url($rawFavicon,PHP_URL_PATH), PATHINFO_EXTENSION));
+    $mime = 'image/x-icon';
+    if($ext==='png') $mime='image/png'; elseif($ext==='svg') $mime='image/svg+xml';
+    $faviconEsc = htmlspecialchars($rawFavicon.'?v='.$favVer, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
   ?>
-  <link rel="icon" href="<?= $favicon ?>" type="image/x-icon">
+  <link rel="icon" href="<?= $faviconEsc ?>" type="<?= $mime ?>">
+  <link rel="shortcut icon" href="<?= $faviconEsc ?>" type="<?= $mime ?>">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title><?= htmlspecialchars($cfg['site_name']) ?></title>
-  <?php if(!empty($cfg['primary_color'])): ?>
-    <meta name="theme-color" content="<?= htmlspecialchars($cfg['primary_color']) ?>">
-    <style>
-      :root { --color-primary: <?= htmlspecialchars($cfg['primary_color']) ?>; <?php if(!empty($cfg['accent_color'])): ?>--color-accent: <?= htmlspecialchars($cfg['accent_color']) ?>;<?php endif; ?> }
-    </style>
-  <?php endif; ?>
+  <?php
+    $rawTitle = (string)($cfg['site_name'] ?? '');
+    // Replace literal \n sequences with a space for <title> to avoid showing backslash+n
+    $titleFlat = str_replace('\\n',' ', $rawTitle);
+  ?>
+  <title><?= htmlspecialchars($titleFlat, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></title>
   <meta name="csrf" content="<?= $csrfMeta ?>">
   <?php if (isset($_GET['test_mode']) && $_GET['test_mode'] === '1'): ?>
     <meta name="test-mode" content="1">
@@ -64,6 +78,16 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
     $cssVer = @filemtime($cssPath) ?: time();
   ?>
   <link rel="stylesheet" href="/assets/css/styles.css?v=<?= $cssVer ?>">
+  <?php
+    $primaryBrand = $cfg['primary_color'] ?? '';
+    if($primaryBrand){ echo '<meta name="theme-color" content="'.htmlspecialchars($primaryBrand,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8').'">'; }
+    // Link external branding colors css if it exists
+    $brandCssPath = $_SERVER['DOCUMENT_ROOT'].'/files/branding/branding_colors.css';
+    if(is_file($brandCssPath)){
+      $ver = @filemtime($brandCssPath) ?: time();
+      echo '<link rel="stylesheet" href="/files/branding/branding_colors.css?v='.$ver.'">';
+    }
+  ?>
 <body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-inf='<?= $infSent ?>' data-canon='<?= $canonUrl ?>' data-template='<?= $tplPath ?>' data-test='<?= (isset($_GET['test_mode']) && $_GET['test_mode'] === '1') ? '1' : '0' ?>'>
 <header class="topbar">
   <div class="topbar__inner">
@@ -71,8 +95,8 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
     <?php
       $rawSiteName = (string)($cfg['site_name'] ?? '');
       // Replace literal backslash + n sequences with <br> for display only.
-      $htmlSiteName = htmlspecialchars($rawSiteName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-      $htmlSiteName = str_replace('\\n','<br>',$htmlSiteName);
+  $htmlSiteName = htmlspecialchars($rawSiteName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+  $htmlSiteName = str_replace('\\n','<br>',$htmlSiteName); // Keep multiline display in header
     ?>
     <?php if (is_admin_logged()): ?>
       <a href="/admin.php" class="brand link-plain">

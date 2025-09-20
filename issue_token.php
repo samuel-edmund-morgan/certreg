@@ -41,8 +41,8 @@ $coords = $cfg['coords'] ?? [];
         </div>
       </div>
     </div>
-    <div class="flex flex-wrap gap-10">
-      <button class="btn btn-success" type="submit" id="generateBtn">Згенерувати</button>
+    <div class="flex flex-wrap gap-10 btn-cluster">
+	<button class="btn btn-accent" type="submit" id="generateBtn">Згенерувати</button>
       <button class="btn d-none" type="button" id="toggleDetails">Показати технічні деталі</button>
       <button class="btn" type="button" id="resetBtn">Новий</button>
     </div>
@@ -96,8 +96,8 @@ $coords = $cfg['coords'] ?? [];
           <button type="button" class="btn" id="clearAllBtn">Очистити</button>
         </div>
       </div>
-      <div class="flex gap-10 flex-wrap mt-14 align-center">
-        <button type="button" class="btn btn-success" id="bulkGenerateBtn" disabled>Згенерувати (0)</button>
+  <div class="flex gap-10 flex-wrap mt-14 align-center btn-cluster">
+	<button type="button" class="btn btn-accent" id="bulkGenerateBtn" disabled>Згенерувати (0)</button>
         <button type="button" class="btn d-none" id="bulkRetryBtn">Повторити невдалі</button>
         <div class="progress-wrap progress-hidden" id="bulkProgressBarWrap" aria-hidden="true">
           <div class="progress-bar" id="bulkProgressBar"></div>
