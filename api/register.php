@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/../auth.php';
-require_admin(); // only admin/operator issues certificates
+// Allow both admin and operator to issue certificates
+require_login();
 require_csrf();
 require_once __DIR__.'/../db.php';
 if(!headers_sent()) header('Content-Type: application/json; charset=utf-8');

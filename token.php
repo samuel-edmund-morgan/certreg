@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__.'/auth.php';
-require_admin();
+require_login();
 require_csrf();
 $isAdminPage = true;
 $cfg = require __DIR__.'/config.php';
@@ -49,28 +49,30 @@ if(!empty($row['h'] ?? null)){
   <div><strong>Остання перевірка</strong></div><div><?= $row['last_lookup_at'] ? htmlspecialchars($row['last_lookup_at']) : '—' ?></div>
     </div>
     <hr class="my-18">
-    <div class="actions-row">
-      <?php if(!$row['revoked_at']): ?>
-        <form id="revokeForm" method="post" action="/api/revoke.php" class="flex flex-wrap gap-6 align-center">
+  <?php if(is_admin() || is_operator()): ?>
+      <div class="actions-row">
+        <?php if(!$row['revoked_at']): ?>
+          <form id="revokeForm" method="post" action="/api/revoke.php" class="flex flex-wrap gap-6 align-center">
+            <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
+            <input type="hidden" name="cid" value="<?= htmlspecialchars($row['cid']) ?>">
+            <input type="text" name="reason" placeholder="Причина відкликання" maxlength="120" class="flex-1 minw-200">
+            <button class="btn btn-danger btn-sm" type="submit">Відкликати</button>
+          </form>
+        <?php else: ?>
+          <form id="unrevokeForm" method="post" action="/api/unrevoke.php" class="flex gap-6 align-center">
+            <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
+            <input type="hidden" name="cid" value="<?= htmlspecialchars($row['cid']) ?>">
+            <button class="btn btn-light btn-sm" type="submit">Відновити</button>
+          </form>
+        <?php endif; ?>
+        <form id="deleteForm" method="post" action="/api/delete_token.php" class="d-inline">
           <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
           <input type="hidden" name="cid" value="<?= htmlspecialchars($row['cid']) ?>">
-          <input type="text" name="reason" placeholder="Причина відкликання" maxlength="120" class="flex-1 minw-200">
-          <button class="btn btn-danger btn-sm" type="submit">Відкликати</button>
+          <button class="btn btn-sm btn-ghost-danger" type="submit">Видалити</button>
         </form>
-      <?php else: ?>
-        <form id="unrevokeForm" method="post" action="/api/unrevoke.php" class="flex gap-6 align-center">
-          <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-          <input type="hidden" name="cid" value="<?= htmlspecialchars($row['cid']) ?>">
-          <button class="btn btn-light btn-sm" type="submit">Відновити</button>
-        </form>
-      <?php endif; ?>
-      <form id="deleteForm" method="post" action="/api/delete_token.php" class="d-inline">
-        <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-        <input type="hidden" name="cid" value="<?= htmlspecialchars($row['cid']) ?>">
-        <button class="btn btn-sm btn-ghost-danger" type="submit">Видалити</button>
-      </form>
-    </div>
-    <p class="fs-11 text-muted mt-14">Видалення безповоротне. Сервер не зберігає ПІБ, тому повторно привʼязати особу буде неможливо.</p>
+      </div>
+      <p class="fs-11 text-muted mt-14">Видалення безповоротне. Сервер не зберігає ПІБ, тому повторно привʼязати особу буде неможливо.</p>
+    <?php endif; ?>
     <p class="mt-10 flex gap-8 flex-wrap">
   <a href="/tokens.php" class="btn btn-sm">← До нагород</a>
     </p>

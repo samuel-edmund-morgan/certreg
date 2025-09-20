@@ -30,17 +30,36 @@ function is_operator(): bool {
     return ($_SESSION['admin_role'] ?? '') === 'operator';
 }
 
-function require_admin() {
-    if (!is_admin_logged() || !is_admin()) {
+/** Ensure any authenticated user (admin or operator). */
+function require_login() {
+    if (!is_admin_logged()) {
         header('Location: /admin.php');
         exit;
     }
 }
 
+/** Ensure admin role specifically. */
+function require_admin() {
+    if (!is_admin_logged()) {
+        header('Location: /admin.php');
+        exit;
+    }
+    if (!is_admin()) {
+        // Non-admin trying to access admin-only page → send to operator landing
+        header('Location: /issue_token.php');
+        exit;
+    }
+}
+
+/** Ensure operator (not necessarily excluding admin). */
 function require_operator() {
     if (!is_admin_logged()) {
         header('Location: /admin.php');
         exit;
+    }
+    if (!is_operator()) {
+        // If admin hits operator-only area, allow or redirect? For now allow admin.
+        return; // no-op
     }
 }
 

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/auth.php';
-require_admin();
+// Viewable by both admins and operators; destructive actions remain admin-only via API guards
+require_login();
 require_csrf();
 $isAdminPage = true;
 $cfg = require __DIR__.'/config.php';

@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__.'/auth.php';
-require_admin();
+require_login();
 require_csrf();
 require_once __DIR__.'/db.php';
 $isAdminPage = true;

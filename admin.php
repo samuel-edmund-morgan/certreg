@@ -19,5 +19,11 @@ if(!is_admin_logged()){
     <?php require_once __DIR__.'/footer.php';
     exit;
   }
-  header('Location: /tokens.php');
+  // After successful login already (session present)
+  if(is_admin()) {
+    header('Location: /tokens.php');
+  } else {
+    // operator landing
+    header('Location: /issue_token.php');
+  }
   exit;

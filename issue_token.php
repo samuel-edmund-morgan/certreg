@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/auth.php';
-require_admin();
+// Accessible to both admin & operator roles
+require_login();
 require_csrf();
 $isAdminPage = true;
 $cfg = require __DIR__.'/config.php';
