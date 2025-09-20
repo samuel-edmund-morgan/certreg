@@ -1,5 +1,5 @@
 body.admin-page .alert-banner {
-  display: none !important;
+  display:none; /* was !important, not needed given direct class selector */
 }
 :root{
   --bg:#ffffff; --text:#0f172a; --muted:#475569; --primary:#102d4e;
@@ -90,8 +90,8 @@ main{flex:1}
   display:flex;align-items:center;justify-content:center;overflow:hidden;
 }
 .card__logo .logo{
-  width:80px !important;height:80px !important;max-width:none !important;max-height:none !important;
-  margin:0 !important;border-radius:12px !important;background-size:contain !important;background-position:center !important;
+  width:80px;height:80px;max-width:none;max-height:none;
+  margin:0;border-radius:12px;background-size:contain;background-position:center;
 }
 .card__title{text-align:center;margin:2px 0 18px}
 /* Дод. відступ перед центрованими діями у картці */
@@ -122,19 +122,17 @@ main{flex:1}
   border-radius:8px;cursor:pointer;text-decoration:none;
   display:inline-flex;align-items:center;justify-content:center;gap:6px;
   font-size:14px;line-height:1;box-sizing:border-box;height:36px;
-  width: var(--topbar-btn-width, auto);
   font-family:'Montserrat', system-ui, 'Segoe UI', Roboto, Ubuntu;
-  font-weight:600; /* справжня вага з @font-face вище */
+  font-weight:600;
   appearance:none; -webkit-appearance:none; -moz-appearance:none;
   vertical-align:middle;
-  font-synthesis: none; /* не синтезувати жирність, використовуємо справжню 600 */
+  font-synthesis: none;
 }
 .topbar__actions .btn:hover{background:#2f71bf;color:#fff;border-color:#2f71bf}
 .topbar__actions .btn:focus-visible{outline:3px solid #bfdbfe;outline-offset:2px}
 
 /* Форм-кнопка в топбарі */
 .topbar__actions form{margin:0}
-.topbar__actions form .btn{display:inline-flex;align-items:center;justify-content:center;padding:0 16px;height:40px;border-radius:10px}
 
 /* Firefox внутрішній padding */
 .topbar__actions button{font-family:inherit;font-weight:inherit}
@@ -273,8 +271,8 @@ main{flex:1}
   .table th a,
   .table th a:link,
   .table th a:visited{
-    color:inherit !important;
-    text-decoration:none !important;
+    color:inherit;
+    text-decoration:none;
     font-weight:600;
     display:inline-flex;align-items:center;gap:6px;white-space:nowrap;line-height:1;
   }
@@ -287,9 +285,9 @@ main{flex:1}
   }
   .table th a:hover,
   .table th a:focus,
-  .table th a:active{ text-decoration:underline dotted; color:inherit !important; }
+  .table th a:active{ text-decoration:underline dotted; color:inherit; }
   /* In case browser applies default focus outline, keep accessibility */
-  .table th a.active{ font-weight:bold; color: #2563eb !important; }
+  .table th a.active{ font-weight:bold; color:#2563eb; }
 
   /* === Utility classes (CSP inline-style cleanup) === */
   .mt-0{margin-top:0}
@@ -359,17 +357,17 @@ main{flex:1}
   /* When bulk bar visible adjust sticky header offset */
   body.has-bulk .table thead th{top:40px}
   .bulk-bar__inner{align-items:center}
-  .row-selected td{background:#e0f2fe !important}
+  .row-selected td{background:#e0f2fe}
   /* Bulk bar reason field collapse logic */
   #bulkBar{gap:8px}
   #bulkReason{min-width:220px;}
-  #bulkReason.hidden-slot{display:none !important}
+  #bulkReason.hidden-slot{display:none}
   /* === Tabs for issuance page === */
   .tabs{display:flex;gap:4px;margin:10px 0 18px;border-bottom:1px solid var(--border)}
   .tab{background:#f1f5f9;border:1px solid var(--border);border-bottom:none;padding:8px 14px;border-top-left-radius:10px;border-top-right-radius:10px;cursor:pointer;font-weight:600;font-size:14px;position:relative;top:1px}
   .tab.active{background:#fff;border-color:var(--border);color:#000;box-shadow:0 2px 4px rgba(0,0,0,0.05)}
   .tab-panel{padding:2px 4px 8px 2px}
-  .tab-panel.d-none{display:none !important}
+  .tab-panel.d-none{display:none}
   .bulk-table-wrapper{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff}
   #bulkTable input{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:14px}
   #bulkTable td,#bulkTable th{vertical-align:top}
@@ -448,6 +446,8 @@ main{flex:1}
     width: 100%;
     color: #495057;
     text-align: inherit;
+    white-space: normal;
+    word-wrap: break-word;
   }
   .list-group-item-action:hover, .list-group-item-action:focus {
     z-index: 1;
@@ -464,3 +464,5 @@ main{flex:1}
   .mb-20 {
     margin-bottom: 20px;
   }
+/* NOTE: Removed temporary canonical override with !important for .topbar__actions .btn
+   (kept single definition near top). This comment left intentionally for audit trace. */

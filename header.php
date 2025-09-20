@@ -36,7 +36,12 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
     <meta name="test-mode" content="1">
   <?php endif; ?>
   <!-- Removed font preloads to avoid 'preloaded but not used' warnings; fonts load via @font-face -->
-  <link rel="stylesheet" href="/assets/css/styles.css">
+  <?php
+    // Simple cache-busting version based on file modification time.
+    $cssPath = $_SERVER['DOCUMENT_ROOT'] . '/assets/css/styles.css';
+    $cssVer = @filemtime($cssPath) ?: time();
+  ?>
+  <link rel="stylesheet" href="/assets/css/styles.css?v=<?= $cssVer ?>">
 <body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-inf='<?= $infSent ?>' data-canon='<?= $canonUrl ?>' data-template='<?= $tplPath ?>' data-test='<?= (isset($_GET['test_mode']) && $_GET['test_mode'] === '1') ? '1' : '0' ?>'>
 <header class="topbar">
   <div class="topbar__inner">
@@ -76,7 +81,10 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
   </div>
 </header>
 
-<?php if(empty($hideAlertBanner)): ?>
+<?php
+$current_page = basename($_SERVER['SCRIPT_NAME']);
+if ($current_page === 'verify.php' && empty($hideAlertBanner)):
+?>
   <div class="alert-banner" role="alert" aria-live="polite">
     <div class="alert-banner__marquee">
       <div class="alert-banner__track">
