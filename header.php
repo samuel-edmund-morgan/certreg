@@ -117,7 +117,7 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
         <a class="btn btn-light mr-8" href="/settings.php">Налаштування</a>
       <?php endif; ?>
       <a class="btn btn-light mr-8" href="/issue_token.php">Видача</a>
-      <a class="btn btn-light mr-8" href="/tokens.php">Нагороди</a>
+  <a class="btn btn-light mr-8" href="/tokens.php">Нагороди</a>
       <a class="btn btn-light mr-8" href="/events.php">Журнал</a>
       <form action="/logout.php" method="post" class="d-inline">
         <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">

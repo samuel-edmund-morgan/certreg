@@ -95,7 +95,39 @@ switch($tab){
         echo '<h2>Шаблони</h2><p>Управління шаблонами сертифікатів.</p>';
         break;
     case 'users':
-        echo '<h2>Оператори</h2><p>Управління користувачами системи.</p>';
+        echo '<h2 class="mt-0">Оператори</h2>';
+        echo '<p class="fs-14 text-muted maxw-760">Створюйте та переглядайте облікові записи операторів. Докладні дії (перейменування, деактивація, скидання паролю, видалення) – на сторінці окремого оператора.</p>';
+        $csrfUsers = csrf_token();
+        echo '<form id="opCreateForm" class="form mb-20" method="post" action="/api/operator_create.php" autocomplete="off">'
+            .'<input type="hidden" name="_csrf" value="'.htmlspecialchars($csrfUsers).'" />'
+            .'<div class="op-create-grid">'
+                .'<div class="op-field">'
+                    .'<label>Логін<br><input type="text" name="username" required minlength="3" maxlength="40" pattern="[a-zA-Z0-9_.-]{3,40}" class="mono" placeholder="operator1" /></label>'
+                    .'<span class="field-hint fs-12 text-muted">3–40 символів, унікальний.</span>'
+                .'</div>'
+                .'<div class="op-field">'
+                    .'<label>Пароль<br><input type="password" name="password" required minlength="8" autocomplete="new-password" /></label>'
+                    .'<span class="field-hint fs-12 text-muted">Мінімум 8 символів.</span>'
+                .'</div>'
+                .'<div class="op-field">'
+                    .'<label>Повтор<br><input type="password" name="password2" required minlength="8" autocomplete="new-password" /></label>'
+                    .'<span class="field-hint fs-12 text-muted">Повторіть пароль точно.</span>'
+                .'</div>'
+                .'<div class="op-actions">'
+                    .'<button type="submit" id="opCreateBtn" class="btn btn-primary op-create-btn">Створити</button>'
+                    .'<span id="opCreateStatus" class="fs-12 text-muted" aria-live="polite"></span>'
+                .'</div>'
+            .'</div>'
+            .'<div class="fs-12 text-muted mt-6">Роль завжди <code>operator</code>. Дозволені символи логіну: <code>a-z A-Z 0-9 _ . -</code>. Рекомендується поєднання літер і цифр у паролі.</div>'
+        .'</form>';
+        echo '<div class="table-wrap"><table class="table" id="operatorsTable" data-page="1"><thead><tr>'
+            .'<th>ID</th><th>Логін</th><th>Роль</th><th>Статус</th><th>Створено</th><th>Деталі</th>'
+            .'</tr></thead><tbody>'
+            .'<tr><td colspan="6" class="text-center text-muted fs-13">Завантаження...</td></tr>'
+            .'</tbody></table></div>';
+        echo '<div id="operatorsSummary" class="fs-12 text-muted mt-8"></div>';
+        echo '<div id="operatorsPagination" class="mt-10"></div>';
+        echo '<div class="mt-12 fs-12 text-muted">Для керування – відкрийте рядок через кнопку у колонці "Деталі" (<code>operator.php?id=...</code>).</div>';
         break;
     case 'account':
         $csrf = csrf_token();

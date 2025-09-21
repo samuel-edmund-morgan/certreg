@@ -35,7 +35,7 @@ if(!empty($row['h'] ?? null)){
       <div><strong>Версія</strong></div><div><?= (int)$row['version'] ?></div>
   <div><strong>Додаткова інформація</strong></div><div><?= htmlspecialchars($row['extra_info'] ?? '') ?></div>
   <div><strong>Дата видачі</strong></div><div><?= htmlspecialchars($row['issued_date'] ?? '') ?></div>
-      <div><strong>Створено (UTC)</strong></div><div><?= htmlspecialchars($row['created_at']) ?></div>
+  <div><strong>Створено (UTC)</strong></div><div><?= htmlspecialchars($row['created_at']) ?></div>
       <div><strong>Статус</strong></div><div>
         <?php if($row['revoked_at']): ?>
           <span class="badge badge-danger">Відкликано</span><br>

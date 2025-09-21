@@ -5,10 +5,11 @@ if (php_sapi_name() !== 'cli') { http_response_code(403); exit; }
 $root = __DIR__;
 $whitelist = [
   // Public / functional entrypoints
-  'index.php','admin.php','login.php','logout.php','issue_token.php','tokens.php','token.php','verify.php','qr.php','events.php',
+  'index.php','admin.php','login.php','logout.php','issue_token.php','tokens.php','token.php','operator.php','verify.php','qr.php','events.php',
   // API endpoints
   'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php','api/bulk_action.php','api/branding_save.php',
   'api/account_change_password.php',
+  'api/operators_list.php','api/operator_create.php','api/operator_toggle_active.php','api/operator_reset_password.php','api/operator_rename.php','api/operator_delete.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php','common_pagination.php',
   'settings.php','settings_section.php',
@@ -37,7 +38,7 @@ if($bad){
 echo "[OK] No unexpected PHP entrypoints.\n";
 // Classify (info only): public vs admin (for operator awareness)
 echo "[INFO] Public endpoints expected: verify.php, api/status.php\n";
-echo "[INFO] Admin endpoints expected: issue_token.php, tokens.php, token.php, events.php, qr.php + related api/*.php writes\n";
+echo "[INFO] Admin endpoints expected: issue_token.php, tokens.php, token.php, operator.php, events.php, qr.php + related api/*.php writes\n";
 
 // Simple perms check: config.php should not be world-readable
 $cfgPath = $root.'/config.php';

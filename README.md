@@ -11,7 +11,8 @@
 - [Ліцензія](#ліцензія)
 - [Автоматичні тести](#автоматичні-тести)
 - [Ігноровані файли / артефакти](#ігноровані-файли--артефакти)
- - [Налаштування (AJAX) та акаунт](#налаштування-ajax-та-акаунт)
+- [Налаштування (AJAX) та акаунт](#налаштування-ajax-та-акаунт)
+ - [Оператори (винесено на окремі сторінки)](#оператори-внесено-на-окремі-сторінки)
 
 ## Установка
 
@@ -220,6 +221,53 @@ new_password2 – підтвердження
 
 AJAX кешує вкладки в памʼяті (in-memory cache) – повторний перехід не робить додатковий HTTP запит, доки не буде перезавантажено сторінку.
 
+### Оператори (винесено на окремі сторінки)
+
+Управління операторами перенесено із вкладки `settings.php?tab=users` на окремі сторінки:
+
+* `settings.php?tab=users` – список усіх облікових записів (admin + operator) з індикаторами статусу (read‑only).
+* `operator.php?id=...` – детальна сторінка з діями для конкретного оператора (rename / toggle / reset / delete).
+
+Адміністраторські акаунти відображаються у списку, але будь-які зміни над ними через UI заборонені (захист від ескалації / помилкового редагування). 
+
+Доступні дії (лише для `role=operator`):
+* Створення (через форму у вкладці `Налаштування → Користувачі` або API точку `/api/operator_create.php`).
+* Перейменування логіна.
+* Активування / деактивація (`is_active` toggle).
+* Скидання паролю (введення нового вручну з подвійним підтвердженням).
+* Видалення (після підтвердження, без soft-delete).
+
+Безпекові обмеження:
+* Жодних змін для записів з `role=admin` (форсований редірект із повідомленням `forbidden`).
+* Усі state-операції виконуються POST + CSRF (`_csrf`) + `require_admin()` серверна перевірка.
+* `is_active=0` блокує логін без потреби видаляти акаунт.
+
+Мапа кодів помилок (JSON або redirect `msg` параметр):
+```
+exists     – логін зайнятий
+uname      – невалідний логін (regex)
+mismatch   – паролі не співпадають
+short      – пароль < 8
+forbidden  – дія над admin
+nf         – не знайдено
+badid      – розбіжність ідентифікатора у формі
+empty      – відсутні обовʼязкові поля
+db|err     – внутрішня помилка
+unknown    – невідома дія
+```
+
+Рекомендація: деактивуйте оператора замість видалення для можливості швидкого ре-активування та збереження журналів повʼязаних подій у системі (опосередковано через `token_events`).
+
+API точки залишаються (збережена сумісність):
+* `GET /api/operators_list.php`
+* `POST /api/operator_create.php`
+* `POST /api/operator_toggle_active.php`
+* `POST /api/operator_reset_password.php`
+* `POST /api/operator_rename.php`
+* `POST /api/operator_delete.php`
+
+Nginx: `operator.php` у regex групі адмінських сторінок; `operators_list.php` явно дозволений для `GET` (інші операторські дії лишаються POST‑тільки).
+
 ### 6. Nginx
 Приклад конфігурації знаходиться у `docs/nginx/certreg.conf`.
 
@@ -300,6 +348,12 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
 - `POST /api/bulk_action.php` – пакетні операції `revoke | unrevoke | delete`.
 - `GET /api/events.php?cid=...` – журнал подій.
 - `POST /api/account_change_password.php` – зміна паролю (аутентифікований admin/operator).
+ - `GET /api/operators_list.php` – список користувачів (`id, username, role, is_active, created_at`).
+ - `POST /api/operator_create.php` – створення оператора (`_csrf, username, password, password2`).
+ - `POST /api/operator_toggle_active.php` – вкл/викл оператора (`id`).
+ - `POST /api/operator_reset_password.php` – встановлення нового паролю оператору (`id,password,password2`).
+ - `POST /api/operator_rename.php` – перейменування оператора (`id, username`).
+ - `POST /api/operator_delete.php` – видалення оператора (не для admin).
 
 ## Міграції
 Докладно в [MIGRATION.md](MIGRATION.md). Поточна канонічна схема (v3):
@@ -307,6 +361,21 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
 v3|NAME|ORG|CID|ISSUED_DATE|VALID_UNTIL|CANON_URL|EXTRA
 ```
 Сервер зберігає тільки `{cid,version,h,issued_date,valid_until,extra_info?}`.
+
+### 2025-09-20: Додавання `creds.created_at`
+Для відображення дати створення операторів у UI додано стовпець `created_at` у таблицю `creds`.
+
+Запустіть міграцію (ідемпотентна – можна запускати повторно без шкоди):
+```bash
+php scripts/migrations/2025_09_20_add_creds_created_at.php
+```
+Що робить скрипт:
+1. Створює `created_at DATETIME` якщо його немає.
+2. Backfill: ставить `NOW()` для рядків без значення / з нульовою датою.
+3. Намагається зробити колонку `NOT NULL DEFAULT CURRENT_TIMESTAMP`.
+4. Додає індекс `idx_creds_created_at` (якщо відсутній).
+
+Після цього колонка "Створено" в списку користувачів показує реальну дату.
 
 ## Безпека
 Докладні рекомендації, модель загроз та чеклісти наведено у [SECURITY.md](SECURITY.md). Ключові принципи:

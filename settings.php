@@ -39,3 +39,4 @@ include $_SERVER['DOCUMENT_ROOT'] . '/footer.php';
 <script src="/assets/js/color_sync.js" defer></script>
 <script src="/assets/js/settings_account.js" defer></script>
 <script src="/assets/js/password_toggle.js" defer></script>
+<script src="/assets/js/settings_users.js" defer></script>

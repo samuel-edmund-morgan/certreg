@@ -74,8 +74,21 @@ function login_admin(string $u, string $p): bool {
         error_log('DB not initialized in login_admin');
         return false;
     }
-    $st = $pdo->prepare("SELECT id, passhash, role FROM creds WHERE username=?");
-    $st->execute([$u]);
+    // Detect presence of is_active column once (cached in static variable)
+    static $hasActive = null;
+    if ($hasActive === null) {
+        try {
+            $chk = $pdo->query("SHOW COLUMNS FROM `creds` LIKE 'is_active'");
+            $hasActive = $chk && $chk->rowCount() === 1;
+        } catch (Throwable $e) { $hasActive = false; }
+    }
+    if ($hasActive) {
+        $st = $pdo->prepare("SELECT id, passhash, role FROM creds WHERE username=? AND is_active=1");
+        $st->execute([$u]);
+    } else {
+        $st = $pdo->prepare("SELECT id, passhash, role FROM creds WHERE username=?");
+        $st->execute([$u]);
+    }
     $row = $st->fetch();
     if ($row && password_verify($p, $row['passhash'])) {
         // Check if we should rehash (upgrade to Argon2id if supported)
