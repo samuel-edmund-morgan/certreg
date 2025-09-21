@@ -22,8 +22,10 @@
         const isAdmin = r.role === 'admin';
         const created = r.created_at ? formatCreated(r.created_at) : '—';
         tr.className = (inactive?'row-inactive ':'') + (isAdmin?'row-admin':'');
+        const orgCell = (r.org_code ? '<span class="mono" title="'+escapeHtml(r.org_name||'')+'">'+escapeHtml(r.org_code)+'</span>' : (isAdmin?'<span class="fs-12 text-muted">— (admin)</span>':'<span class="fs-12 text-muted">—</span>'));
         tr.innerHTML = '<td>'+r.id+'</td>'
           +'<td class="mono">'+escapeHtml(r.username)+'</td>'
+          +'<td>'+orgCell+'</td>'
           +'<td>'+r.role+'</td>'
           +'<td>'+(inactive?'<span class="badge badge-danger">неактивний</span>':'<span class="badge badge-success">активний</span>')+'</td>'
           +'<td>'+created+'</td>'
@@ -36,8 +38,20 @@
   }
   // Removed inline action helpers in lite mode
   function toFormData(obj){ const fd=new FormData(); Object.keys(obj).forEach(k=>fd.append(k,obj[k])); return fd; }
-  function bindCreate(){ const f=$('#opCreateForm'); if(!f || f.__bound) return; f.__bound=true; const status=$('#opCreateStatus'); const btn=$('#opCreateBtn'); f.addEventListener('submit',e=>{ e.preventDefault(); status.textContent='Надсилаємо...'; btn.disabled=true; const fd=new FormData(f); fetch(f.action,{method:'POST',body:fd,credentials:'same-origin'}).then(r=>r.json()).then(j=>{ if(!j.ok){ status.textContent=mapErr(j.error); } else { status.textContent='Створено'; f.reset(); loadList(); } }).catch(()=>{ status.textContent='Мережева помилка'; }).finally(()=>{ btn.disabled=false; }); }); }
-  function mapErr(code){ switch(code){ case 'empty': return 'Порожні поля'; case 'mismatch': return 'Паролі не співпадають'; case 'short': return 'Пароль <8'; case 'exists': return 'Логін зайнятий'; case 'uname': return 'Невалідний логін'; default: return 'Помилка'; } }
+  async function loadOrgOptions(){
+    const sel = $('#opOrgSelect'); if(!sel) return;
+    sel.disabled=true; sel.innerHTML='<option value="">Завантаження...</option>';
+    try {
+      const r = await fetch('/api/org_list.php?page=1&per_page=1000&sort=name&dir=asc',{credentials:'same-origin'});
+      const j = await r.json();
+      if(!j.ok){ sel.innerHTML='<option value="">Помилка</option>'; return; }
+      const opts = j.orgs.filter(o=>o.is_active==1).map(o=>'<option value="'+o.id+'">'+escapeHtml(o.code)+' — '+escapeHtml(o.name.replace(/\\n/g,' '))+'</option>').join('');
+      sel.innerHTML = '<option value="">(оберіть)</option>'+opts;
+      sel.disabled=false;
+    } catch(err){ sel.innerHTML='<option value="">Мережева помилка</option>'; }
+  }
+  function bindCreate(){ const f=$('#opCreateForm'); if(!f || f.__bound) return; f.__bound=true; const status=$('#opCreateStatus'); const btn=$('#opCreateBtn'); loadOrgOptions(); f.addEventListener('submit',e=>{ e.preventDefault(); status.textContent='Надсилаємо...'; btn.disabled=true; const fd=new FormData(f); fetch(f.action,{method:'POST',body:fd,credentials:'same-origin'}).then(r=>r.json()).then(j=>{ if(!j.ok){ status.textContent=mapErr(j.error); } else { status.textContent='Створено'; f.reset(); loadList(); loadOrgOptions(); } }).catch(()=>{ status.textContent='Мережева помилка'; }).finally(()=>{ btn.disabled=false; }); }); }
+  function mapErr(code){ switch(code){ case 'empty': return 'Порожні поля'; case 'mismatch': return 'Паролі не співпадають'; case 'short': return 'Пароль <8'; case 'exists': return 'Логін зайнятий'; case 'uname': return 'Невалідний логін'; case 'org_required': return 'Потрібна організація'; case 'org_nf': return 'Орг не знайдена'; case 'org_inactive': return 'Орг неактивна'; default: return 'Помилка'; } }
   function escapeHtml(str){ return str.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
   function formatCreated(val){
     // Expect MySQL DATETIME "YYYY-MM-DD HH:MM:SS"; trim seconds

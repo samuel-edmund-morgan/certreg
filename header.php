@@ -24,7 +24,9 @@ try {
 
 // --- Security headers (no inline scripts) ---
 if (!headers_sent()) {
-  header('Content-Security-Policy: default-src \'self\' blob:; script-src \'self\'; style-src \'self\'; img-src \'self\' data:; font-src \'self\'; object-src \'none\'; base-uri \'none\'; frame-ancestors \'none\'; form-action \'self\'; connect-src \'self\'; upgrade-insecure-requests');
+  // Allow inline styles (style attributes) needed for dynamic color swatches in admin tables.
+  // Scripts remain strictly non-inline.
+  header('Content-Security-Policy: default-src \'self\' blob:; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data:; font-src \'self\'; object-src \'none\'; base-uri \'none\'; frame-ancestors \'none\'; form-action \'self\'; connect-src \'self\'; upgrade-insecure-requests');
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: DENY');
   header('Referrer-Policy: no-referrer');

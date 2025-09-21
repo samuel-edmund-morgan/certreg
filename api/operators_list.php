@@ -18,9 +18,19 @@ function column_exists(PDO $pdo, string $table, string $col): bool {
 try {
     $hasActive = column_exists($pdo,'creds','is_active');
     $hasCreated = column_exists($pdo,'creds','created_at');
-    $cols = ['id','username','role'];
-    if($hasActive) $cols[] = 'IFNULL(is_active,1) AS is_active'; else $cols[] = '1 AS is_active';
-    if($hasCreated) $cols[] = 'created_at'; else $cols[] = 'NULL AS created_at';
+    $cols = ['c.id','c.username','c.role'];
+    $orgColExists = column_exists($pdo,'creds','org_id');
+    if($orgColExists){
+        $cols[] = 'c.org_id';
+        $cols[] = 'o.code AS org_code';
+        $cols[] = 'o.name AS org_name';
+    } else {
+        $cols[] = 'NULL AS org_id';
+        $cols[] = 'NULL AS org_code';
+        $cols[] = 'NULL AS org_name';
+    }
+    if($hasActive) $cols[] = 'IFNULL(c.is_active,1) AS is_active'; else $cols[] = '1 AS is_active';
+    if($hasCreated) $cols[] = 'c.created_at'; else $cols[] = 'NULL AS created_at';
 
     // Pagination params
     $page = isset($_GET['page']) ? max(1,(int)$_GET['page']) : 1;
@@ -39,7 +49,7 @@ try {
     $pages = max(1,(int)ceil($total / $perPage));
     if($page > $pages) { $page = $pages; $offset = ($page-1)*$perPage; }
 
-    $sql = 'SELECT '.implode(',',$cols).' FROM creds ORDER BY '.$sort.' '.$dir.' LIMIT :lim OFFSET :off';
+    $sql = 'SELECT '.implode(',',$cols).' FROM creds c'.($orgColExists?' LEFT JOIN organizations o ON o.id=c.org_id':'').' ORDER BY '.$sort.' '.$dir.' LIMIT :lim OFFSET :off';
     $st = $pdo->prepare($sql);
     $st->bindValue(':lim',$perPage,PDO::PARAM_INT);
     $st->bindValue(':off',$offset,PDO::PARAM_INT);

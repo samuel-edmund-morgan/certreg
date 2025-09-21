@@ -10,6 +10,8 @@ $whitelist = [
   'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php','api/bulk_action.php','api/branding_save.php',
   'api/account_change_password.php',
   'api/operators_list.php','api/operator_create.php','api/operator_toggle_active.php','api/operator_reset_password.php','api/operator_rename.php','api/operator_delete.php',
+  'api/org_create.php','api/org_update.php','api/org_set_active.php','api/org_delete.php',
+  'api/operator_change_org.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php','common_pagination.php',
   'settings.php','settings_section.php',

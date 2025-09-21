@@ -91,6 +91,40 @@ switch($tab){
     case 'branding':
         echo render_branding_section($pdo, $cfg);
         break;
+    case 'organizations':
+        echo '<h2 class="mt-0">Організації</h2>';
+        echo '<p class="fs-14 text-muted maxw-760">Керуйте переліком організацій. Код незмінний після створення. Неактивні організації недоступні для операторів.</p>';
+        $csrfOrg = csrf_token();
+        echo '<form id="orgCreateForm" class="form mb-20" method="post" action="/api/org_create.php" enctype="multipart/form-data" autocomplete="off">'
+            .'<input type="hidden" name="_csrf" value="'.htmlspecialchars($csrfOrg).'" />'
+            .'<div class="grid-2 gap-16 org-create-grid">'
+                .'<label>Назва<br><input type="text" name="name" required maxlength="255" placeholder="Назва організації"></label>'
+                .'<label>Код (immutable)<br><input type="text" name="code" required pattern="[A-Z0-9_-]{2,32}" maxlength="32" placeholder="ACME"></label>'
+                .'<label>Primary колір<br><input type="text" name="primary_color" pattern="#?[0-9A-Fa-f]{6}" maxlength="7" placeholder="#102d4e"></label>'
+                .'<label>Accent колір<br><input type="text" name="accent_color" pattern="#?[0-9A-Fa-f]{6}" maxlength="7" placeholder="#2563eb"></label>'
+                .'<label>Secondary колір<br><input type="text" name="secondary_color" pattern="#?[0-9A-Fa-f]{6}" maxlength="7" placeholder="#6b7280"></label>'
+                .'<label>Footer текст<br><input type="text" name="footer_text" maxlength="255" placeholder="© '.date('Y').' Організація"></label>'
+                .'<label>Контакт підтримки<br><input type="text" name="support_contact" maxlength="255" placeholder="support@example.com"></label>'
+                .'<label>Логотип<br><input type="file" name="logo_file" accept="image/png,image/jpeg,image/svg+xml"></label>'
+                .'<label>Favicon<br><input type="file" name="favicon_file" accept="image/x-icon,image/png,image/svg+xml"></label>'
+                .'<div class="col-span-2 flex gap-10 align-center"><button class="btn btn-primary" type="submit" id="orgCreateBtn">Створити</button><span id="orgCreateStatus" class="fs-12 text-muted"></span></div>'
+            .'</div>'
+            .'<div class="fs-12 text-muted mt-6">Після створення ви можете змінювати назву та кольори, але <strong>код</strong> залишиться незмінним.</div>'
+        .'</form>';
+        echo '<div class="flex gap-10 align-center mb-10"><input type="text" id="orgSearch" class="w-260" placeholder="Пошук (name/code)"><button class="btn btn-secondary" id="orgSearchBtn">Пошук</button><button class="btn btn-light" id="orgResetBtn">Скинути</button></div>';
+        echo '<div class="table-wrap"><table class="table" id="orgsTable"><thead><tr>'
+            .'<th data-sort="id" class="sortable">ID</th>'
+            .'<th data-sort="name" class="sortable">Назва</th>'
+            .'<th data-sort="code" class="sortable">Код</th>'
+            .'<th>Бренд</th>'
+            .'<th data-sort="created_at" class="sortable">Створено</th>'
+            .'<th>Статус</th>'
+            .'<th>Дії</th>'
+            .'</tr></thead><tbody><tr><td colspan="7" class="text-center text-muted fs-13">Завантаження...</td></tr></tbody></table></div>';
+        echo '<div id="orgsSummary" class="fs-12 text-muted mt-8"></div>';
+        echo '<div id="orgsPagination" class="mt-10"></div>';
+        echo '<script src="/assets/js/settings_orgs.js" defer></script>';
+        break;
     case 'templates':
         echo '<h2>Шаблони</h2><p>Управління шаблонами сертифікатів.</p>';
         break;
@@ -98,7 +132,7 @@ switch($tab){
         echo '<h2 class="mt-0">Оператори</h2>';
         echo '<p class="fs-14 text-muted maxw-760">Створюйте та переглядайте облікові записи операторів. Докладні дії (перейменування, деактивація, скидання паролю, видалення) – на сторінці окремого оператора.</p>';
         $csrfUsers = csrf_token();
-        echo '<form id="opCreateForm" class="form mb-20" method="post" action="/api/operator_create.php" autocomplete="off">'
+    echo '<form id="opCreateForm" class="form mb-20" method="post" action="/api/operator_create.php" autocomplete="off">'
             .'<input type="hidden" name="_csrf" value="'.htmlspecialchars($csrfUsers).'" />'
             .'<div class="op-create-grid">'
                 .'<div class="op-field">'
@@ -113,6 +147,10 @@ switch($tab){
                     .'<label>Повтор<br><input type="password" name="password2" required minlength="8" autocomplete="new-password" /></label>'
                     .'<span class="field-hint fs-12 text-muted">Повторіть пароль точно.</span>'
                 .'</div>'
+                .'<div class="op-field">'
+                    .'<label>Організація<br><select name="org_id" id="opOrgSelect" required><option value="">Завантаження...</option></select></label>'
+                    .'<span class="field-hint fs-12 text-muted">Обовʼязково. Оператор належить до однієї організації.</span>'
+                .'</div>'
                 .'<div class="op-actions">'
                     .'<button type="submit" id="opCreateBtn" class="btn btn-primary op-create-btn">Створити</button>'
                     .'<span id="opCreateStatus" class="fs-12 text-muted" aria-live="polite"></span>'
@@ -121,9 +159,9 @@ switch($tab){
             .'<div class="fs-12 text-muted mt-6">Роль завжди <code>operator</code>. Дозволені символи логіну: <code>a-z A-Z 0-9 _ . -</code>. Рекомендується поєднання літер і цифр у паролі.</div>'
         .'</form>';
         echo '<div class="table-wrap"><table class="table" id="operatorsTable" data-page="1"><thead><tr>'
-            .'<th>ID</th><th>Логін</th><th>Роль</th><th>Статус</th><th>Створено</th><th>Деталі</th>'
+            .'<th>ID</th><th>Логін</th><th>Організація</th><th>Роль</th><th>Статус</th><th>Створено</th><th>Деталі</th>'
             .'</tr></thead><tbody>'
-            .'<tr><td colspan="6" class="text-center text-muted fs-13">Завантаження...</td></tr>'
+            .'<tr><td colspan="7" class="text-center text-muted fs-13">Завантаження...</td></tr>'
             .'</tbody></table></div>';
         echo '<div id="operatorsSummary" class="fs-12 text-muted mt-8"></div>';
         echo '<div id="operatorsPagination" class="mt-10"></div>';

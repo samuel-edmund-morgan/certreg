@@ -42,9 +42,6 @@ sudo mysql_secure_installation
 
 Створіть БД і користувача:
 
-```sql
-sudo mysql
-CREATE DATABASE certreg CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'certreg_user'@'localhost' IDENTIFIED BY 'strong-password-here';
 GRANT ALL PRIVILEGES ON certreg.* TO 'certreg_user'@'localhost';
 FLUSH PRIVILEGES;
@@ -53,10 +50,6 @@ EXIT;
 
 Змініть пароль на надійний. (Опціонально) додайте публічного read‑only користувача пізніше для верифікації.
 
-### 3. Клонування і права
-
-```bash
-sudo git clone https://github.com/your-org/certreg.git /var/www/certreg
 sudo chown -R www-data:www-data /var/www/certreg
 ```
 
@@ -176,7 +169,6 @@ CREATE TABLE templates (
    name VARCHAR(255) NOT NULL,
    filename VARCHAR(255) NOT NULL,
    coordinates JSON DEFAULT NULL,
-   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
    created_by INT NULL,
    is_active BOOLEAN NOT NULL DEFAULT TRUE,
    INDEX idx_is_active (is_active)
@@ -238,7 +230,7 @@ AJAX кешує вкладки в памʼяті (in-memory cache) – повт�
 * Видалення (після підтвердження, без soft-delete).
 
 Безпекові обмеження:
-* Жодних змін для записів з `role=admin` (форсований редірект із повідомленням `forbidden`).
+* Жодних змін для записів з `role=admin` (форсований редірект із повідомлення `forbidden`).
 * Усі state-операції виконуються POST + CSRF (`_csrf`) + `require_admin()` серверна перевірка.
 * `is_active=0` блокує логін без потреби видаляти акаунт.
 
@@ -354,6 +346,13 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
  - `POST /api/operator_reset_password.php` – встановлення нового паролю оператору (`id,password,password2`).
  - `POST /api/operator_rename.php` – перейменування оператора (`id, username`).
  - `POST /api/operator_delete.php` – видалення оператора (не для admin).
+ - `POST /api/operator_change_org.php` – зміна організації оператора (admin only, заборонено для admin акаунтів).
+ - `POST /api/org_create.php` – створення організації (ім'я, код immutable, опційно кольори, логотип, favicon).
+ - `POST /api/org_update.php` – оновлення назви, кольорів, footer/support, логотипу, favicon, активності (код незмінюється).
+ - `POST /api/org_set_active.php` – швидке вкл/викл статусу is_active.
+ - `POST /api/org_delete.php` – видалення організації (заборонено, якщо прив'язані оператори або токени, А ТАКОЖ неможливо для дефолтної організації `config.org_code`). UI автоматично вимикає кнопку для дефолтної. Папка `/files/branding/org_<id>/` очищається.
+ - `GET /api/org_list.php` – пагінація + пошук (name/code) + сортування (id,name,code,created_at).
+   - Усі operator-create / change_org вимагають активну організацію; `org_code` immutable.
 
 ## Міграції
 Докладно в [MIGRATION.md](MIGRATION.md). Поточна канонічна схема (v3):
@@ -361,6 +360,34 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
 v3|NAME|ORG|CID|ISSUED_DATE|VALID_UNTIL|CANON_URL|EXTRA
 ```
 Сервер зберігає тільки `{cid,version,h,issued_date,valid_until,extra_info?}`.
+
+### 2025-09-21: Organizations + org_id
+Мета: мульти-орговий фундамент без зміни існуючих canonical токенів.
+
+Скрипт (ідемпотентний):
+```bash
+php scripts/migrations/2025_09_21_add_organizations.php
+```
+Що робить:
+1. Створює таблицю `organizations` (якщо відсутня): `id,name,code,logo_path,favicon_path,primary_color,accent_color,secondary_color,footer_text,support_contact,is_active,created_at,updated_at`.
+2. Вставляє/знаходить default org (`code=config.org_code`, `name=config.site_name`).
+3. Додає `creds.org_id` (NULLable) + індекс. Backfill: усім `role=operator` виставляє default org. Адміни залишаються `NULL` (глобальні).
+4. Додає `tokens.org_id` (NULLable) + індекс. Backfill усіх токенів default org.
+5. Додає `templates.org_id` (NULLable) + індекс. Backfill існуючих.
+
+Політика:
+- `organizations.code` immutable (використовується у canonical рядку як ORG).
+- Admin (role=admin, org_id=NULL) бачить усі організації.
+- Operators повинні мати `org_id` (бекенд примусово встановлює при створенні).
+- Надалі брендинг/шаблони резольвуються через `org_id` із fallback на глобальні налаштування.
+
+Подальші кроки:
+1. Прив'язка операторів до org (обов'язково для role=operator, admin = глобальний `NULL`).
+2. Пер-організаційне застосування брендування (fallback на глобальне якщо немає налаштувань).
+3. Шаблони/видача токенів обмежені org.
+4. Canonical рядок включає `ORG=<code>`.
+
+В поточній реалізації вже доступні CRUD (окрім inline edit у таблиці) та безпечне видалення без каскаду наявних даних (hard block, якщо є залежності). Кольори організації — окремий `branding_colors.css` у директорії org.
 
 ### 2025-09-20: Додавання `creds.created_at`
 Для відображення дати створення операторів у UI додано стовпець `created_at` у таблицю `creds`.
