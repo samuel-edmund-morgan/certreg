@@ -349,6 +349,7 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
     - Адмін: усі; можна фільтрувати `?org_id=`.
     - Формат: `{ ok:true, items:[ { id, name, filename, org_id?, org_code?, is_active, created_at } ] }`.
     - Якщо таблиця відсутня – `{ ok:true, items:[], note:"no_templates_table" }`.
+   - Nginx: додано до allowlist (див. `docs/nginx/certreg.conf` блок `location ~ ^/api/(org_list|templates_list)\.php$`).
 - `GET /api/status.php?cid=...` – перевірка статусу `{ h, revoked?, revoked_at?, revoke_reason?, valid_until }`.
 - `POST /api/bulk_action.php` – пакетні операції `revoke | unrevoke | delete`.
 - `GET /api/events.php?cid=...` – журнал подій.
@@ -396,6 +397,7 @@ php scripts/migrations/2025_09_21_add_organizations.php
 - Надалі брендинг/шаблони резольвуються через `org_id` із fallback на глобальні налаштування.
  - Видача токенів: canonical рядок включає поле `ORG` яке дорівнює коду організації оператора. JS бере код із `data-org` у `<body>`, яке формується у `header.php` після злиття брендувань і пер-організаційного шару. Бекенд зберігає `tokens.org_id` (якщо колонка є) і повертає помилку `org_mismatch`, якщо переданий у запиті `org_code` не відповідає сесійній організації.
  - Підготовка до привʼязки шаблонів: додано `templates_list` + клієнтський селектор (не впливає на HMAC; canonical не містить template id). Наступний етап: зберігання `templates.org_id` та валідація відповідності при видачі.
+   - Бейдж активної організації тепер відображається на сторінці видачі (`issue_token.php`) за допомогою зовнішнього скрипта `assets/js/issue_org_badge.js` (CSP без inline JS). Inline `<script>` вилучено.
 
 Подальші кроки:
 1. Прив'язка операторів до org (обов'язково для role=operator, admin = глобальний `NULL`).

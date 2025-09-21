@@ -1,23 +1,27 @@
 <?php
 // Example application configuration. Copy to config.php and fill values.
+// REMOVE comments with secrets in real config.
 return [
-    // Database connection
+    // === Database (primary app user) ===
     'db_host' => '127.0.0.1',
     'db_name' => 'enter-db-name',
     'db_user' => 'enter-db-username',
     'db_pass' => 'enter-db-password',
-    // Optional restricted DB user for public read-only endpoints (least privilege)
+
+    // Optional: dedicated read-only user for public status/verification endpoints (least privilege)
+    // Leave blank to reuse primary user (less secure):
     'db_public_user' => '',
     'db_public_pass' => '',
 
-    // Branding
+    // === Branding defaults (can be overridden by DB branding_settings and per-organization rows) ===
+    // Multiline site name: use literal \n to force line break in header (replaced with <br>)
     'site_name' => "Реєстр нагород\n Національної академії Служби безпеки України",
     'logo_path' => '/assets/logo.png',
     'favicon_path' => '/assets/favicon.ico',
-    // Certificate background template (client-side rendering)
+    // Base certificate background (operators may later pick org-specific / template-specific once implemented)
     'cert_template_path' => '/files/cert_template.jpg',
 
-    // Canvas coordinates for preview (client-side only)
+    // === Canvas coordinates (client-side rendering only) ===
     'coords' => [
         'name'   => ['x'=>600, 'y'=>420, 'size'=>28, 'angle'=>0],
         'id'     => ['x'=>600, 'y'=>445, 'size'=>20, 'angle'=>0],
@@ -28,16 +32,18 @@ return [
         'int'    => ['x'=>820, 'y'=>670, 'size'=>14, 'angle'=>0],
     ],
 
+    // Stable short organization code used in canonical token string (immutable)
     'org_code' => 'ORG-CERT',
+    // Sentinel date representing “безтерміновий” (infinite validity)
     'infinite_sentinel' => '4000-01-01',
-    // Base URL of the public verification page, used in v3 canonical string
+    // Public verification page URL (canonical base). Supply full absolute URL including https://
     'canonical_verify_url' => 'https://example.org/verify.php',
 
-    // Central rate limiting thresholds (actions per window seconds)
+    // === Rate limiting: [maxActions, windowSeconds] ===
     'rate_limits' => [
-        'login'     => [8,   300],
-        'status'    => [30,   60],
-        'register'  => [60, 1800],
+        'login'     => [8,   300],   // 8 attempts per 5 min
+        'status'    => [30,   60],   // public status lookups
+        'register'  => [60, 1800],   // token issuance
         'revoke'    => [20,  600],
         'unrevoke'  => [20,  600],
         'delete'    => [10,  600],

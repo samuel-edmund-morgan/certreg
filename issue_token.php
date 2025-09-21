@@ -122,19 +122,7 @@ $coords = $cfg['coords'] ?? [];
  </section>
  <!-- CSRF token now provided via <meta name="csrf"> in header (no inline script allowed by CSP) -->
  <script src="/assets/js/issue_page.js"></script>
-<script>
-// ініціалізація бейджа організації (без inline data зміни логіки HMAC)
-(function(){
-  var bCode = document.getElementById('orgBadgeCode');
-  var bName = document.getElementById('orgBadgeName');
-  var body = document.body;
-  if(body && bCode){ bCode.textContent = body.getAttribute('data-org') || '—'; }
-  if(body && bName){
-    var nm = body.getAttribute('data-orgname');
-    if(nm){ bName.textContent = ' — ' + nm; }
-  }
-})();
-</script>
+ <script src="/assets/js/issue_org_badge.js" defer></script>
 <script src="/assets/js/issue.js"></script>
 <script src="/assets/js/issue_templates.js" defer></script>
 <script src="/assets/js/issue_bulk.js" defer></script>

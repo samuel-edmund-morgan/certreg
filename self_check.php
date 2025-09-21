@@ -12,6 +12,7 @@ $whitelist = [
   'api/operators_list.php','api/operator_create.php','api/operator_toggle_active.php','api/operator_reset_password.php','api/operator_rename.php','api/operator_delete.php',
   'api/org_create.php','api/org_update.php','api/org_set_active.php','api/org_delete.php',
   'api/operator_change_org.php',
+  'api/templates_list.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php','common_pagination.php',
   'settings.php','settings_section.php',
@@ -96,6 +97,25 @@ if(empty($cfg['db_public_user']) || empty($cfg['db_public_pass'])){
   echo "[OK] Public DB user configured (least privilege).\n";
 }
 echo "Self-check complete.\n";
+// Additional multi-org/template checks
+// Verify templates_list.php reachable (filesystem presence already implied by whitelist)
+if(!is_file(__DIR__.'/api/templates_list.php')) {
+  echo "[WARN] templates_list.php missing unexpectedly.\n";
+} else {
+  echo "[OK] templates_list.php present.\n";
+}
+// Ensure no inline <script> block remains in issue_token.php (CSP requirement)
+$issuePath = __DIR__.'/issue_token.php';
+if(is_file($issuePath)){
+  $issueContent = file_get_contents($issuePath);
+  if(preg_match('#<script(?![^>]*\bsrc=)[^>]*>#i',$issueContent)){
+    echo "[WARN] Inline <script> tag detected in issue_token.php (should be external).\n";
+  } else {
+    echo "[OK] issue_token.php contains no inline <script> tags.\n";
+  }
+} else {
+  echo "[WARN] issue_token.php not found for CSP inline check.\n";
+}
 // === H2 Extension: filesystem & privilege audit ===
 echo "[SECTION] Filesystem audit (H2)\n";
 $base = realpath(__DIR__);

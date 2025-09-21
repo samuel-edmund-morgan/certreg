@@ -97,16 +97,43 @@ switch($tab){
         $csrfOrg = csrf_token();
         echo '<form id="orgCreateForm" class="form mb-20" method="post" action="/api/org_create.php" enctype="multipart/form-data" autocomplete="off">'
             .'<input type="hidden" name="_csrf" value="'.htmlspecialchars($csrfOrg).'" />'
-            .'<div class="grid-2 gap-16 org-create-grid">'
-                .'<label>Назва<br><input type="text" name="name" required maxlength="255" placeholder="Назва організації"></label>'
-                .'<label>Код (immutable)<br><input type="text" name="code" required pattern="[A-Z0-9_-]{2,32}" maxlength="32" placeholder="ACME"></label>'
-                .'<label>Primary колір<br><input type="text" name="primary_color" pattern="#?[0-9A-Fa-f]{6}" maxlength="7" placeholder="#102d4e"></label>'
-                .'<label>Accent колір<br><input type="text" name="accent_color" pattern="#?[0-9A-Fa-f]{6}" maxlength="7" placeholder="#2563eb"></label>'
-                .'<label>Secondary колір<br><input type="text" name="secondary_color" pattern="#?[0-9A-Fa-f]{6}" maxlength="7" placeholder="#6b7280"></label>'
-                .'<label>Footer текст<br><input type="text" name="footer_text" maxlength="255" placeholder="© '.date('Y').' Організація"></label>'
-                .'<label>Контакт підтримки<br><input type="text" name="support_contact" maxlength="255" placeholder="support@example.com"></label>'
-                .'<label>Логотип<br><input type="file" name="logo_file" accept="image/png,image/jpeg,image/svg+xml"></label>'
-                .'<label>Favicon<br><input type="file" name="favicon_file" accept="image/x-icon,image/png,image/svg+xml"></label>'
+            .'<div class="org-create-grid">'
+                .'<label>Назва
+                    <input class="input" type="text" name="name" required maxlength="255" placeholder="Назва організації">
+                </label>'
+                .'<label>Код (immutable)
+                    <input class="input" type="text" name="code" required pattern="[A-Z0-9_-]{2,32}" maxlength="32" placeholder="ACME">
+                </label>'
+                .'<label>Primary колір
+                    <div class="flex gap-8 align-center color-field">'
+                        .'<input class="input color-hex" data-color-peer="org_primary_color_picker" type="text" name="primary_color" pattern="#?[0-9A-Fa-f]{6}" maxlength="7" placeholder="#102d4e">'
+                        .'<input type="color" id="org_primary_color_picker" class="color-picker" value="#102d4e" aria-label="Primary color picker">'
+                    .'</div>
+                </label>'
+                .'<label>Accent колір
+                    <div class="flex gap-8 align-center color-field">'
+                        .'<input class="input color-hex" data-color-peer="org_accent_color_picker" type="text" name="accent_color" pattern="#?[0-9A-Fa-f]{6}" maxlength="7" placeholder="#2563eb">'
+                        .'<input type="color" id="org_accent_color_picker" class="color-picker" value="#2563eb" aria-label="Accent color picker">'
+                    .'</div>
+                </label>'
+                .'<label>Secondary колір
+                    <div class="flex gap-8 align-center color-field">'
+                        .'<input class="input color-hex" data-color-peer="org_secondary_color_picker" type="text" name="secondary_color" pattern="#?[0-9A-Fa-f]{6}" maxlength="7" placeholder="#6b7280">'
+                        .'<input type="color" id="org_secondary_color_picker" class="color-picker" value="#6b7280" aria-label="Secondary color picker">'
+                    .'</div>
+                </label>'
+                .'<label>Footer текст
+                    <input class="input" type="text" name="footer_text" maxlength="255" placeholder="© '.date('Y').' Організація">
+                </label>'
+                .'<label>Контакт підтримки
+                    <input class="input" type="text" name="support_contact" maxlength="255" placeholder="support@example.com">
+                </label>'
+                .'<label>Логотип
+                    <input class="input" type="file" name="logo_file" accept="image/png,image/jpeg,image/svg+xml">
+                </label>'
+                .'<label>Favicon
+                    <input class="input" type="file" name="favicon_file" accept="image/x-icon,image/png,image/svg+xml">
+                </label>'
                 .'<div class="col-span-2 flex gap-10 align-center"><button class="btn btn-primary" type="submit" id="orgCreateBtn">Створити</button><span id="orgCreateStatus" class="fs-12 text-muted"></span></div>'
             .'</div>'
             .'<div class="fs-12 text-muted mt-6">Після створення ви можете змінювати назву та кольори, але <strong>код</strong> залишиться незмінним.</div>'
@@ -114,13 +141,12 @@ switch($tab){
         echo '<div class="flex gap-10 align-center mb-10"><input type="text" id="orgSearch" class="w-260" placeholder="Пошук (name/code)"><button class="btn btn-secondary" id="orgSearchBtn">Пошук</button><button class="btn btn-light" id="orgResetBtn">Скинути</button></div>';
         echo '<div class="table-wrap"><table class="table" id="orgsTable"><thead><tr>'
             .'<th data-sort="id" class="sortable">ID</th>'
-            .'<th data-sort="name" class="sortable">Назва</th>'
             .'<th data-sort="code" class="sortable">Код</th>'
             .'<th>Бренд</th>'
             .'<th data-sort="created_at" class="sortable">Створено</th>'
             .'<th>Статус</th>'
             .'<th>Дії</th>'
-            .'</tr></thead><tbody><tr><td colspan="7" class="text-center text-muted fs-13">Завантаження...</td></tr></tbody></table></div>';
+            .'</tr></thead><tbody><tr><td colspan="6" class="text-center text-muted fs-13">Завантаження...</td></tr></tbody></table></div>';
         echo '<div id="orgsSummary" class="fs-12 text-muted mt-8"></div>';
         echo '<div id="orgsPagination" class="mt-10"></div>';
         echo '<script src="/assets/js/settings_orgs.js" defer></script>';
