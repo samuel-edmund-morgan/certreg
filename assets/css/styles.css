@@ -152,8 +152,17 @@ main{flex:1}
 /* Tables */
 .section{margin:20px 0}
 .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}
+.table-wrap-orgs{border-bottom:0;padding-bottom:2px}
 .table{border-collapse:collapse;width:100%;min-width:720px}
 .table th,.table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.table#orgsTable td{line-height:1.25}
+/* Continuous straight separators via collapsed table + row border */
+.table-wrap-orgs{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;padding:0}
+.table-wrap-orgs table{border-collapse:collapse;border-spacing:0;margin:0;width:100%}
+.table-wrap-orgs #orgsTable tr{border-bottom:1px solid var(--border);}
+.table-wrap-orgs #orgsTable tr:last-child{border-bottom:0}
+.table-wrap-orgs #orgsTable th,
+.table-wrap-orgs #orgsTable td{border:0;padding:12px 14px;}
 .table thead th{background:#f1f5f9;text-align:left;position:sticky;top:0;z-index:1}
 
 /* Alerts */

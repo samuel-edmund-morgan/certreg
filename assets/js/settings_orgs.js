@@ -7,7 +7,7 @@
 
   async function load(){
     if(state.loading) return; state.loading=true;
-    tbody.innerHTML='<tr><td colspan="7" class="text-center text-muted fs-13">Завантаження...</td></tr>';
+  tbody.innerHTML='<tr><td colspan="6" class="text-center text-muted fs-13">Завантаження...</td></tr>';
     try {
       const p=new URLSearchParams({page:state.page,per_page:state.per,sort:state.sort,dir:state.dir});
       if(state.q) p.set('q',state.q);
@@ -16,7 +16,7 @@
       const j= await r.json();
       if(!j.ok) throw new Error('bad json');
       state.pages=j.pages; state.page=j.page; state.total=j.total;
-      if(j.orgs.length===0){ tbody.innerHTML='<tr><td colspan="7" class="text-center text-muted fs-13">Нічого не знайдено</td></tr>'; }
+  if(j.orgs.length===0){ tbody.innerHTML='<tr><td colspan="6" class="text-center text-muted fs-13">Нічого не знайдено</td></tr>'; }
       else {
         tbody.innerHTML=j.orgs.map(o=>renderRow(o)).join('');
       }
@@ -34,9 +34,8 @@
     const status = o.is_active==1?'<span class="badge ok">Активна</span>':'<span class="badge off">Вимкнена</span>';
     const nameHtml = esc(o.name).replace(/\\n/g,'<br>');
     const isDefault = o.is_default==1;
-  return `<tr data-id="${o.id}"${isDefault?' data-default="1"':''}>
+  return `<tr data-id="${o.id}"${isDefault?' data-default="1"':''} title="${nameHtml.replace(/<br>/g,' ')}">
       <td>${o.id}</td>
-      <td>${nameHtml}</td>
       <td><code>${esc(o.code)}</code></td>
       <td class="flex gap-4 align-center">${brandParts.join('')||'<span class=fs-12>-</span>'} ${logo} ${fav}</td>
       <td class="fs-12 text-muted">${esc(o.created_at||'').replace('T',' ').substring(0,19)}</td>

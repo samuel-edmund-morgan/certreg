@@ -139,7 +139,7 @@ switch($tab){
             .'<div class="fs-12 text-muted mt-6">Після створення ви можете змінювати назву та кольори, але <strong>код</strong> залишиться незмінним.</div>'
         .'</form>';
         echo '<div class="flex gap-10 align-center mb-10"><input type="text" id="orgSearch" class="w-260" placeholder="Пошук (name/code)"><button class="btn btn-secondary" id="orgSearchBtn">Пошук</button><button class="btn btn-light" id="orgResetBtn">Скинути</button></div>';
-        echo '<div class="table-wrap"><table class="table" id="orgsTable"><thead><tr>'
+    echo '<div class="table-wrap table-wrap-orgs"><table class="table" id="orgsTable"><thead><tr>'
             .'<th data-sort="id" class="sortable">ID</th>'
             .'<th data-sort="code" class="sortable">Код</th>'
             .'<th>Бренд</th>'
