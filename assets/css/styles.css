@@ -405,7 +405,7 @@ main{flex:1}
   #bulkReason{min-width:220px;}
   #bulkReason.hidden-slot{display:none}
   /* === Tabs for issuance page === */
-  .tabs{display:flex;gap:4px;margin:10px 0 18px;border-bottom:1px solid var(--border)}
+  .tabs{display:flex;gap:4px;margin:10px 0 1px;border-bottom:1px solid var(--border)}
   .tab{background:#f1f5f9;border:1px solid var(--border);border-bottom:none;padding:8px 14px;border-top-left-radius:10px;border-top-right-radius:10px;cursor:pointer;font-weight:600;font-size:14px;position:relative;top:1px}
   .tab.active{background:#fff;border-color:var(--border);color:#000;box-shadow:0 2px 4px rgba(0,0,0,0.05)}
   .tab-panel{padding:2px 4px 8px 2px}
@@ -518,9 +518,11 @@ main{flex:1}
   /* active state refinement */
   .settings-nav .list-group-item.active{font-weight:600}
   /* Horizontal settings tabs */
-  .settings-tabs-wrapper{max-width:920px;margin:0 auto;padding:4px 4px 32px 4px}
+  /* Reduced bottom padding to pull panel closer to tabs (was 32px) */
+  .settings-tabs-wrapper{max-width:920px;margin:0 auto;padding:4px 4px 18px 4px}
   .settings-tabs .tab{min-width:140px;text-align:center}
-  .settings-panel{background:#fff;border:1px solid var(--border);border-top:none;padding:18px 22px;border-bottom-left-radius:12px;border-bottom-right-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.04)}
+  /* Reduced top padding from 18px to 14px to tighten visual gap below tabs */
+  .settings-panel{background:#fff;border:1px solid var(--border);border-top:none;padding:14px 22px 18px;border-bottom-left-radius:12px;border-bottom-right-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.04)}
   .settings-panel{width:100%;}
   .settings-panel__inner{max-width:1100px;margin:0 auto;}
   .settings-panel__content{max-width:760px;margin:0 auto;}
