@@ -112,14 +112,9 @@
       return;
     }
     if(tgt.classList.contains('edit-org')){
-      if(tr.hasAttribute('data-default')){
-        // For the default (base) organization redirect to Branding tab
-        window.location.href = '/settings.php?tab=branding';
-        return;
-      } else {
-        alert('Inline редагування додамо після асоціації операторів. Наразі використовуйте оновлення через окремий endpoint (ще не привʼязано).');
-        return;
-      }
+      // Navigate to dedicated edit page (works for default and non-default; default page will restrict destructive actions)
+      window.location.href = '/organization.php?id='+id;
+      return;
     }
   }
 

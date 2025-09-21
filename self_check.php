@@ -5,7 +5,7 @@ if (php_sapi_name() !== 'cli') { http_response_code(403); exit; }
 $root = __DIR__;
 $whitelist = [
   // Public / functional entrypoints
-  'index.php','admin.php','login.php','logout.php','issue_token.php','tokens.php','token.php','operator.php','verify.php','qr.php','events.php',
+  'index.php','admin.php','login.php','logout.php','issue_token.php','tokens.php','token.php','operator.php','organization.php','verify.php','qr.php','events.php',
   // API endpoints
   'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php','api/bulk_action.php','api/branding_save.php',
   'api/account_change_password.php',
