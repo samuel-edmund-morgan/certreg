@@ -12,6 +12,12 @@ $coords = $cfg['coords'] ?? [];
 ?>
 <section class="section">
   <h2>Видача нагород (ПІБ не зберігається у БД)</h2>
+  <div class="org-badge-wrap mb-12">
+    <span class="badge badge-org" id="orgBadge" title="Активна організація">
+      Організація: <span class="org-code" id="orgBadgeCode"></span>
+      <span class="org-name" id="orgBadgeName"></span>
+    </span>
+  </div>
   <div class="tabs" role="tablist" aria-label="Режим видачі">
   <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="single">Одна нагорода</button>
     <button type="button" class="tab" role="tab" aria-selected="false" data-tab="bulk">Масова генерація</button>
@@ -21,6 +27,12 @@ $coords = $cfg['coords'] ?? [];
   <form id="issueForm" class="form flex-col gap-12 maxw-760" autocomplete="off">
     <label>ПІБ (тільки в зображенні)
       <input type="text" name="pib" required placeholder="Прізвище Ім'я" autocomplete="off">
+    </label>
+    <label>Шаблон (опціонально)
+      <select id="templateSelect" disabled>
+        <option>(Завантаження...)</option>
+      </select>
+      <span class="fs-12 text-muted">Попередній перегляд фонового зображення оновиться при виборі. Якщо список порожній — використовується стандартний глобальний шаблон.</span>
     </label>
     <label>Додаткова інформація (необов’язково)
       <input type="text" name="extra" placeholder="напр., Номінація — Стійкість" maxlength="255">
@@ -110,6 +122,20 @@ $coords = $cfg['coords'] ?? [];
  </section>
  <!-- CSRF token now provided via <meta name="csrf"> in header (no inline script allowed by CSP) -->
  <script src="/assets/js/issue_page.js"></script>
+<script>
+// ініціалізація бейджа організації (без inline data зміни логіки HMAC)
+(function(){
+  var bCode = document.getElementById('orgBadgeCode');
+  var bName = document.getElementById('orgBadgeName');
+  var body = document.body;
+  if(body && bCode){ bCode.textContent = body.getAttribute('data-org') || '—'; }
+  if(body && bName){
+    var nm = body.getAttribute('data-orgname');
+    if(nm){ bName.textContent = ' — ' + nm; }
+  }
+})();
+</script>
 <script src="/assets/js/issue.js"></script>
+<script src="/assets/js/issue_templates.js" defer></script>
 <script src="/assets/js/issue_bulk.js" defer></script>
 <?php require_once __DIR__.'/footer.php'; ?>

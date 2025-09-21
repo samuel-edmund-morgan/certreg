@@ -3,24 +3,44 @@
 // To keep functionality (e.g. CSRF token access for fetch) we expose the token via a <meta> tag.
 // Any previous inline script usage (like window.__CSRF_TOKEN assignment) must be removed.
 require_once __DIR__.'/config.php';
-require_once __DIR__.'/auth.php'; // ensure csrf_token() available before emitting <head>
+require_once __DIR__.'/auth.php'; // ensure csrf_token() & session org context available
 $cfg = require __DIR__.'/config.php';
-// Load branding overrides (site_name, logo_path, primary_color, accent_color, favicon_path)
+// --- Per-organization branding resolution ---
+// Updated precedence (highest last):
+// 1. Global config defaults (config.php)
+// 2. Global instance overrides (branding_settings table) – baseline shared look
+// 3. Organization row (organizations table) for current operator org_id – FINAL override for that operator (logo, name, colours, footer, support)
+//    This lets per-org identity supersede a global theme.
 try {
   require_once __DIR__.'/db.php';
+  // Global overrides (system-wide baseline) FIRST
   $branding = [];
   $st = $pdo->query("SELECT setting_key, setting_value FROM branding_settings");
   foreach($st->fetchAll(PDO::FETCH_ASSOC) as $r){ $branding[$r['setting_key']] = $r['setting_value']; }
-  // Override config values if present
-  if(isset($branding['site_name'])) $cfg['site_name'] = $branding['site_name'];
-  if(isset($branding['logo_path'])) $cfg['logo_path'] = $branding['logo_path'];
-  if(isset($branding['favicon_path'])) $cfg['favicon_path'] = $branding['favicon_path'];
-  if(isset($branding['primary_color'])) $cfg['primary_color'] = $branding['primary_color'];
-  if(isset($branding['accent_color']))  $cfg['accent_color']  = $branding['accent_color'];
-  if(isset($branding['secondary_color'])) $cfg['secondary_color'] = $branding['secondary_color'];
-  if(isset($branding['footer_text'])) $cfg['footer_text'] = $branding['footer_text'];
-  if(isset($branding['support_contact'])) $cfg['support_contact'] = $branding['support_contact'];
-} catch(Throwable $e){ /* ignore DB/branding failures; fall back to config */ }
+  foreach(['site_name','logo_path','favicon_path','primary_color','accent_color','secondary_color','footer_text','support_contact'] as $k){
+    if(isset($branding[$k]) && $branding[$k] !== '') $cfg[$k] = $branding[$k];
+  }
+  // THEN apply per-organization overrides (final layer). Allow an explicit forced org id (e.g., verification context) to override session org.
+  $orgId = null;
+  if(isset($forced_org_id) && is_int($forced_org_id) && $forced_org_id>0){
+    $orgId = $forced_org_id;
+  } else {
+    $orgId = current_org_id();
+  }
+  if($orgId){
+  $stOrg = $pdo->prepare('SELECT id,name,code,logo_path,favicon_path,primary_color,accent_color,secondary_color,footer_text,support_contact FROM organizations WHERE id=? AND is_active=1');
+    $stOrg->execute([$orgId]);
+    if($orgRow = $stOrg->fetch(PDO::FETCH_ASSOC)){
+      foreach(['name'=>'site_name','logo_path'=>'logo_path','favicon_path'=>'favicon_path','primary_color'=>'primary_color','accent_color'=>'accent_color','secondary_color'=>'secondary_color','footer_text'=>'footer_text','support_contact'=>'support_contact'] as $col=>$mapKey){
+        if(isset($orgRow[$col]) && $orgRow[$col] !== null && $orgRow[$col] !== ''){
+          if($col==='name') $cfg['site_name'] = $orgRow[$col]; else $cfg[$mapKey] = $orgRow[$col];
+        }
+      }
+      if(!empty($orgRow['code'])){ $cfg['org_code'] = $orgRow['code']; }
+      $cfg['__active_org_id'] = (int)$orgRow['id'];
+    }
+  }
+} catch(Throwable $e){ /* ignore DB/branding failures; fall back to best-effort */ }
 
 // --- Security headers (no inline scripts) ---
 if (!headers_sent()) {
@@ -85,13 +105,21 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
     $primaryBrand = $cfg['primary_color'] ?? '';
     if($primaryBrand){ echo '<meta name="theme-color" content="'.htmlspecialchars($primaryBrand,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8').'">'; }
     // Link external branding colors css if it exists
-    $brandCssPath = $_SERVER['DOCUMENT_ROOT'].'/files/branding/branding_colors.css';
-    if(is_file($brandCssPath)){
-      $ver = @filemtime($brandCssPath) ?: time();
+    // Load global CSS first (baseline), then per-org CSS (overrides)
+    $globalCss = $_SERVER['DOCUMENT_ROOT'].'/files/branding/branding_colors.css';
+    if(is_file($globalCss)){
+      $ver = @filemtime($globalCss) ?: time();
       echo '<link rel="stylesheet" href="/files/branding/branding_colors.css?v='.$ver.'">';
     }
+    if(!empty($cfg['__active_org_id'])){
+      $orgCssPath = $_SERVER['DOCUMENT_ROOT'].'/files/branding/org_'.$cfg['__active_org_id'].'/branding_colors.css';
+      if(is_file($orgCssPath)){
+        $ver2 = @filemtime($orgCssPath) ?: time();
+        echo '<link rel="stylesheet" href="/files/branding/org_'.$cfg['__active_org_id'].'/branding_colors.css?v='.$ver2.'">';
+      }
+    }
   ?>
-<body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-inf='<?= $infSent ?>' data-canon='<?= $canonUrl ?>' data-template='<?= $tplPath ?>' data-test='<?= (isset($_GET['test_mode']) && $_GET['test_mode'] === '1') ? '1' : '0' ?>'>
+<body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-orgname='<?= htmlspecialchars($cfg['site_name'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>' data-inf='<?= $infSent ?>' data-canon='<?= $canonUrl ?>' data-template='<?= $tplPath ?>' data-test='<?= (isset($_GET['test_mode']) && $_GET['test_mode'] === '1') ? '1' : '0' ?>'>
 <header class="topbar">
   <div class="topbar__inner">
     <?php require_once __DIR__.'/auth.php'; ?>

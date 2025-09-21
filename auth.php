@@ -82,8 +82,22 @@ function login_admin(string $u, string $p): bool {
             $hasActive = $chk && $chk->rowCount() === 1;
         } catch (Throwable $e) { $hasActive = false; }
     }
-    if ($hasActive) {
+    // Detect presence of org_id column once (for multi-org context)
+    static $hasOrgId = null;
+    if ($hasOrgId === null) {
+        try {
+            $chk2 = $pdo->query("SHOW COLUMNS FROM `creds` LIKE 'org_id'");
+            $hasOrgId = $chk2 && $chk2->rowCount() === 1;
+        } catch (Throwable $e) { $hasOrgId = false; }
+    }
+    if ($hasActive && $hasOrgId) {
+        $st = $pdo->prepare("SELECT id, passhash, role, org_id FROM creds WHERE username=? AND is_active=1");
+        $st->execute([$u]);
+    } elseif($hasActive) {
         $st = $pdo->prepare("SELECT id, passhash, role FROM creds WHERE username=? AND is_active=1");
+        $st->execute([$u]);
+    } elseif($hasOrgId) {
+        $st = $pdo->prepare("SELECT id, passhash, role, org_id FROM creds WHERE username=?");
         $st->execute([$u]);
     } else {
         $st = $pdo->prepare("SELECT id, passhash, role FROM creds WHERE username=?");
@@ -119,6 +133,13 @@ function login_admin(string $u, string $p): bool {
         $_SESSION['admin_id'] = (int)$row['id'];
         $_SESSION['admin_user'] = $u;
         $_SESSION['admin_role'] = $row['role'];
+        // Persist operator organization context (admins remain global with NULL)
+        if(isset($row['org_id'])) {
+            $_SESSION['org_id'] = $row['org_id'] !== null ? (int)$row['org_id'] : null;
+        } else {
+            // preserve existing value or set null
+            if(!isset($_SESSION['org_id'])) $_SESSION['org_id'] = null;
+        }
         return true;
     }
     return false;
@@ -133,6 +154,14 @@ function logout_admin() {
         );
     }
     session_destroy();
+}
+
+/** Return current operator org_id (int) or null if admin/global or not set. */
+function current_org_id(): ?int {
+    $oid = $_SESSION['org_id'] ?? null;
+    if($oid === null) return null;
+    $oid = (int)$oid;
+    return $oid > 0 ? $oid : null;
 }
 
 // === CSRF ===

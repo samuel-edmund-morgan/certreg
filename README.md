@@ -63,12 +63,15 @@ cp config.php.example config.php
 Заповніть у `config.php`: параметри БД (`db_host`,`db_name`,`db_user`,`db_pass`), `site_name`, `logo_path`, `org_code`, `infinite_sentinel`, `canonical_verify_url`.
 
 #### Брендування (логотип, favicon, кольори)
-Початкові значення беруться з `config.php` (`site_name`, `logo_path`, `favicon_path`). Після збереження у вкладці "Брендування" (`settings.php?tab=branding`) значення з таблиці `branding_settings` повністю перекривають конфіг.
+Тепер підтримується пер-організаційний шар. Джерела:
 
-Пріоритет (від найвищого):
-1. Таблиця `branding_settings` (`site_name`, `logo_path`, `favicon_path`, `primary_color`, `accent_color`, `secondary_color`).
-2. `config.php` (`site_name`, `logo_path`, `favicon_path`).
-3. Статичні дефолти (`/assets/logo.png`, `/assets/favicon.ico`).
+Пріоритет (від найвищого до найнижчого):
+1. Глобальні overrides у таблиці `branding_settings` (системний шар для всіх організацій – застосовується останнім і може перекрити орг-рівень, поки не введено окремі пер-org overrides поверх).
+2. Рядок організації (`organizations.*` – `name→site_name`, `logo_path`, `favicon_path`, `primary_color`, `accent_color`, `secondary_color`, `footer_text`, `support_contact`) – лише для поточного оператора (його `org_id`). Адмініни (global) бачать цей шар лише якщо самі логіняться як оператор; інакше fallback.
+3. `config.php` (`site_name`, `logo_path`, `favicon_path`).
+4. Статичні дефолти (`/assets/logo.png`, `/assets/favicon.ico`).
+
+Пер-організаційні файли зберігаються у директорії `/files/branding/org_<id>/` (наприклад: `logo_*.png`, `favicon_*.svg`, `branding_colors.css`). Глобальні – у `/files/branding/`.
 
 Файли зберігаються у `/files/branding/` з унікальними іменами (`logo_YYYYmmdd_HHMMSS.ext`, `favicon_YYYYmmdd_HHMMSS.ext`).
 
@@ -77,11 +80,15 @@ cp config.php.example config.php
 - Favicon: ICO/PNG/SVG ≤ 128KB
 - Кольори: HEX `#RRGGBB`
 
-Після збереження кольорів генерується детермінований файл `branding_colors.css` у `/files/branding/` який містить, напр.:
+Після збереження кольорів генерується детермінований файл `branding_colors.css`:
+- Глобальний (`/files/branding/branding_colors.css`) – коли збережено через вкладку "Брендування".
+- Пер-організаційний (`/files/branding/org_<id>/branding_colors.css`) – коли оновлюються поля кольорів у конкретній організації.
+
+При наявності пер-організаційного CSS (для поточного оператора) він підключається ПЕРШИМ, а за його відсутності – глобальний. (Коли зʼявиться механізм пер-org overrides поверх глобальних, порядок може бути переглянутий; наразі глобальний шар вищий у пріоритеті даних, але css-файл підключається fallback'ом.)
 ```css
 :root{ --primary:#102d4e; --accent:#d12d8a; --secondary:#6b7280; }
 ```
-`header.php` підключає його ПІСЛЯ базового `assets/css/styles.css` з cache-busting параметром `?v=<mtime>`, що гарантує застосування без inline-override. Якщо жоден з кольорів не заданий – файл видаляється.
+`header.php` підключає відповідний файл ПІСЛЯ базового `assets/css/styles.css` з cache-busting параметром `?v=<mtime>`. Якщо кольори очищено – відповідний файл видаляється.
 
 Ролі кольорів:
 - `--primary` – структурний фон / базові основні кнопки.
@@ -336,6 +343,12 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
 
 ## API
 - `POST /api/register.php` – створення токена `{ cid, v:3, h, date, valid_until, extra_info? }`.
+   - Починаючи з multi-org: клієнт може передавати `org_code` (читабельний код організації) – бекенд ігнорує підміну й привʼязує запис до `org_id` поточного оператора (або явно вказаного коду, якщо це admin). Невідповідність -> `org_mismatch`.
+ - `GET /api/templates_list.php` – список шаблонів (поточна реалізація: максимум 200, сортування `id DESC`).
+    - Оператор: тільки його організація.
+    - Адмін: усі; можна фільтрувати `?org_id=`.
+    - Формат: `{ ok:true, items:[ { id, name, filename, org_id?, org_code?, is_active, created_at } ] }`.
+    - Якщо таблиця відсутня – `{ ok:true, items:[], note:"no_templates_table" }`.
 - `GET /api/status.php?cid=...` – перевірка статусу `{ h, revoked?, revoked_at?, revoke_reason?, valid_until }`.
 - `POST /api/bulk_action.php` – пакетні операції `revoke | unrevoke | delete`.
 - `GET /api/events.php?cid=...` – журнал подій.
@@ -381,6 +394,8 @@ php scripts/migrations/2025_09_21_add_organizations.php
 - Admin (role=admin, org_id=NULL) бачить усі організації.
 - Operators повинні мати `org_id` (бекенд примусово встановлює при створенні).
 - Надалі брендинг/шаблони резольвуються через `org_id` із fallback на глобальні налаштування.
+ - Видача токенів: canonical рядок включає поле `ORG` яке дорівнює коду організації оператора. JS бере код із `data-org` у `<body>`, яке формується у `header.php` після злиття брендувань і пер-організаційного шару. Бекенд зберігає `tokens.org_id` (якщо колонка є) і повертає помилку `org_mismatch`, якщо переданий у запиті `org_code` не відповідає сесійній організації.
+ - Підготовка до привʼязки шаблонів: додано `templates_list` + клієнтський селектор (не впливає на HMAC; canonical не містить template id). Наступний етап: зберігання `templates.org_id` та валідація відповідності при видачі.
 
 Подальші кроки:
 1. Прив'язка операторів до org (обов'язково для role=operator, admin = глобальний `NULL`).

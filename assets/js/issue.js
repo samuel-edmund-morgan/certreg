@@ -148,7 +148,7 @@
     }
     // Register (no PII)
   const csrf = window.__CSRF_TOKEN || document.querySelector('meta[name="csrf"]')?.content || '';
-  const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify({cid:cid, v:3, h:h, date:date, valid_until:validUntil, extra_info: extra || null})});
+  const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify({cid:cid, v:3, h:h, date:date, valid_until:validUntil, extra_info: extra || null, org_code: ORG})});
     if(!res.ok){
       alert('Помилка реєстрації: '+res.status);
       return;
@@ -235,6 +235,12 @@
       bgImage.src = tpl || '/files/cert_template.jpg';
     } catch(_e){ bgImage.src = '/files/cert_template.jpg'; }
   })();
+  // Реакція на зміну шаблону (подія від issue_templates.js)
+  document.addEventListener('cert-template-change', function(ev){
+    if(ev.detail && ev.detail.path){
+      bgImage.src = ev.detail.path;
+    }
+  });
   form.addEventListener('submit', handleSubmit);
     // Toggle expiry input
     const infiniteCb = form.querySelector('input[name="infinite"]');

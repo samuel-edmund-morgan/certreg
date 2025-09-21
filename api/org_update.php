@@ -56,7 +56,7 @@ try {
   $baseDir = $_SERVER['DOCUMENT_ROOT'].'/files/branding/org_'.$id; if(!is_dir($baseDir)) @mkdir($baseDir,0755,true);
   if(is_array($logoUp) && empty($logoUp['error'])){ $dest=$baseDir.'/logo_'.date('Ymd_His').'.'.$logoUp['ext']; if(move_uploaded_file($logoUp['tmp'],$dest)){ $logoRel='/files/branding/org_'.$id.'/'.basename($dest); $pdo->prepare('UPDATE organizations SET logo_path=? WHERE id=?')->execute([$logoRel,$id]); }}
   if(is_array($favUp) && empty($favUp['error'])){ $dest=$baseDir.'/favicon_'.date('Ymd_His').'.'.$favUp['ext']; if(move_uploaded_file($favUp['tmp'],$dest)){ $favRel='/files/branding/org_'.$id.'/'.basename($dest); $pdo->prepare('UPDATE organizations SET favicon_path=? WHERE id=?')->execute([$favRel,$id]); }}
-  // Regenerate CSS (overwrite or delete if empty all)
+  // Regenerate per-organization CSS (overwrite or delete if all colors cleared)
   if($pHex || $aHex || $sHex){ $css=':root{'; if($pHex)$css.='--primary: '.$pHex.';'; if($aHex)$css.='--accent: '.$aHex.';'; if($sHex)$css.='--secondary: '.$sHex.';'; $css.='}' ."\n"; file_put_contents($baseDir.'/branding_colors.css',$css,LOCK_EX); }
   elseif(is_file($baseDir.'/branding_colors.css')) @unlink($baseDir.'/branding_colors.css');
   $st2=$pdo->prepare('SELECT * FROM organizations WHERE id=?'); $st2->execute([$id]);

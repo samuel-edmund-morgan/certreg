@@ -1,6 +1,10 @@
 <?php
 $cfg = require __DIR__.'/config.php';
 $p = $_GET['p'] ?? '';
+require_once __DIR__.'/db.php';
+// We will attempt to detect organization code either from payload canonical fields or fallback to config org_code
+// and set $forced_org_id before including header.php for per-org branding.
+$forced_org_id = null;
 function base64url_decode($d){
   $d = strtr($d,'-_','+/');
   $pad = strlen($d)%4; if($pad){ $d .= str_repeat('=',4-$pad);} return base64_decode($d,true);
@@ -12,6 +16,25 @@ if($p){
   else{
     $payload = json_decode($payloadJson,true);
     if(!is_array($payload)||!isset($payload['cid'],$payload['s'],$payload['v'])){ $err='Пошкоджені дані.'; }
+      else {
+        // Try to parse ORG code: if payload includes 'org' or 'ORG' or inside canonical string 'ORG=' pattern.
+        $orgCode = null;
+        if(isset($payload['org']) && is_string($payload['org'])) $orgCode = $payload['org'];
+        elseif(isset($payload['ORG']) && is_string($payload['ORG'])) $orgCode = $payload['ORG'];
+        elseif(isset($payload['canon']) && is_string($payload['canon'])){
+          if(preg_match('/\bORG=([A-Z0-9\-_.]+)/i',$payload['canon'],$m)){ $orgCode = $m[1]; }
+        }
+        // Fallback to config org_code if nothing extracted
+        if(!$orgCode) $orgCode = $cfg['org_code'] ?? null;
+        if($orgCode){
+          try {
+            $stOrg = $pdo->prepare('SELECT id FROM organizations WHERE code=? AND is_active=1 LIMIT 1');
+            $stOrg->execute([$orgCode]);
+            $oid = $stOrg->fetchColumn();
+            if($oid){ $forced_org_id = (int)$oid; }
+          } catch(Throwable $ie){ /* ignore lookup failures */ }
+        }
+      }
   }
 } else { $err='Відсутній параметр.'; }
 require __DIR__.'/header.php';
