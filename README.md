@@ -350,6 +350,7 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
  - `POST /api/org_create.php` – створення організації (ім'я, код immutable, опційно кольори, логотип, favicon).
  - `POST /api/org_update.php` – оновлення назви, кольорів, footer/support, логотипу, favicon, активності (код незмінюється).
  - `POST /api/org_set_active.php` – швидке вкл/викл статусу is_active.
+ - `POST /api/org_set_active.php` – швидке вкл/викл статусу is_active (НЕ можна вимкнути дефолтну організацію `config.org_code`; бекенд повертає `default_protected`, UI не показує кнопку для неї).
  - `POST /api/org_delete.php` – видалення організації (заборонено, якщо прив'язані оператори або токени, А ТАКОЖ неможливо для дефолтної організації `config.org_code`). UI автоматично вимикає кнопку для дефолтної. Папка `/files/branding/org_<id>/` очищається.
  - `GET /api/org_list.php` – пагінація + пошук (name/code) + сортування (id,name,code,created_at).
    - Усі operator-create / change_org вимагають активну організацію; `org_code` immutable.

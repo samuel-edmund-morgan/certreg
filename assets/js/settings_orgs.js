@@ -34,14 +34,14 @@
     const status = o.is_active==1?'<span class="badge ok">Активна</span>':'<span class="badge off">Вимкнена</span>';
     const nameHtml = esc(o.name).replace(/\\n/g,'<br>');
     const isDefault = o.is_default==1;
-    return `<tr data-id="${o.id}"${isDefault?' data-default="1"':''}>
+  return `<tr data-id="${o.id}"${isDefault?' data-default="1"':''}>
       <td>${o.id}</td>
       <td>${nameHtml}</td>
       <td><code>${esc(o.code)}</code></td>
       <td class="flex gap-4 align-center">${brandParts.join('')||'<span class=fs-12>-</span>'} ${logo} ${fav}</td>
       <td class="fs-12 text-muted">${esc(o.created_at||'').replace('T',' ').substring(0,19)}</td>
       <td>${status}${isDefault?' <span class="badge" title="Це базова організація">Основна</span>':''}</td>
-      <td class="flex gap-4"><button class="btn btn-xs btn-secondary toggle-org" data-active="${o.is_active}">${o.is_active==1?'Вимкнути':'Увімкнути'}</button><button class="btn btn-xs btn-warning edit-org">Редагувати</button>${isDefault?'':'<button class="btn btn-xs btn-danger del-org">Видалити</button>'}</td>
+      <td class="flex gap-4">${isDefault?'':'<button class="btn btn-xs btn-secondary toggle-org" data-active="'+o.is_active+'">'+(o.is_active==1?'Вимкнути':'Увімкнути')+'</button>'}<button class="btn btn-xs btn-warning edit-org">Редагувати</button>${isDefault?'':'<button class="btn btn-xs btn-danger del-org">Видалити</button>'}</td>
     </tr>`;
   }
 
