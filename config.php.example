@@ -51,4 +51,10 @@ return [
         'unrevoke'  => [20,  600],
         'delete'    => [10,  600],
     ],
+
+    // === Templates / media settings ===
+    // Max width for generated preview.jpg (pixels). Height auto-calculated to preserve aspect.
+    'template_preview_max_width' => 800,
+    // When true (or if CERTREG_DEBUG env var set), template_create will include extra diagnostics on file_store errors.
+    'debug_templates' => false,
 ];

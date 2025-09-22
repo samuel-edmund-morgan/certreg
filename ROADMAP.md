@@ -6,21 +6,21 @@
 ---
 ## Phase 1: Template System (High Priority)
 ### 1.1 DB & Schema
-- [ ] Create `templates` table (org scoped, status enum, file metadata, coords JSON, versioning fields)
-- [ ] Alter `tokens` add `template_id` FK (ON DELETE SET NULL)
+- [x] Create `templates` table (org scoped, status enum, file metadata, coords JSON, versioning fields)
+- [x] Alter `tokens` add `template_id` FK (ON DELETE SET NULL)
 
 ### 1.2 Backend CRUD APIs
-- [ ] `api/template_create.php` – upload file, validate, store metadata, generate preview
-- [ ] `api/template_update.php` – update name/coords, optional file replace
-- [ ] `api/template_delete.php` – delete template, nullify references
-- [ ] `api/template_toggle.php` – switch active/inactive
-- [ ] Extend `templates_list.php` – full metadata + minimal mode
+- [x] `api/template_create.php` – upload file, validate, store metadata, generate preview
+- [x] `api/template_update.php` – update name/coords, optional file replace
+- [x] `api/template_delete.php` – delete template, nullify references
+- [x] `api/template_toggle.php` – switch active/inactive
+- [x] Extend `templates_list.php` – full metadata + minimal mode
 
 ### 1.3 UI & Editor
 - [ ] Templates tab in `settings.php`
 - [ ] `template.php` editor page (canvas + draggable fields)
 - [ ] JS coords editor (drag/drop, property panel, save)
-- [ ] Preview generation pipeline
+- [x] Preview generation pipeline
 
 ### 1.4 Issuance Integration
 - [ ] Template select in single & bulk issuance

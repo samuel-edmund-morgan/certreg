@@ -571,6 +571,14 @@ main{flex:1}
   .badge.ok{background:#15803d;color:#fff}
   .badge.off{background:#64748b;color:#fff}
   .btn-xs{padding:4px 8px;font-size:12px;border-radius:8px}
+  /* Template tiny preview thumbnails */
+  .tpl-prev{width:32px;min-width:32px;text-align:center}
+  .tpl-prev-img{width:12px;height:12px;object-fit:cover;border:1px solid var(--border);border-radius:3px;display:inline-block;image-rendering:-webkit-optimize-contrast;cursor:zoom-in;box-shadow:0 0 0 1px #fff;}
+  .tpl-prev-img:hover{outline:2px solid var(--accent,#2563eb);}
+  /* Larger preview dialog image */
+  .tpl-big-prev{max-width:90vw;max-height:80vh;display:block;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.25);}
+  dialog.tpl-prev-dialog{border:0;padding:14px 18px;border-radius:14px;background:#fff;}
+  dialog.tpl-prev-dialog::backdrop{background:rgba(0,0,0,.45)}
 /* NOTE: Removed temporary canonical override with !important for .topbar__actions .btn
    (kept single definition near top). This comment left intentionally for audit trace. */
 

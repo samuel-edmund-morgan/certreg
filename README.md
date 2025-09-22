@@ -202,7 +202,27 @@ INSERT INTO creds (username, passhash, `role`) VALUES ('admin','<HASH>', 'admin'
 
 ### Налаштування (AJAX) та акаунт
 
-Сторінка `settings.php` використовує AJAX-навігацію: при переході між вкладками (Брендування / Шаблони / Оператори / Акаунт) довантажується лише внутрішній вміст через `settings_section.php?tab=...` без повного перезавантаження. Це зменшує навантаження й робить форму брендування/акаунта більш чуйною.
+Сторінка `settings.php` використовує AJAX-навігацію: при переході між вкладками (Брендування / Організації / Оператори / Шаблони / Акаунт) довантажується лише внутрішній вміст через `settings_section.php?tab=...` без повного перезавантаження. Це зменшує навантаження й робить форми більш чуйними.
+
+#### Вкладка «Шаблони» (Phase 1.3 UI)
+Надає базове керування шаблонами:
+* Створення: назва, опціонально `code` (інакше `T<ID>`), файл зображення (JPG/PNG/WEBP) – одразу генерується `preview.jpg`.
+* Список із крихітним превʼю (12×12) – кешований JPEG (`preview.jpg`) для швидкого перегляду без завантаження оригіналу (клік відкриває діалог з великим превʼю).
+* Дії у рядку: `→` (перехід на детальну сторінку `template.php?id=...`), `Toggle` (active/disabled), `Редагувати` (назва + статус), `Фон` (швидка заміна зображення з auto `version++`), `Видалити` (hard delete; майбутня привʼязка до токенів блокуватиме за потреби).
+* Версія (`version`) збільшується лише при заміні файла.
+* Кешування вкладок працює разом із оновленням списку (`settings_templates.js`).
+Адмін бачить селектор організації (фільтр/створення для конкретної), оператор – лише свою.
+
+Детальна сторінка `template.php`:
+* Показує всі поля (`filename`, `file_hash`, `width×height`, `version`, `updated_at`).
+* Окремі форми: перейменувати, toggle, заміна файлу, видалення.
+* Превʼю автоматично cache-bust через `?v=<version>`.
+* Доступ: оператори лише в межах своєї `org_id`.
+
+Налаштування превʼю:
+* Максимальна ширина генерованого `preview.jpg` керується `config['template_preview_max_width']` (за замовчанням 800px).
+* У таблиці масштабування робиться через CSS (клас `.tpl-prev-img`).
+* Для діагностики помилок збереження файлів можна ввімкнути розширений режим (`config['debug_templates']=true` або заголовок `X-Debug-Template: 1`).
 
 Вкладка «Акаунт» дозволяє змінити пароль поточного користувача (admin або operator). Форма надсилає POST на `/api/account_change_password.php` з полями:
 ```
@@ -365,7 +385,8 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
  - `GET /api/templates_list.php` – список шаблонів (поточна реалізація: максимум 200, сортування `id DESC`).
     - Оператор: тільки його організація.
     - Адмін: усі; можна фільтрувати `?org_id=`.
-    - Формат: `{ ok:true, items:[ { id, name, filename, org_id?, org_code?, is_active, created_at } ] }`.
+    - Формат (оновлено з metadata + preview): `{ ok:true, items:[ { id, org_id?, org_code?, name, code, status, filename, file_ext, width, height, version, created_at, updated_at, preview_url? } ] }`.
+    - `preview_url` присутній якщо створено кешований превʼю `preview.jpg` (генерується при створенні/оновленні).
     - Якщо таблиця відсутня – `{ ok:true, items:[], note:"no_templates_table" }`.
    - Nginx: додано до allowlist (див. `docs/nginx/certreg.conf` блок `location ~ ^/api/(org_list|templates_list)\.php$`).
  - `POST /api/template_create.php` – створення нового шаблону (фонового зображення) сертифіката.
@@ -398,6 +419,83 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
          ```
       - Подальші кроки (Phase 1): `template_update`, `template_delete`, `template_toggle`, оновлений `templates_list` з метаданими та попередніми зображеннями (preview кеш).
 - `GET /api/status.php?cid=...` – перевірка статусу `{ h, revoked?, revoked_at?, revoke_reason?, valid_until }`.
+ - `POST /api/template_update.php` – оновлення існуючого шаблону.
+      - Поля (multipart/form-data або application/x-www-form-urlencoded якщо без файлу):
+         * `id` (обовʼязково)
+         * `name` (опційно; якщо передано — перевірка як у create, ≤160)
+         * `status` (опційно; `active|disabled`)
+         * `template_file` (опційно; замінює фон — ті самі обмеження: ext JPG/PNG/WEBP, 200..12000 px, ≤15MB, оновлює `file_*`, `width/height`, `hash`)
+         * `_csrf`
+      - Іммʼютабельне: `code`, `org_id` (для оператора). Адмін не змінює org через цей endpoint.
+      - Версіонування: при заміні файлу `version = version + 1`.
+      - Коди помилок: `bad_id`, `not_found`, `org_context_missing`, `forbidden`, `name_required`, `name_too_long`, `bad_status`, всі файлові як у create (`upload_error`, `file_empty`, `file_too_large`, `bad_ext`, `not_image`, `image_too_small`, `image_too_large`), `nothing_to_update`, `db`, `file_store_failed`.
+      - Відповідь: `{ ok:true, template:{ id, org_id, name, code, status, filename, file_ext, file_hash, file_size, width, height, version, created_at, updated_at } }`.
+      - Nginx: додано до POST admin API блоку.
+      - Приклад:
+         ```bash
+         curl -X POST -b cookie.txt -F "id=7" -F "name=Updated Template" -F "status=disabled" -F "_csrf=..." https://example.org/api/template_update.php
+         ```
+         Зі зміною фонового файлу:
+         ```bash
+         curl -X POST -b cookie.txt -F "id=7" -F "template_file=@/path/new_bg.png" -F "_csrf=..." https://example.org/api/template_update.php
+         ```
+         Відповідь (скорочено):
+         ```json
+         {"ok":true,"template":{"id":7,"org_id":3,"name":"Updated Template","status":"active","version":2,...}}
+         ```
+ - `POST /api/template_delete.php` – видалення (hard delete) шаблону.
+ - `POST /api/template_toggle.php` – швидка зміна статусу `active ↔ disabled`.
+         - Поля: `id`, `_csrf`.
+         - Умова: Працює лише якщо поточний статус у домені `active|disabled` (legacy значення `inactive|archived` вимагають спершу нормалізації через `template_update`).
+         - Логіка: читає поточний статус → встановлює протилежний → повертає оновлений обʼєкт шаблону.
+         - Коди помилок: `bad_id`, `not_found`, `org_context_missing`, `forbidden`, `bad_status_current` (якщо статус поза `active|disabled`), `db`, `no_templates_table`.
+         - Відповідь: `{ ok:true, template:{ ... } }` (той самий набір полів що в `template_update`).
+         - Виклик:
+            ```bash
+            curl -X POST -b cookie.txt -F "id=7" -F "_csrf=..." https://example.org/api/template_toggle.php
+            ```
+         - Використання в UI: кнопка/іконка «Активувати/Вимкнути» без необхідності завантаження файлу.
+
+### Превʼю (preview cache)
+При `template_create` та при завантаженні нового файлу в `template_update` генерується превʼю `preview.jpg` (JPEG, якість ~82, ширина максимум 800px, пропорції збережено). 
+Використання:
+* Швидке завантаження списку шаблонів у UI без важких оригіналів.
+* Поле `preview_url` містить cache-busting параметр `?v=<mtime>`; на детальній сторінці використовується версія ( `?v=<version>` ).
+* Зменшене превʼю в таблиці відображається як 12×12 (іконка) для стабільної ширини таблиці; клік відкриває модальне велике зображення.
+* Якщо генерація превʼю з якоїсь причини не вдалася (нестача GD / memory) – основна операція не вважається помилковою; просто відсутній `preview_url` і self_check позначить `[WARN] Preview missing`.
+* Налаштування: `template_preview_max_width` у `config.php`.
+
+Self-check (T1) тепер:
+* Перевіряє наявність preview для останніх шаблонів.
+* Виявляє «осиротілі» директорії або відсутні директорії для записів у БД.
+
+      - Поля: `id` (обовʼязково), `_csrf`.
+      - Поведінка: жорстке видалення запису з БД та рекурсивне очищення директорії `files/templates/<org_id>/<id>/` (усі версійні файли *поки* зберігаються як один `original.<ext>`, тож додаткових перевірок не потрібно). Операція незворотна.
+      - Обмеження доступу:
+         * Оператор може видаляти лише шаблони своєї організації.
+         * Admin може видаляти будь-який шаблон (org scope ігнорується), але майбутні звʼязки з токенами (після додавання `tokens.template_id`) заблокують видалення.
+      - Захист від використання: якщо у таблиці `tokens` існує колонка `template_id` і є хоча б один токен з цим значенням – повертається `in_use` і видалення не виконується.
+      - Коди помилок (`error`):
+         * `bad_id` – невалідний або відсутній `id`.
+         * `not_found` – шаблон не існує (або гонка після вже видаленого).
+         * `org_context_missing` – оператор без привʼязаного `org_id` (порушення інваріанту multi-org).
+         * `forbidden` – спроба оператора видалити чужий шаблон.
+         * `in_use` – (майбутній сценарій) шаблон привʼязаний до одного чи кількох токенів.
+         * `fs_delete_failed` – запис у БД видалено, але очищення файлової директорії частково або повністю не вдалося (рекомендується ручне прибирання). Повертається `partial:true`.
+         * `db` – непередбачена помилка БД.
+         * `no_templates_table` – таблиця відсутня (міграція не застосована).
+      - Відповідь при успіху: `{ ok:true, deleted_id:<id> }`.
+      - Приклади:
+        ```bash
+        curl -X POST -b cookie.txt -F "id=7" -F "_csrf=..." https://example.org/api/template_delete.php
+        ```
+        Відповідь:
+        ```json
+        {"ok":true,"deleted_id":7}
+        ```
+      - Примітка щодо цілісності: видалення спершу видаляє рядок з БД (щоб блокувати паралельні update), потім намагається очистити файлову структуру. Якщо файлова частина провалилась – повторний запуск не відновить шаблон (рядок вже видалений), але self-check (див. розділ нижче, заплановане розширення) може попередити про «осиротілі» директорії або залишкові файли.
+      - Nginx: додано до regex POST API блоку поруч із `template_create` та `template_update`.
+      - Подальші кроки: після додавання `template_toggle` цей endpoint завершує базовий CRUD.
 - `POST /api/bulk_action.php` – пакетні операції `revoke | unrevoke | delete`.
 - `GET /api/events.php?cid=...` – журнал подій.
 - `POST /api/account_change_password.php` – зміна паролю (аутентифікований admin/operator).

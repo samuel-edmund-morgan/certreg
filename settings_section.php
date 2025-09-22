@@ -152,7 +152,33 @@ switch($tab){
         echo '<script src="/assets/js/settings_orgs.js" defer></script>';
         break;
     case 'templates':
-        echo '<h2>Шаблони</h2><p>Управління шаблонами сертифікатів.</p>';
+        $csrfTpl = csrf_token();
+        echo '<h2 class="mt-0">Шаблони</h2>';
+        echo '<p class="fs-14 text-muted maxw-760">Керуйте фоновими зображеннями сертифікатів (template). Активний шаблон можна тимчасово вимкнути не видаляючи. Заміна файла підвищує версію. Код (code) використовується як внутрішній ідентифікатор (immutable після створення).</p>';
+        echo '<div class="tpl-create-box">'
+            .'<form id="templateCreateForm" class="form tpl-create-form" method="post" action="/api/template_create.php" enctype="multipart/form-data" autocomplete="off">'
+            .'<input type="hidden" name="_csrf" value="'.htmlspecialchars($csrfTpl).'" />'
+            .'<div class="tpl-create-grid">'
+                .'<label>Назва<br><input type="text" name="name" required maxlength="160" placeholder="Template name" /></label>'
+                .(is_admin() ? '<label>Організація<br><select name="org_id" id="tplOrgSelect" required aria-label="Виберіть організацію"><option value="">Завантаження...</option></select></label>' : '')
+                .'<details class="tpl-adv"><summary class="fs-12 link-accent">Додатково (code)</summary><label>Code<br><input type="text" name="code" pattern="[A-Za-z0-9_-]{2,60}" maxlength="60" placeholder="(auto)" /></label><p class="fs-12 text-muted mt-4">Якщо залишити порожнім – згенерується T<ID>.</p></details>'
+                .'<label>Файл (JPG/PNG/WEBP ≤15MB)<br><input type="file" name="template_file" accept="image/jpeg,image/png,image/webp" required /></label>'
+                .'<div class="tpl-actions"><button class="btn btn-primary" type="submit" id="tplCreateBtn">Створити</button><span id="tplCreateStatus" class="fs-12 text-muted ml-8" aria-live="polite"></span></div>'
+            .'</div>'
+            .'</form>'
+        .'</div>';
+        echo '<div class="table-wrap mt-20"><table class="table" id="templatesTable"><thead><tr>'
+            .'<th>ID</th>'
+            .'<th>Превʼю</th>'
+            .'<th>Назва / Код</th>'
+            .'<th>Розмір</th>'
+            .'<th>Версія</th>'
+            .'<th>Статус</th>'
+            .'<th>Дії</th>'
+        .'</tr></thead><tbody><tr><td colspan="7" class="text-center fs-13 text-muted">Завантаження...</td></tr></tbody></table></div>';
+        echo '<div id="templatesSummary" class="fs-12 text-muted mt-8"></div>';
+        echo '<div class="fs-12 text-muted mt-12">Операції: <strong>Редагувати</strong> – змінити назву/статус/фон; <strong>Фон</strong> – швидка заміна зображення; <strong>Toggle</strong> – активувати/вимкнути; <strong>Видалити</strong> – безповоротно (заборонено, якщо буде привʼязка до токенів).</div>';
+        echo '<script src="/assets/js/settings_templates.js" defer></script>';
         break;
     case 'users':
         echo '<h2 class="mt-0">Оператори</h2>';

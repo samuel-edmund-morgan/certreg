@@ -1,7 +1,7 @@
 <?php
 // Список шаблонів (поки що без завантаження файлів через цей endpoint)
 // GET /api/templates_list.php?org_id= (опціонально, тільки для admin)
-// Відповідь: { ok:true, items:[{id,name,org_id,org_code,filename,is_active,created_at}] }
+// Відповідь (оновлено): { ok:true, items:[{id,org_id?,org_code?,name,code,status,filename,file_ext,width,height,version,created_at,updated_at,preview_url?}] }
 
 require_once __DIR__.'/../auth.php';
 require_login(); // і оператор і адмін
@@ -24,7 +24,7 @@ if(!$isAdmin){
     $reqOrg = $sessionOrg ?: 0; // 0 щоб нічого не віддати якщо раптом null
 }
 
-$columns = ['t.id','t.name','t.filename','t.is_active','t.created_at'];
+$columns = ['t.id','t.name','t.code','t.status','t.filename','t.file_ext','t.width','t.height','t.version','t.created_at','t.updated_at'];
 $hasOrgCol = column_exists($pdo,'templates','org_id');
 if($hasOrgCol){ $columns[]='t.org_id'; }
 
@@ -48,5 +48,16 @@ $sql.=' ORDER BY t.id DESC LIMIT 200';
 try {
     $st=$pdo->prepare($sql); $st->execute($params);
     $rows=$st->fetchAll(PDO::FETCH_ASSOC);
+    // Augment with preview_url if preview exists
+    $baseRel = '/files/templates';
+    foreach($rows as &$r){
+        if(isset($r['org_id'])){
+            $previewPathFs = __DIR__.'/../files/templates/'.$r['org_id'].'/'.$r['id'].'/preview.jpg';
+            if(is_file($previewPathFs)){
+                $r['preview_url'] = $baseRel.'/'.$r['org_id'].'/'.$r['id'].'/preview.jpg?v='.filemtime($previewPathFs);
+            }
+        }
+    }
+    unset($r);
     echo json_encode(['ok'=>true,'items'=>$rows]);
 } catch(Throwable $e){ echo json_encode(['error'=>'db']); }

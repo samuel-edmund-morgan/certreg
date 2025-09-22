@@ -6,6 +6,7 @@ $root = __DIR__;
 $whitelist = [
   // Public / functional entrypoints
   'index.php','admin.php','login.php','logout.php','issue_token.php','tokens.php','token.php','operator.php','organization.php','verify.php','qr.php','events.php',
+  'template.php',
   // API endpoints
   'api/register.php','api/status.php','api/revoke.php','api/unrevoke.php','api/delete_token.php','api/events.php','api/bulk_action.php','api/branding_save.php',
   'api/account_change_password.php',
@@ -14,6 +15,9 @@ $whitelist = [
   'api/operator_change_org.php',
   'api/templates_list.php',
   'api/template_create.php',
+  'api/template_update.php',
+  'api/template_toggle.php',
+  'api/template_delete.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php','common_pagination.php',
   'settings.php','settings_section.php',
@@ -459,12 +463,84 @@ try {
       $checked=0; $missing=0; $base = __DIR__.'/files/templates';
       while($t = $st->fetch(PDO::FETCH_ASSOC)){
         $checked++; $p = $base."/{$t['org_id']}/{$t['id']}/original.".$t['file_ext'];
+        $preview = $base."/{$t['org_id']}/{$t['id']}/preview.jpg";
         if(is_file($p)){
           echo "[OK] Template file present id={$t['id']} org={$t['org_id']}\n";
+          if(is_file($preview)){
+            echo "[OK] Preview present id={$t['id']}\n";
+          } else {
+            echo "[WARN] Preview missing id={$t['id']} (expected $preview)\n";
+          }
         } else {
           echo "[WARN] Template file missing id={$t['id']} expected=$p\n"; $missing++; }
       }
       if($checked===0) echo "[INFO] No templates to verify yet.\n"; else if($missing===0) echo "[OK] All sampled template files present ($checked checked).\n"; 
     } catch(Throwable $e){ echo "[WARN] Could not enumerate templates for fs check: ".$e->getMessage()."\n"; }
+    // Version sanity
+    try {
+      $badVer = $pdo->query("SELECT COUNT(*) FROM templates WHERE version < 1 OR version IS NULL")->fetchColumn();
+      if($badVer>0) echo "[FAIL] $badVer templates have invalid version (<1 or NULL).\n"; else echo "[OK] Template versions valid (>=1).\n";
+    } catch(Throwable $e){ echo "[WARN] Could not validate template versions: ".$e->getMessage()."\n"; }
+
+    // Orphan directory audit (T1-orphans): scan files/templates/<org>/<id>
+    try {
+      $tplBase = realpath(__DIR__.'/files/templates');
+      if($tplBase && is_dir($tplBase)){
+        // Build set of existing template (org_id,id) pairs
+        $dbPairs = [];
+        $stAll = $pdo->query("SELECT id, org_id FROM templates");
+        while($r=$stAll->fetch(PDO::FETCH_ASSOC)){
+          $dbPairs[$r['org_id'].':'.$r['id']] = true;
+        }
+        $orphanDirs = [];
+        $missingDirs = 0;
+        // For each org directory
+        $orgDirs = glob($tplBase.'/*', GLOB_ONLYDIR);
+        if($orgDirs){
+          foreach($orgDirs as $orgDir){
+            $orgName = basename($orgDir);
+            if(!ctype_digit($orgName)) continue; // skip unexpected
+            $orgId = (int)$orgName;
+            $tplDirs = glob($orgDir.'/*', GLOB_ONLYDIR);
+            if($tplDirs){
+              foreach($tplDirs as $tplDir){
+                $tplIdName = basename($tplDir);
+                if(!ctype_digit($tplIdName)) continue;
+                $tplId = (int)$tplIdName;
+                $key = $orgId.':'.$tplId;
+                if(empty($dbPairs[$key])){
+                  $orphanDirs[] = $orgId.'/'.$tplId;
+                }
+              }
+            }
+          }
+        }
+        // Detect DB rows whose directory missing (sample up to 10 for noise control)
+        $missingSamples = [];
+        foreach(array_keys($dbPairs) as $pair){
+          [$o,$i] = array_map('intval', explode(':',$pair));
+            $expectDir = $tplBase.'/'.$o.'/'.$i;
+            if(!is_dir($expectDir)){
+              $missingDirs++;
+              if(count($missingSamples)<10) $missingSamples[] = $o.'/'.$i;
+            }
+        }
+        if($orphanDirs){
+          $sample = implode(', ', array_slice($orphanDirs,0,10));
+          $more = count($orphanDirs)>10 ? ' (+'.(count($orphanDirs)-10).' more)' : '';
+          echo "[WARN] Orphan template directories (no DB row): $sample$more\n";
+        } else {
+          echo "[OK] No orphan template directories detected.\n";
+        }
+        if($missingDirs>0){
+          $more = $missingDirs>10 ? ' (+'.($missingDirs-10).' more)' : '';
+          echo "[WARN] Template DB rows missing directory: ".implode(', ',$missingSamples)."$more\n";
+        } else {
+          echo "[OK] All template DB rows have directory present.\n";
+        }
+      } else {
+        echo "[INFO] Template base directory not found (files/templates) – skip orphan scan.\n";
+      }
+    } catch(Throwable $e){ echo "[WARN] Could not perform orphan directory audit: ".$e->getMessage()."\n"; }
   }
 } catch(Throwable $e){ echo "[WARN] Templates checks error: ".$e->getMessage()."\n"; }
