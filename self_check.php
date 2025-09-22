@@ -13,6 +13,7 @@ $whitelist = [
   'api/org_create.php','api/org_update.php','api/org_set_active.php','api/org_delete.php',
   'api/operator_change_org.php',
   'api/templates_list.php',
+  'api/template_create.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php','common_pagination.php',
   'settings.php','settings_section.php',
@@ -419,3 +420,51 @@ try {
     if(is_file($colorsCss)) echo "[WARN] branding_colors.css exists but no colors set (stale).\n"; else echo "[OK] No colors set; no branding_colors.css (expected).\n";
   }
 } catch(Throwable $e){ echo "[WARN] Branding checks error: ".$e->getMessage()."\n"; }
+
+// === Templates checks (T1) ===
+echo "[SECTION] Templates checks (T1)\n";
+try {
+  $hasTemplates = false; $tplCols = [];
+  try {
+    $colsStmt = $pdo->query("SHOW COLUMNS FROM templates");
+    while($r = $colsStmt->fetch(PDO::FETCH_ASSOC)){ $tplCols[] = $r['Field']; }
+    if($tplCols) $hasTemplates = true;
+  } catch(Throwable $e){ /* table absent */ }
+  if(!$hasTemplates){
+    echo "[INFO] templates table absent (feature not initialized).\n";
+  } else {
+    echo "[OK] templates table present.\n";
+    $required = ['id','org_id','name','code','status','filename','file_ext','file_hash','file_size','width','height','version','created_at','updated_at'];
+    foreach($required as $c){ if(!in_array($c,$tplCols,true)) echo "[WARN] templates missing column $c.\n"; }
+    // Status domain check
+    if(in_array('status',$tplCols,true)){
+      try {
+        $badStatus = $pdo->query("SELECT COUNT(*) FROM templates WHERE status NOT IN ('active','disabled')")->fetchColumn();
+        if($badStatus>0) echo "[WARN] $badStatus templates have unknown status values.\n"; else echo "[OK] All template status values within expected domain.\n"; 
+      } catch(Throwable $e){ echo "[WARN] Could not validate template status domain: ".$e->getMessage()."\n"; }
+    }
+    // Uniqueness (org_id,code) soft validation (DB-level unique may not exist yet)
+    try {
+      $dupes = $pdo->query("SELECT org_id,code,COUNT(*) c FROM templates WHERE code IS NOT NULL GROUP BY org_id,code HAVING c>1 LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
+      if($dupes){
+        echo "[FAIL] Duplicate (org_id,code) pairs detected:\n";
+        foreach($dupes as $d){ echo " - org_id={$d['org_id']} code={$d['code']} count={$d['c']}\n"; }
+      } else {
+        echo "[OK] No duplicate (org_id,code) pairs.\n";
+      }
+    } catch(Throwable $e){ echo "[WARN] Could not scan duplicates: ".$e->getMessage()."\n"; }
+    // Filesystem presence sample: list up to 5 newest templates and verify file exists
+    try {
+      $st = $pdo->query("SELECT id,org_id,file_ext FROM templates ORDER BY id DESC LIMIT 5");
+      $checked=0; $missing=0; $base = __DIR__.'/files/templates';
+      while($t = $st->fetch(PDO::FETCH_ASSOC)){
+        $checked++; $p = $base."/{$t['org_id']}/{$t['id']}/original.".$t['file_ext'];
+        if(is_file($p)){
+          echo "[OK] Template file present id={$t['id']} org={$t['org_id']}\n";
+        } else {
+          echo "[WARN] Template file missing id={$t['id']} expected=$p\n"; $missing++; }
+      }
+      if($checked===0) echo "[INFO] No templates to verify yet.\n"; else if($missing===0) echo "[OK] All sampled template files present ($checked checked).\n"; 
+    } catch(Throwable $e){ echo "[WARN] Could not enumerate templates for fs check: ".$e->getMessage()."\n"; }
+  }
+} catch(Throwable $e){ echo "[WARN] Templates checks error: ".$e->getMessage()."\n"; }

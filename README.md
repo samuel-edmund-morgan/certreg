@@ -368,6 +368,35 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
     - Формат: `{ ok:true, items:[ { id, name, filename, org_id?, org_code?, is_active, created_at } ] }`.
     - Якщо таблиця відсутня – `{ ok:true, items:[], note:"no_templates_table" }`.
    - Nginx: додано до allowlist (див. `docs/nginx/certreg.conf` блок `location ~ ^/api/(org_list|templates_list)\.php$`).
+ - `POST /api/template_create.php` – створення нового шаблону (фонового зображення) сертифіката.
+      - Формат запиту: `multipart/form-data`
+      - Поля:
+         * `name` (обовʼязково, ≤160 символів)
+         * `code` (опційно, якщо не вказано – автогенерується `T<ID>`; шаблон: `^[A-Za-z0-9_-]{2,60}$`)
+         * `org_id` (опційно тільки для admin; оператор ігнорує та використовує власну організацію; admin без `org_id` зараз отримує помилку `org_id_required` для явності)
+         * `template_file` (input name; JPG/JPEG/PNG/WEBP, 200..12000 px по ширині/висоті, ≤15MB)
+         * `_csrf` (стандартний CSRF токен)
+      - Валідації / коди помилок (`error`):
+         * `name_required`, `name_too_long`
+         * `org_id_required`, `bad_org_id`, `org_context_missing`
+         * `file_required`, `upload_error`, `upload_invalid`, `file_empty`, `file_too_large`
+         * `bad_ext`, `not_image`, `image_too_small`, `image_too_large`
+         * `bad_code` (regex не пройдений), `code_exists`
+         * `db` (внутрішня БД помилка), `file_store_failed`, `no_templates_table`
+      - Повертає: `{ ok:true, template:{ id, org_id, name, code, status:'active', filename, file_ext, file_hash, file_size, width, height, version } }`.
+      - Статус початково завжди `active`.
+      - Файлова структура: `files/templates/<org_id>/<template_id>/original.<ext>`; хеш SHA-256 збережено у `file_hash` для майбутньої перевірки цілісності.
+      - Безпека: код унікальний у межах організації (унікальність забезпечується перевіркою перед вставкою, fallback `T<ID>` гарантовано унікальний).
+      - Nginx: додано до POST адмінського блоку (оновлено `docs/nginx/certreg.conf`).
+      - Приклади:
+         ```bash
+         curl -X POST -b cookie.txt -F "name=Base Template" -F "template_file=@/path/bg.png" -F "_csrf=..." https://example.org/api/template_create.php
+         ```
+         Відповідь:
+         ```json
+         {"ok":true,"template":{"id":7,"org_id":3,"name":"Base Template","code":"T7","status":"active","filename":"bg.png","file_ext":"png","file_hash":"<sha256>","file_size":123456,"width":1600,"height":900,"version":1}}
+         ```
+      - Подальші кроки (Phase 1): `template_update`, `template_delete`, `template_toggle`, оновлений `templates_list` з метаданими та попередніми зображеннями (preview кеш).
 - `GET /api/status.php?cid=...` – перевірка статусу `{ h, revoked?, revoked_at?, revoke_reason?, valid_until }`.
 - `POST /api/bulk_action.php` – пакетні операції `revoke | unrevoke | delete`.
 - `GET /api/events.php?cid=...` – журнал подій.

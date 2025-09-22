@@ -21,7 +21,10 @@ return [
     // Base certificate background (operators may later pick org-specific / template-specific once implemented)
     'cert_template_path' => '/files/cert_template.jpg',
 
-    // === Canvas coordinates (client-side rendering only) ===
+    // === Canvas coordinates (client-side rendering only, LEGACY) ===
+    // NOTE: These global coords are a legacy fallback used by the issuance preview.
+    // Phase 1 templates feature stores per-template metadata (future step) that will supersede this array.
+    // Keep values here for backward compatibility until template_update + template coords UI lands.
     'coords' => [
         'name'   => ['x'=>600, 'y'=>420, 'size'=>28, 'angle'=>0],
         'id'     => ['x'=>600, 'y'=>445, 'size'=>20, 'angle'=>0],
