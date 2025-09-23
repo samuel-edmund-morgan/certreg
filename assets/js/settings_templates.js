@@ -35,7 +35,7 @@
       <td class="fs-12">${size}</td>
       <td class="fs-12">v${t.version}</td>
       <td>${status}</td>
-      <td class="tpl-actions flex gap-4">
+      <td class="tpl-actions col-actions">
         <a class="btn btn-xs btn-light" href="/template.php?id=${t.id}" title="Деталі" aria-label="Деталі шаблону ${t.id}">→</a>
       </td>
     </tr>`;

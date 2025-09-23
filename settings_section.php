@@ -174,7 +174,7 @@ switch($tab){
             .'<th>Розмір</th>'
             .'<th>Версія</th>'
             .'<th>Статус</th>'
-            .'<th>Дії</th>'
+            .'<th class="col-actions">Дії</th>'
         .'</tr></thead><tbody><tr><td colspan="7" class="text-center fs-13 text-muted">Завантаження...</td></tr></tbody></table></div>';
         echo '<div id="templatesSummary" class="fs-12 text-muted mt-8"></div>';
         echo '<div class="fs-12 text-muted mt-12">Операції: <strong>Редагувати</strong> – змінити назву/статус/фон; <strong>Фон</strong> – швидка заміна зображення; <strong>Toggle</strong> – активувати/вимкнути; <strong>Видалити</strong> – безповоротно (заборонено, якщо буде привʼязка до токенів).</div>';
