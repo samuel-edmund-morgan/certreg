@@ -443,7 +443,7 @@ try {
     // Status domain check
     if(in_array('status',$tplCols,true)){
       try {
-        $badStatus = $pdo->query("SELECT COUNT(*) FROM templates WHERE status NOT IN ('active','disabled')")->fetchColumn();
+  $badStatus = $pdo->query("SELECT COUNT(*) FROM templates WHERE status NOT IN ('active','inactive','archived')")->fetchColumn();
         if($badStatus>0) echo "[WARN] $badStatus templates have unknown status values.\n"; else echo "[OK] All template status values within expected domain.\n"; 
       } catch(Throwable $e){ echo "[WARN] Could not validate template status domain: ".$e->getMessage()."\n"; }
     }

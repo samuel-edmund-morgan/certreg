@@ -26,7 +26,14 @@
   function renderRow(t){
   const prev = t.preview_url ? `<img src="${esc(t.preview_url)}" alt="preview" class="tpl-prev-img" data-full="${esc(t.preview_url)}">` : '<span class="fs-11 text-muted">немає</span>';
     const size = fmtBytes(t.file_size)+'\n'+esc(t.width)+'×'+esc(t.height);
-    const status = t.status === 'active' ? '<span class="badge ok">active</span>' : '<span class="badge off">disabled</span>';
+    let statusLabel, statusBadgeCls;
+    switch(t.status){
+      case 'active': statusLabel='активний'; statusBadgeCls='badge-status-active'; break;
+      case 'inactive': statusLabel='неактивний'; statusBadgeCls='badge-status-inactive'; break;
+      case 'archived': statusLabel='архівований'; statusBadgeCls='badge-status-archived'; break;
+      default: statusLabel=esc(t.status||'?'); statusBadgeCls='badge-status-inactive';
+    }
+    const status = `<span class="badge ${statusBadgeCls}">${statusLabel}</span>`;
     const code = `<code>${esc(t.code||'')}</code>`;
     return `<tr data-id="${t.id}">
       <td>${t.id}</td>

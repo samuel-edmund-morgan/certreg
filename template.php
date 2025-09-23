@@ -38,9 +38,32 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
       $pdo->prepare('UPDATE templates SET name=?, updated_at=NOW() WHERE id=? LIMIT 1')->execute([$name,$id]);
       header('Location: template.php?id='.$id.'&msg=renamed'); exit;
     } elseif($action==='toggle') {
-      $st2=$pdo->prepare('SELECT status FROM templates WHERE id=? LIMIT 1');$st2->execute([$id]);$cur=$st2->fetchColumn(); if(!$cur){ header('Location: template.php?id='.$id.'&msg=nf'); exit; }
-      $new = ($cur==='active'?'disabled':'active');
-      $pdo->prepare('UPDATE templates SET status=?, updated_at=NOW() WHERE id=? LIMIT 1')->execute([$new,$id]);
+      $st2=$pdo->prepare('SELECT status FROM templates WHERE id=? LIMIT 1');
+      $st2->execute([$id]);
+      $cur=$st2->fetchColumn();
+      if($cur===false){ header('Location: template.php?id='.$id.'&msg=nf'); exit; }
+      $curNorm = trim(strtolower((string)$cur));
+      $changed = false; $newFinal = $curNorm;
+      if($curNorm === 'active'){
+        // Primary target domain uses 'disabled'; fallback to legacy 'inactive' if ENUM disallows
+        foreach(['disabled','inactive'] as $candidate){
+          try {
+            $up=$pdo->prepare('UPDATE templates SET status=?, updated_at=NOW() WHERE id=? LIMIT 1');
+            $up->execute([$candidate,$id]);
+            if($up->rowCount()>0){ $changed=true; $newFinal=$candidate; break; }
+            // If rowCount==0 it might be same value or rejected silently; try next candidate
+          } catch(Throwable $e){ /* try next candidate */ }
+        }
+      } elseif(in_array($curNorm,['disabled','inactive'],true)) {
+        try {
+          $up=$pdo->prepare('UPDATE templates SET status=?, updated_at=NOW() WHERE id=? LIMIT 1');
+          $up->execute(['active',$id]);
+          if($up->rowCount()>0){ $changed=true; $newFinal='active'; }
+        } catch(Throwable $e){ /* fall through */ }
+      } else {
+        header('Location: template.php?id='.$id.'&msg=badstatus'); exit;
+      }
+      if(!$changed){ header('Location: template.php?id='.$id.'&msg=badstatus'); exit; }
       header('Location: template.php?id='.$id.'&msg=toggled'); exit;
     } elseif($action==='replace') {
       if(!isset($_FILES['template_file']) || ($_FILES['template_file']['error']??UPLOAD_ERR_NO_FILE)===UPLOAD_ERR_NO_FILE){ header('Location: template.php?id='.$id.'&msg=nofile'); exit; }
@@ -84,7 +107,7 @@ $msg = $_GET['msg'] ?? '';
   <h1 class="mt-0">Шаблон #<?= htmlspecialchars($row['id']) ?></h1>
   <p class="fs-14 text-muted maxw-760">Управління окремим шаблоном. <a href="/settings.php?tab=templates" class="link-accent">← Повернутися до списку</a></p>
   <?php if($msg): ?><div class="mb-12 fs-13"><?php
-    $map=[ 'renamed'=>'Назву змінено','toggled'=>'Статус змінено','replaced'=>'Файл оновлено','deleted'=>'Видалено','badname'=>'Некоректна назва','badid'=>'ID не збігається','nofile'=>'Файл не надано','upload'=>'Помилка завантаження','invalid'=>'Невалідний upload','filesize'=>'Розмір файлу не підходить','badext'=>'Погане розширення','notimg'=>'Не зображення','dim'=>'Неприпустимі розміри','err'=>'Внутрішня помилка','unknown'=>'Невідома дія' ];
+  $map=[ 'renamed'=>'Назву змінено','toggled'=>'Статус змінено','replaced'=>'Файл оновлено','deleted'=>'Видалено','badname'=>'Некоректна назва','badid'=>'ID не збігається','nofile'=>'Файл не надано','upload'=>'Помилка завантаження','invalid'=>'Невалідний upload','filesize'=>'Розмір файлу не підходить','badext'=>'Погане розширення','notimg'=>'Не зображення','dim'=>'Неприпустимі розміри','badstatus'=>'Неможливо змінити статус (невідомий або заборонений)','err'=>'Внутрішня помилка','unknown'=>'Невідома дія' ];
     echo htmlspecialchars($map[$msg] ?? $msg);
   ?></div><?php endif; ?>
   <?php if($err==='db'): ?><div class="alert alert-error">Помилка БД.</div><?php else: ?>
@@ -93,7 +116,12 @@ $msg = $_GET['msg'] ?? '';
     <div>Орг</div><div class="mono"><?= (int)$row['org_id'] ?></div>
     <div>Назва</div><div class="mono"><?= htmlspecialchars($row['name']) ?></div>
     <div>Код</div><div class="mono"><code><?= htmlspecialchars($row['code']) ?></code></div>
-    <div>Статус</div><div><?= $row['status']==='active'?'<span class="badge ok">active</span>':'<span class="badge off">disabled</span>' ?></div>
+    <div>Статус</div><div><?php
+      $statusMap = [ 'active'=>['label'=>'активний','cls'=>'badge-status-active'], 'inactive'=>['label'=>'неактивний','cls'=>'badge-status-inactive'], 'archived'=>['label'=>'архівований','cls'=>'badge-status-archived'] ];
+      $s = strtolower(trim($row['status']));
+      $m = $statusMap[$s] ?? ['label'=>htmlspecialchars($row['status']), 'cls'=>'badge-status-inactive'];
+      echo '<span class="badge '.$m['cls'].'">'.$m['label'].'</span>';
+    ?></div>
     <div>Розмір</div><div class="mono"><?= htmlspecialchars($row['file_size']).' B, '.$row['width'].'×'.$row['height'] ?></div>
     <div>Файл</div><div class="mono"><?= htmlspecialchars($row['filename']) ?> (.<?= htmlspecialchars($row['file_ext']) ?>)</div>
     <div>Версія</div><div class="mono">v<?= (int)$row['version'] ?></div>
@@ -114,12 +142,16 @@ $msg = $_GET['msg'] ?? '';
     </label>
     <button class="btn btn-primary" type="submit">Змінити назву</button>
   </form>
+  <?php if($s!=='archived'): ?>
   <form method="post" class="form mb-12 d-inline">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
     <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
     <input type="hidden" name="action" value="toggle">
-    <button class="btn btn-light" type="submit"><?= $row['status']==='active'?'Вимкнути':'Активувати' ?></button>
+    <button class="btn btn-light" type="submit"><?= $s==='active'?'Вимкнути':'Активувати' ?></button>
   </form>
+  <?php else: ?>
+    <span class="fs-12 text-muted d-inline-block mb-12">Архівований шаблон неможливо перемкнути.</span>
+  <?php endif; ?>
   <form method="post" class="form mb-12" enctype="multipart/form-data">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
     <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
