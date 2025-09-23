@@ -37,10 +37,6 @@
       <td>${status}</td>
       <td class="tpl-actions flex gap-4">
         <a class="btn btn-xs btn-light" href="/template.php?id=${t.id}" title="Деталі" aria-label="Деталі шаблону ${t.id}">→</a>
-        <button class="btn btn-xs btn-secondary tpl-toggle" title="Toggle active">Toggle</button>
-        <button class="btn btn-xs btn-warning tpl-edit" title="Edit meta">Редагувати</button>
-        <button class="btn btn-xs btn-accent tpl-replace" title="Replace file">Фон</button>
-        <button class="btn btn-xs btn-danger tpl-del" title="Delete">Видалити</button>
       </td>
     </tr>`;
   }
@@ -68,46 +64,7 @@
     });
   }
 
-  async function toggleTemplate(id, btn){
-    btn.disabled=true; const fd=new FormData(); fd.append('_csrf', currentCsrf()); fd.append('id', id);
-    try { const r= await fetch('/api/template_toggle.php',{method:'POST',credentials:'same-origin',body:fd}); const j= await r.json(); if(j.ok){ loadList(); } else { alert('Помилка: '+(j.error||'')); btn.disabled=false; } } catch(e){ btn.disabled=false; }
-  }
-  async function deleteTemplate(id, btn){
-    if(!confirm('Видалити шаблон #'+id+'?')) return;
-    btn.disabled=true; const fd=new FormData(); fd.append('_csrf', currentCsrf()); fd.append('id', id);
-    try { const r= await fetch('/api/template_delete.php',{method:'POST',credentials:'same-origin',body:fd}); const j= await r.json(); if(j.ok){ loadList(); } else { alert('Помилка: '+(j.error||'')); btn.disabled=false; } } catch(e){ btn.disabled=false; }
-  }
-  function openEditDialog(row){
-    const id=row.getAttribute('data-id');
-    const name=row.querySelector('td:nth-child(3) .fw-600')?.textContent||'';
-    const status=row.querySelector('td:nth-child(6) .badge')?.classList.contains('ok')?'active':'disabled';
-    const dlg=document.createElement('dialog');
-    dlg.className='tpl-edit-dialog';
-    dlg.innerHTML=`<form method="dialog" class="form tpl-edit-form">\n<h3 class="mt-0 mb-8">Редагувати шаблон #${id}</h3>\n<label>Назва<br><input type="text" name="name" value="${esc(name)}" maxlength="160" required></label>\n<label>Статус<br><select name="status"><option value="active" ${status==='active'?'selected':''}>active</option><option value="disabled" ${status==='disabled'?'selected':''}>disabled</option></select></label>\n<div class="flex gap-8 mt-12">\n<button class="btn btn-primary" value="save">Зберегти</button>\n<button class="btn btn-light" value="cancel">Скасувати</button>\n</div>\n</form>`;
-    document.body.appendChild(dlg); dlg.showModal();
-    dlg.addEventListener('close', async ()=>{
-      if(dlg.returnValue==='save'){
-        const fd=new FormData(); fd.append('_csrf', currentCsrf()); fd.append('id', id); const form=dlg.querySelector('form'); fd.append('name', form.name.value.trim()); fd.append('status', form.status.value);
-        try { const r= await fetch('/api/template_update.php',{method:'POST',credentials:'same-origin',body:fd}); const j= await r.json(); if(j.ok){ loadList(); } else { alert('Помилка: '+(j.error||'')); } } catch(e){ alert('Мережа'); }
-      }
-      dlg.remove();
-    });
-  }
-  function openReplaceDialog(row){
-    const id=row.getAttribute('data-id');
-    const dlg=document.createElement('dialog');
-    dlg.className='tpl-replace-dialog';
-    dlg.innerHTML=`<form method="dialog" class="form tpl-replace-form" enctype="multipart/form-data">\n<h3 class="mt-0 mb-8">Заміна фону #${id}</h3>\n<input type="file" name="template_file" accept="image/jpeg,image/png,image/webp" required>\n<p class="fs-12 text-muted mt-4">JPG/PNG/WEBP ≤15MB; розмір 200..12000px.</p>\n<div class="flex gap-8 mt-12">\n<button class="btn btn-primary" value="save">Замінити</button>\n<button class="btn btn-light" value="cancel">Скасувати</button>\n</div>\n</form>`;
-    document.body.appendChild(dlg); dlg.showModal();
-    dlg.addEventListener('close', async ()=>{
-      if(dlg.returnValue==='save'){
-        const form=dlg.querySelector('form'); if(!form.template_file.files.length){ dlg.remove(); return; }
-        const fd=new FormData(); fd.append('_csrf', currentCsrf()); fd.append('id', id); fd.append('template_file', form.template_file.files[0]);
-        try { const r= await fetch('/api/template_update.php',{method:'POST',credentials:'same-origin',body:fd}); const j= await r.json(); if(j.ok){ loadList(); } else { alert('Помилка: '+(j.error||'')); } } catch(e){ alert('Мережа'); }
-      }
-      dlg.remove();
-    });
-  }
+  // Removed toggle/edit/replace/delete functionality; management now only via detail page.
 
   function onTableClick(e){
     // Preview click (non-button)
@@ -123,12 +80,7 @@
       dlg.addEventListener('close', ()=> dlg.remove());
       return;
     }
-    const btn=e.target.closest('button'); if(!btn) return;
-    const row=btn.closest('tr[data-id]'); if(!row) return; const id=row.getAttribute('data-id');
-    if(btn.classList.contains('tpl-toggle')){ toggleTemplate(id, btn); }
-    else if(btn.classList.contains('tpl-del')){ deleteTemplate(id, btn); }
-    else if(btn.classList.contains('tpl-edit')){ openEditDialog(row); }
-    else if(btn.classList.contains('tpl-replace')){ openReplaceDialog(row); }
+    // All actionable buttons removed (only arrow link remains which is a normal anchor)
   }
 
   async function loadOrganizationsForAdmin(){

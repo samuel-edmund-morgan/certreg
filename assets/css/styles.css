@@ -573,7 +573,7 @@ main{flex:1}
   .btn-xs{padding:4px 8px;font-size:12px;border-radius:8px}
   /* Template tiny preview thumbnails */
   .tpl-prev{width:32px;min-width:32px;text-align:center}
-  .tpl-prev-img{width:12px;height:12px;object-fit:cover;border:1px solid var(--border);border-radius:3px;display:inline-block;image-rendering:-webkit-optimize-contrast;cursor:zoom-in;box-shadow:0 0 0 1px #fff;}
+  .tpl-prev-img{width:30px;height:30px;object-fit:cover;border:1px solid var(--border);border-radius:3px;display:inline-block;image-rendering:-webkit-optimize-contrast;cursor:zoom-in;box-shadow:0 0 0 1px #fff;}
   .tpl-prev-img:hover{outline:2px solid var(--accent,#2563eb);}
   /* Larger preview dialog image */
   .tpl-big-prev{max-width:90vw;max-height:80vh;display:block;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.25);}
