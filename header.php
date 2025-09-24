@@ -2,7 +2,6 @@
 // Central header include: sets strict CSP that forbids inline scripts.
 // To keep functionality (e.g. CSRF token access for fetch) we expose the token via a <meta> tag.
 // Any previous inline script usage (like window.__CSRF_TOKEN assignment) must be removed.
-require_once __DIR__.'/config.php';
 // Allow header to render and send security headers even if DB is temporarily unavailable
 if (!defined('ALLOW_DB_FAIL_SOFT')) { define('ALLOW_DB_FAIL_SOFT', true); }
 require_once __DIR__.'/auth.php'; // ensure csrf_token() & session org context available
@@ -50,7 +49,23 @@ try {
 if (!headers_sent()) {
   // Allow inline styles (style attributes) needed for dynamic color swatches in admin tables.
   // Scripts remain strictly non-inline.
-  header('Content-Security-Policy: default-src \'self\' blob:; script-src \'self\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data:; font-src \'self\'; object-src \'none\'; base-uri \'none\'; frame-ancestors \'none\'; form-action \'self\'; connect-src \'self\'; upgrade-insecure-requests');
+  // Emit multiple short CSP headers (combined by browsers) to avoid line folding/wrapping by proxies/servers.
+  $cspDirectives = [
+    "default-src 'self' blob:",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "connect-src 'self'",
+    'upgrade-insecure-requests',
+  ];
+  foreach ($cspDirectives as $dir) {
+    header('Content-Security-Policy: ' . $dir, false);
+  }
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: DENY');
   header('Referrer-Policy: no-referrer');
@@ -126,7 +141,6 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
 <body<?= isset($isAdminPage) && $isAdminPage ? ' class="admin-page"' : '' ?> data-coords='<?= $coordsJson ?>' data-org='<?= $orgCode ?>' data-orgname='<?= htmlspecialchars($cfg['site_name'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>' data-inf='<?= $infSent ?>' data-canon='<?= $canonUrl ?>' data-template='<?= $tplPath ?>' data-test='<?= (isset($_GET['test_mode']) && $_GET['test_mode'] === '1') ? '1' : '0' ?>'>
 <header class="topbar">
   <div class="topbar__inner">
-    <?php require_once __DIR__.'/auth.php'; ?>
     <?php
       $rawSiteName = (string)($cfg['site_name'] ?? '');
       // Replace literal backslash + n sequences with <br> for display only.
