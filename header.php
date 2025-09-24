@@ -47,13 +47,11 @@ try {
 
 // --- Security headers (no inline scripts) ---
 if (!headers_sent()) {
-  // Allow inline styles (style attributes) needed for dynamic color swatches in admin tables.
-  // Scripts remain strictly non-inline.
-  // Emit multiple short CSP headers (combined by browsers) to avoid line folding/wrapping by proxies/servers.
+  // Emit multiple short CSP headers (combined by browsers) to avoid line folding/wrapping by servers.
   $cspDirectives = [
     "default-src 'self' blob:",
     "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",
     "object-src 'none'",

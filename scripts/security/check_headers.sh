@@ -9,7 +9,7 @@ ENDPOINTS=${ENDPOINTS:-"/verify.php"}
 # Extra flags for curl (e.g., -k for self-signed HTTPS)
 CURL_FLAGS=${CURL_FLAGS:-}
 
-# Expected headers (name-insensitive, value exact match)
+# Expected headers (name-insensitive). For CSP, directives may be split across multiple lines; we will aggregate.
 EXPECTED=$(cat <<'EOF'
 Content-Security-Policy: default-src 'self' blob:; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests
 X-Content-Type-Options: nosniff
@@ -59,7 +59,29 @@ for ep in $ENDPOINTS; do
       fail=1
       continue
     fi
-    # Check if any actual header value matches exactly (ignoring surrounding whitespace)
+    # For CSP, aggregate multiple header values into a single value with '; ' separators and compare to expected.
+    if [[ ${exp_name,,} == "content-security-policy" ]]; then
+      # Extract values, strip the header names
+      values=()
+      for actual in "${actual_lines[@]}"; do
+        v=$(echo "$actual" | sed 's/^[^:]*:[[:space:]]*//' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+        values+=("$v")
+      done
+      # Join with '; ' and also allow that each value might itself contain semicolons (rare when split per directive). Normalize to single spaces.
+      combined=$(printf '%s; ' "${values[@]}")
+      combined=${combined%%; } # trim trailing
+      # Normalize internal whitespace sequences to a single space
+      combined=$(echo "$combined" | tr -s ' ')
+      ev=$(echo "$exp_value" | tr -s ' ')
+      if [[ "$combined" != "$ev" ]]; then
+        echo "[headers][ERR] Mismatch on $ep:"
+        echo "  expected: $exp_name: $exp_value"
+        echo "  actual:   $exp_name: $combined"
+        fail=1
+      fi
+      continue
+    fi
+    # For other headers, require exact match of at least one occurrence
     found_match=0
     first_actual="${actual_lines[0]}"
     first_actual_val=$(echo "$first_actual" | sed 's/^[^:]*:[[:space:]]*//' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
