@@ -1,10 +1,10 @@
 <?php
-// Швидке перемикання статусу шаблону (active <-> disabled)
+// Швидке перемикання статусу шаблону (active <-> inactive)
 // POST /api/template_toggle.php
 // Поля: id, _csrf
 // Відповідь: { ok:true, template:{...} } або { ok:false, error:"code" }
 // Коди помилок: bad_id, not_found, org_context_missing, forbidden, bad_status_current, db, no_templates_table
-// Примітка: ігнорує статуси поза доменом (active|disabled) — якщо шаблон має інший status (наприклад legacy 'inactive'/'archived') повертає bad_status_current
+// Примітка: працює тільки для статусів 'active' або 'inactive'. 'archived' – не змінюється (bad_status_current).
 
 require_once __DIR__.'/../auth.php';
 require_login();
@@ -36,12 +36,10 @@ if(!$isAdmin){
     if((int)$tpl['org_id'] !== (int)$sessionOrg) t_fail('forbidden',403);
 }
 
-$current = $tpl['status'];
-if(!in_array($current,['active','disabled'],true)){
-    // Legacy / unsupported state (inactive/archived) — require explicit update via template_update
-    t_fail('bad_status_current');
-}
-$next = $current === 'active' ? 'disabled' : 'active';
+$current = strtolower(trim($tpl['status']));
+if($current==='archived') t_fail('bad_status_current');
+if(!in_array($current,['active','inactive'],true)) t_fail('bad_status_current');
+$next = $current === 'active' ? 'inactive' : 'active';
 
 try {
     $up=$pdo->prepare('UPDATE templates SET status=?, updated_at=NOW() WHERE id=? LIMIT 1');

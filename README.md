@@ -208,7 +208,7 @@ INSERT INTO creds (username, passhash, `role`) VALUES ('admin','<HASH>', 'admin'
 Надає базове керування шаблонами:
 * Створення: назва, опціонально `code` (інакше `T<ID>`), файл зображення (JPG/PNG/WEBP) – одразу генерується `preview.jpg`.
 * Список із крихітним превʼю (12×12) – кешований JPEG (`preview.jpg`) для швидкого перегляду без завантаження оригіналу (клік відкриває діалог з великим превʼю).
-* Дії у рядку: `→` (перехід на детальну сторінку `template.php?id=...`), `Toggle` (active/disabled), `Редагувати` (назва + статус), `Фон` (швидка заміна зображення з auto `version++`), `Видалити` (hard delete; майбутня привʼязка до токенів блокуватиме за потреби).
+* Дії у рядку (історично): `→` (перейти на `template.php?id=...`). Інші дії перенесені на сторінку деталей. Toggle тепер: `active ↔ inactive` (статус `archived` не перемикається).
 * Версія (`version`) збільшується лише при заміні файла.
 * Кешування вкладок працює разом із оновленням списку (`settings_templates.js`).
 Адмін бачить селектор організації (фільтр/створення для конкретної), оператор – лише свою.
@@ -423,7 +423,7 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
       - Поля (multipart/form-data або application/x-www-form-urlencoded якщо без файлу):
          * `id` (обовʼязково)
          * `name` (опційно; якщо передано — перевірка як у create, ≤160)
-         * `status` (опційно; `active|disabled`)
+      * `status` (опційно; `active|inactive|archived`)
          * `template_file` (опційно; замінює фон — ті самі обмеження: ext JPG/PNG/WEBP, 200..12000 px, ≤15MB, оновлює `file_*`, `width/height`, `hash`)
          * `_csrf`
       - Іммʼютабельне: `code`, `org_id` (для оператора). Адмін не змінює org через цей endpoint.
@@ -433,7 +433,7 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
       - Nginx: додано до POST admin API блоку.
       - Приклад:
          ```bash
-         curl -X POST -b cookie.txt -F "id=7" -F "name=Updated Template" -F "status=disabled" -F "_csrf=..." https://example.org/api/template_update.php
+         curl -X POST -b cookie.txt -F "id=7" -F "name=Updated Template" -F "status=inactive" -F "_csrf=..." https://example.org/api/template_update.php
          ```
          Зі зміною фонового файлу:
          ```bash
@@ -444,9 +444,9 @@ ALTER TABLE tokens ADD UNIQUE KEY uq_tokens_cid (cid);
          {"ok":true,"template":{"id":7,"org_id":3,"name":"Updated Template","status":"active","version":2,...}}
          ```
  - `POST /api/template_delete.php` – видалення (hard delete) шаблону.
- - `POST /api/template_toggle.php` – швидка зміна статусу `active ↔ disabled`.
+ - `POST /api/template_toggle.php` – швидка зміна статусу `active ↔ inactive` (якщо `archived` – повертає `bad_status_current`).
          - Поля: `id`, `_csrf`.
-         - Умова: Працює лише якщо поточний статус у домені `active|disabled` (legacy значення `inactive|archived` вимагають спершу нормалізації через `template_update`).
+         - Умова: Працює лише якщо поточний статус у домені `active|inactive`; `archived` повертає `bad_status_current`.
          - Логіка: читає поточний статус → встановлює протилежний → повертає оновлений обʼєкт шаблону.
          - Коди помилок: `bad_id`, `not_found`, `org_context_missing`, `forbidden`, `bad_status_current` (якщо статус поза `active|disabled`), `db`, `no_templates_table`.
          - Відповідь: `{ ok:true, template:{ ... } }` (той самий набір полів що в `template_update`).

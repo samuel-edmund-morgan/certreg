@@ -48,9 +48,9 @@ $files2=[ 'template_file'=>[ 'name'=>'updated.png','type'=>'image/png','tmp_name
 $out2 = call_api_post('api/template_update.php',[ 'id'=>$tplId,'name'=>'Lifecycle Test Updated','_csrf'=>csrf_hdr() ], $files2);
 $j2=json_decode($out2,true); tassert($j2 && $j2['ok']===true,'update ok'); tassert($j2['template']['version']==2,'version incremented');
 
-// 4. TOGGLE (active -> disabled -> active)
+// 4. TOGGLE (active -> inactive -> active)
 $out3 = call_api_post('api/template_toggle.php',[ 'id'=>$tplId,'_csrf'=>csrf_hdr() ]);
-$j3=json_decode($out3,true); tassert($j3['ok']===true && $j3['template']['status']==='disabled','toggle to disabled');
+$j3=json_decode($out3,true); tassert($j3['ok']===true && $j3['template']['status']==='inactive','toggle to inactive');
 $out4 = call_api_post('api/template_toggle.php',[ 'id'=>$tplId,'_csrf'=>csrf_hdr() ]);
 $j4=json_decode($out4,true); tassert($j4['ok']===true && $j4['template']['status']==='active','toggle back to active');
 

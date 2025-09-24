@@ -17,9 +17,9 @@
 - [x] Extend `templates_list.php` – full metadata + minimal mode
 
 ### 1.3 UI & Editor
-- [ ] Templates tab in `settings.php`
-- [ ] `template.php` editor page (canvas + draggable fields)
-- [ ] JS coords editor (drag/drop, property panel, save)
+- [x] Templates tab in `settings.php`
+- [x] `template.php` detail page (basic manage: rename/toggle/replace/delete)
+- [ ] JS coords editor (canvas + drag/drop, property panel, save)
 - [x] Preview generation pipeline
 
 ### 1.4 Issuance Integration
@@ -27,7 +27,7 @@
 - [ ] Persist `template_id` with token
 - [ ] Org ownership validation
 - [ ] Coordinate-based render (image/PDF step)
-- [ ] README section: Templates
+- [x] README section: Templates
 
 ---
 ## Phase 2: Issuance Enhancements (High Priority)
@@ -90,7 +90,7 @@
 - [ ] Central validation helpers (lengths, patterns, file checks)
 - [ ] Query/index optimization pass
 - [ ] Architecture / security / API docs expansion
-- [ ] Basic smoke & unit tests (issuance, template CRUD, verification)
+- [x] Basic smoke & unit tests (template CRUD)
 
 ---
 ## Data Structures (Draft)

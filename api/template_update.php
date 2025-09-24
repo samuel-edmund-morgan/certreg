@@ -47,11 +47,11 @@ if(array_key_exists('name',$_POST)){
     if($name !== $row['name']){ $updates[]='name=?'; $params[]=$name; }
 }
 
-// status
+// status (active|inactive|archived)
 if(array_key_exists('status',$_POST)){
-    $status = trim($_POST['status']);
-    if(!in_array($status,['active','disabled'],true)) jfail('bad_status');
-    if($status !== $row['status']){ $updates[]='status=?'; $params[]=$status; }
+    $status = trim(strtolower($_POST['status']));
+    if(!in_array($status,['active','inactive','archived'],true)) jfail('bad_status');
+    if($status !== strtolower($row['status'])){ $updates[]='status=?'; $params[]=$status; }
 }
 
 // Файл (опційно)

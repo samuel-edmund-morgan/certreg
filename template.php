@@ -43,27 +43,12 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
       $cur=$st2->fetchColumn();
       if($cur===false){ header('Location: template.php?id='.$id.'&msg=nf'); exit; }
       $curNorm = trim(strtolower((string)$cur));
-      $changed = false; $newFinal = $curNorm;
-      if($curNorm === 'active'){
-        // Primary target domain uses 'disabled'; fallback to legacy 'inactive' if ENUM disallows
-        foreach(['disabled','inactive'] as $candidate){
-          try {
-            $up=$pdo->prepare('UPDATE templates SET status=?, updated_at=NOW() WHERE id=? LIMIT 1');
-            $up->execute([$candidate,$id]);
-            if($up->rowCount()>0){ $changed=true; $newFinal=$candidate; break; }
-            // If rowCount==0 it might be same value or rejected silently; try next candidate
-          } catch(Throwable $e){ /* try next candidate */ }
-        }
-      } elseif(in_array($curNorm,['disabled','inactive'],true)) {
-        try {
-          $up=$pdo->prepare('UPDATE templates SET status=?, updated_at=NOW() WHERE id=? LIMIT 1');
-          $up->execute(['active',$id]);
-          if($up->rowCount()>0){ $changed=true; $newFinal='active'; }
-        } catch(Throwable $e){ /* fall through */ }
-      } else {
-        header('Location: template.php?id='.$id.'&msg=badstatus'); exit;
-      }
-      if(!$changed){ header('Location: template.php?id='.$id.'&msg=badstatus'); exit; }
+      if($curNorm==='archived'){ header('Location: template.php?id='.$id.'&msg=badstatus'); exit; }
+      if($curNorm!=='active' && $curNorm!=='inactive'){ header('Location: template.php?id='.$id.'&msg=badstatus'); exit; }
+      $next = ($curNorm==='active') ? 'inactive' : 'active';
+      if($next===$curNorm){ header('Location: template.php?id='.$id.'&msg=toggled'); exit; }
+      $up=$pdo->prepare('UPDATE templates SET status=?, updated_at=NOW() WHERE id=? LIMIT 1');
+      $up->execute([$next,$id]);
       header('Location: template.php?id='.$id.'&msg=toggled'); exit;
     } elseif($action==='replace') {
       if(!isset($_FILES['template_file']) || ($_FILES['template_file']['error']??UPLOAD_ERR_NO_FILE)===UPLOAD_ERR_NO_FILE){ header('Location: template.php?id='.$id.'&msg=nofile'); exit; }

@@ -8,23 +8,23 @@
   function qs(sel,ctx=document){return ctx.querySelector(sel);}  
 
   async function loadList(){
-    if(!tbody) return;
-    tbody.innerHTML='<tr><td colspan="7" class="text-center fs-13 text-muted">Завантаження...</td></tr>';
+  if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="8" class="text-center fs-13 text-muted">Завантаження...</td></tr>';
     try {
       const params = new URLSearchParams();
       if(orgSelect && orgSelect.value) params.set('org_id', orgSelect.value);
       const r = await fetch('/api/templates_list.php'+(params.toString()?'?'+params.toString():''), {credentials:'same-origin'});
       if(!r.ok) throw new Error('HTTP '+r.status);
       const j = await r.json();
-      if(!j.ok){ tbody.innerHTML='<tr><td colspan="7" class="text-center text-danger">Помилка</td></tr>'; return; }
-      if(!j.items.length){ tbody.innerHTML='<tr><td colspan="7" class="text-center fs-13 text-muted">Немає шаблонів</td></tr>'; summary.textContent='0'; return; }
+  if(!j.ok){ tbody.innerHTML='<tr><td colspan="8" class="text-center text-danger">Помилка</td></tr>'; return; }
+  if(!j.items.length){ tbody.innerHTML='<tr><td colspan="8" class="text-center fs-13 text-muted">Немає шаблонів</td></tr>'; summary.textContent='0'; return; }
       tbody.innerHTML = j.items.map(renderRow).join('');
       summary.textContent = 'Всього: '+j.items.length;
     } catch(err){ console.error(err); tbody.innerHTML='<tr><td colspan="7" class="text-center text-danger">Помилка завантаження</td></tr>'; }
   }
 
   function renderRow(t){
-  const prev = t.preview_url ? `<img src="${esc(t.preview_url)}" alt="preview" class="tpl-prev-img" data-full="${esc(t.preview_url)}">` : '<span class="fs-11 text-muted">немає</span>';
+    const prev = t.preview_url ? `<img src="${esc(t.preview_url)}" alt="preview" class="tpl-prev-img" data-full="${esc(t.preview_url)}">` : '<span class="fs-11 text-muted">немає</span>';
     const size = fmtBytes(t.file_size)+'\n'+esc(t.width)+'×'+esc(t.height);
     let statusLabel, statusBadgeCls;
     switch(t.status){
@@ -38,7 +38,8 @@
     return `<tr data-id="${t.id}">
       <td>${t.id}</td>
       <td class="tpl-prev">${prev}</td>
-      <td><div class="fw-600">${esc(t.name)}</div><div class="fs-12 text-muted">${code}</div></td>
+  <td class="mono" title="${esc(t.name)}">${code}</td>
+  <td class="mono fs-12">${t.org_code?esc(t.org_code):'<span class="text-muted">—</span>'}</td>
       <td class="fs-12">${size}</td>
       <td class="fs-12">v${t.version}</td>
       <td>${status}</td>

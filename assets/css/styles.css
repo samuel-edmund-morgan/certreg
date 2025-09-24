@@ -598,3 +598,5 @@ main{flex:1}
 #operatorsTable th.col-status{width:120px}
 #operatorsTable th.col-actions{width:260px}
 #templatesTable th.col-actions{width:60px}
+#templatesTable th.col-code{width:140px}
+#templatesTable th.col-org{width:80px}

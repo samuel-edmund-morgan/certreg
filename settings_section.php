@@ -170,12 +170,13 @@ switch($tab){
         echo '<div class="table-wrap mt-20"><table class="table" id="templatesTable"><thead><tr>'
             .'<th>ID</th>'
             .'<th>Превʼю</th>'
-            .'<th>Назва / Код</th>'
+            .'<th class="col-code">Код</th>'
+            .'<th class="col-org">Орг.</th>'
             .'<th>Розмір</th>'
             .'<th>Версія</th>'
             .'<th>Статус</th>'
             .'<th class="col-actions">Дії</th>'
-        .'</tr></thead><tbody><tr><td colspan="7" class="text-center fs-13 text-muted">Завантаження...</td></tr></tbody></table></div>';
+        .'</tr></thead><tbody><tr><td colspan="8" class="text-center fs-13 text-muted">Завантаження...</td></tr></tbody></table></div>';
         echo '<div id="templatesSummary" class="fs-12 text-muted mt-8"></div>';
         echo '<div class="fs-12 text-muted mt-12">Операції: <strong>Редагувати</strong> – змінити назву/статус/фон; <strong>Фон</strong> – швидка заміна зображення; <strong>Toggle</strong> – активувати/вимкнути; <strong>Видалити</strong> – безповоротно (заборонено, якщо буде привʼязка до токенів).</div>';
         echo '<script src="/assets/js/settings_templates.js" defer></script>';
