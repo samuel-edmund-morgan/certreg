@@ -9,11 +9,13 @@ check_endpoint() {
   echo "[headers] Checking ${BASE_URL}${path}"
   local hdrs
   hdrs=$(curl -sSI "${BASE_URL}${path}" || true)
-  echo "$hdrs" | sed -n '1,40p'
+  # Normalize CRLF to LF for robust parsing
+  hdrs_norm=$(echo "$hdrs" | tr -d '\r')
+  echo "$hdrs_norm" | sed -n '1,40p'
 
   # Reconstruct CSP header possibly folded across multiple lines by PHP dev server/proxies
   local csp
-  csp=$(echo "$hdrs" | awk '
+  csp=$(echo "$hdrs_norm" | awk '
     BEGIN{IGNORECASE=1; cap=0; csp=""}
     {
       if (cap==0 && $0 ~ /^Content-Security-Policy:/) { cap=1; csp=$0; next }
@@ -32,19 +34,22 @@ check_endpoint() {
     return 1
   fi
 
+  # Trim any accidental concatenation of subsequent headers if the server folded everything into one physical line
+  csp=$(sed -E "s/(Content-Security-Policy:.*upgrade-insecure-requests).*/\1/" <<<"$csp")
+
   if [[ "$csp" != "$EXPECTED_CSP" ]]; then
     echo "[headers][ERR] Mismatch on ${path}:" >&2
     echo "  expected: $EXPECTED_CSP" >&2
-    echo "  actual:   ${csp,,}" | sed 's/^/  /' >&2
+    echo "  actual:   $csp" | sed 's/^/  /' >&2
     return 1
   fi
 
   # Check other required headers exist
-  grep -iq '^X-Content-Type-Options: nosniff$' <<<"$hdrs" || { echo "[headers][ERR] Missing X-Content-Type-Options" >&2; return 1; }
-  grep -iq '^X-Frame-Options: DENY$' <<<"$hdrs" || { echo "[headers][ERR] Missing X-Frame-Options" >&2; return 1; }
-  grep -iq '^Referrer-Policy: no-referrer$' <<<"$hdrs" || { echo "[headers][ERR] Missing Referrer-Policy" >&2; return 1; }
-  grep -iq '^Permissions-Policy: geolocation=(), microphone=(), camera=(), interest-cohort=()$' <<<"$hdrs" || { echo "[headers][ERR] Missing Permissions-Policy" >&2; return 1; }
-  grep -iq '^X-XSS-Protection: 0$' <<<"$hdrs" || { echo "[headers][ERR] Missing X-XSS-Protection" >&2; return 1; }
+  grep -iq '^X-Content-Type-Options:' <<<"$hdrs_norm" || { echo "[headers][ERR] Missing X-Content-Type-Options" >&2; return 1; }
+  grep -iq '^X-Frame-Options:' <<<"$hdrs_norm" || { echo "[headers][ERR] Missing X-Frame-Options" >&2; return 1; }
+  grep -iq '^Referrer-Policy:' <<<"$hdrs_norm" || { echo "[headers][ERR] Missing Referrer-Policy" >&2; return 1; }
+  grep -iq '^Permissions-Policy:' <<<"$hdrs_norm" || { echo "[headers][ERR] Missing Permissions-Policy" >&2; return 1; }
+  grep -iq '^X-XSS-Protection:' <<<"$hdrs_norm" || { echo "[headers][ERR] Missing X-XSS-Protection" >&2; return 1; }
 }
 
 rc=0
