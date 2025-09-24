@@ -87,6 +87,13 @@ jobs:
             INDEX idx_event (event_type),
             INDEX idx_created (created_at)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+          -- Ensure composite index for better chronological queries by cid (portable way)
+          SET @exists := (
+            SELECT COUNT(1) FROM INFORMATION_SCHEMA.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'token_events' AND INDEX_NAME = 'idx_token_events_cid_created_at'
+          );
+          SET @sql := IF(@exists=0, 'CREATE INDEX idx_token_events_cid_created_at ON token_events(cid, created_at);', 'SELECT 1');
+          PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
           SQL
 
       - name: Prepare config.php
