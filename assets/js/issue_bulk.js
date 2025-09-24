@@ -261,6 +261,14 @@
           r.canonUrl = CANON_URL;
           logBulk('register.fetch', {id: r.id, cid: r.cid});
           const reqPayload = {cid, v:3, h:r.h, date, valid_until:validUntil, extra_info: r.extra || effectiveExtra};
+          // Додамо template_id якщо обрано у bulk селекті
+          (function(){
+            try {
+              const sel = document.getElementById('bulkTemplateSelect');
+              const val = sel && sel.value ? Number(sel.value) : null;
+              if(val){ reqPayload.template_id = val; }
+            } catch(_e){}
+          })();
           let res, js, textSnippet='';
           try {
             const ctrl = new AbortController();
@@ -614,7 +622,8 @@
   // Timeout fallback in case neither onload nor onerror fires
   setTimeout(flush, 1500);
   try {
-    const tpl = (document.body && document.body.dataset && document.body.dataset.template) ? document.body.dataset.template : '/files/cert_template.jpg';
+    const override = (typeof window!=='undefined' && window.__ISSUE_TEMPLATE_OVERRIDE) ? window.__ISSUE_TEMPLATE_OVERRIDE : null;
+    const tpl = override || ((document.body && document.body.dataset && document.body.dataset.template) ? document.body.dataset.template : '/files/cert_template.jpg');
     bulkBgImg.src = tpl || '/files/cert_template.jpg';
   } catch(_e){ bulkBgImg.src = '/files/cert_template.jpg'; }
   }

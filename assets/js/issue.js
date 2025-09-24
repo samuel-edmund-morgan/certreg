@@ -148,7 +148,12 @@
     }
     // Register (no PII)
   const csrf = window.__CSRF_TOKEN || document.querySelector('meta[name="csrf"]')?.content || '';
-  const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify({cid:cid, v:3, h:h, date:date, valid_until:validUntil, extra_info: extra || null, org_code: ORG})});
+  // Передаємо опціональний template_id якщо обрано
+  const tplSelect = document.getElementById('templateSelect');
+  const templateId = (tplSelect && tplSelect.value) ? Number(tplSelect.value) : null;
+  const payload = {cid:cid, v:3, h:h, date:date, valid_until:validUntil, extra_info: extra || null, org_code: ORG};
+  if(templateId){ payload.template_id = templateId; }
+  const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify(payload)});
     if(!res.ok){
       alert('Помилка реєстрації: '+res.status);
       return;
@@ -228,10 +233,11 @@
   }
   let bgImage = new Image();
   bgImage.onload = ()=>{ renderAll(); };
-  // Use configurable template path exposed via <body data-template> (falls back to default)
+  // Use configurable template path exposed via <body data-template> or override (falls back to default)
   (function(){
     try {
-      const tpl = (document.body && document.body.dataset && document.body.dataset.template) ? document.body.dataset.template : '/files/cert_template.jpg';
+      const override = (typeof window!=='undefined' && window.__ISSUE_TEMPLATE_OVERRIDE) ? window.__ISSUE_TEMPLATE_OVERRIDE : null;
+      const tpl = override || ((document.body && document.body.dataset && document.body.dataset.template) ? document.body.dataset.template : '/files/cert_template.jpg');
       bgImage.src = tpl || '/files/cert_template.jpg';
     } catch(_e){ bgImage.src = '/files/cert_template.jpg'; }
   })();

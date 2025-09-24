@@ -100,6 +100,11 @@ main{flex:1}
 /* Forms & Buttons */
 .form label{display:block;margin-bottom:10px}
 .form input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px}
+/* Make selects look and behave like inputs, on their own line */
+.form select{display:block;width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:14px}
+.form select:focus{outline:3px solid var(--accent,#2563eb);outline-offset:1px}
+/* Place hint text under the control, not inline */
+.form label .text-muted{display:block;margin-top:4px}
 /* Unified input appearance (also for settings grids) */
 .input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff;line-height:1.2;}
 .input:focus{outline:3px solid var(--accent,#2563eb);outline-offset:1px}

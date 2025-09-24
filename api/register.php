@@ -29,6 +29,8 @@ $extra  = val_str($payload,'extra_info',255);
 $date   = val_str($payload,'date',10); // issued_date YYYY-MM-DD
 $validUntil = val_str($payload,'valid_until',10); // YYYY-MM-DD or sentinel
 $orgCodeProvided = val_str($payload,'org_code',64);
+// Optional template selection
+$templateId = isset($payload['template_id']) ? (int)$payload['template_id'] : null;
 // Load config for sentinel
 $cfg = require __DIR__.'/../config.php';
 $sentinel = $cfg['infinite_sentinel'] ?? '4000-01-01';
@@ -80,10 +82,42 @@ try {
       http_response_code(422); echo json_encode(['error'=>'org_mismatch']); exit;
     }
   }
-  // Insert token (with org_id if column exists)
+  // Validate template_id if provided: must exist, belong to effective org (or admin/global rules), and be active
+  $tplOrgId = null;
+  if($templateId){
+    try {
+      // Ensure templates table exists
+      $chkT = $pdo->query("SHOW TABLES LIKE 'templates'");
+      if($chkT && $chkT->fetch()){
+        $stTpl = $pdo->prepare('SELECT id, org_id, status FROM templates WHERE id = ?');
+        $stTpl->execute([$templateId]);
+        $tpl = $stTpl->fetch(PDO::FETCH_ASSOC);
+        if(!$tpl){ http_response_code(422); echo json_encode(['error'=>'template_not_found']); exit; }
+        $tplOrgId = isset($tpl['org_id']) ? (int)$tpl['org_id'] : null;
+        $status = strtolower((string)$tpl['status']);
+        if($status !== 'active'){ http_response_code(422); echo json_encode(['error'=>'template_inactive']); exit; }
+        // If both effectiveOrgId and tplOrgId are known, they must match
+        if($effectiveOrgId && $tplOrgId && $tplOrgId !== $effectiveOrgId){ http_response_code(422); echo json_encode(['error'=>'template_wrong_org']); exit; }
+        // If effective org not yet resolved but template has org_id, adopt it
+        if(!$effectiveOrgId && $tplOrgId){ $effectiveOrgId = $tplOrgId; }
+      } else {
+        // No templates table -> cannot accept template_id
+        $templateId = null;
+      }
+    } catch(Throwable $e){ $templateId = null; }
+  }
+
+  // Insert token (with org_id and template_id if columns exist)
   if($tokensHasOrg){
-    $st = $pdo->prepare("INSERT INTO tokens (cid, version, org_id, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?,?)");
-    $st->execute([$cid,$v,$effectiveOrgId,$h,$extra,$date,$validUntil]);
+    // Detect template_id column
+    static $tokensHasTpl = null; if($tokensHasTpl===null){ try { $chk=$pdo->query("SHOW COLUMNS FROM `tokens` LIKE 'template_id'"); $tokensHasTpl = ($chk && $chk->rowCount()===1); } catch(Throwable $e){ $tokensHasTpl=false; } }
+    if($tokensHasTpl){
+      $st = $pdo->prepare("INSERT INTO tokens (cid, version, org_id, template_id, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?,?,?)");
+      $st->execute([$cid,$v,$effectiveOrgId,$templateId,$h,$extra,$date,$validUntil]);
+    } else {
+      $st = $pdo->prepare("INSERT INTO tokens (cid, version, org_id, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?,?)");
+      $st->execute([$cid,$v,$effectiveOrgId,$h,$extra,$date,$validUntil]);
+    }
   } else {
     $st = $pdo->prepare("INSERT INTO tokens (cid, version, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?)");
     $st->execute([$cid,$v,$h,$extra,$date,$validUntil]);

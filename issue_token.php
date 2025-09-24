@@ -32,6 +32,7 @@ $coords = $cfg['coords'] ?? [];
       <select id="templateSelect" disabled>
         <option>(Завантаження...)</option>
       </select>
+      <input type="hidden" id="templateIdHidden" name="template_id" value="">
       <span class="fs-12 text-muted">Попередній перегляд фонового зображення оновиться при виборі. Якщо список порожній — використовується стандартний глобальний шаблон.</span>
     </label>
     <label>Додаткова інформація (необов’язково)
@@ -83,6 +84,11 @@ $coords = $cfg['coords'] ?? [];
   <div id="bulkTab" class="tab-panel d-none" role="tabpanel" aria-labelledby="bulk" data-panel="bulk">
   <p class="maxw-760 fs-14 lh-14">Масова видача нагород: імена не зберігаються; для кожного рядка клієнт локально обчислює HMAC. Спільні поля застосовуються до всіх. Обмеження: максимум 100 записів за один запуск.</p>
     <form id="bulkForm" class="form flex-col gap-14 maxw-760" autocomplete="off">
+      <label>Шаблон (опціонально, для всіх рядків)
+        <select id="bulkTemplateSelect" disabled>
+          <option>(Завантаження...)</option>
+        </select>
+      </label>
   <fieldset class="flex flex-wrap gap-12">
         <label class="minw-200">Дата проходження
           <input type="date" name="date" required>
