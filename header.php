@@ -3,6 +3,8 @@
 // To keep functionality (e.g. CSRF token access for fetch) we expose the token via a <meta> tag.
 // Any previous inline script usage (like window.__CSRF_TOKEN assignment) must be removed.
 require_once __DIR__.'/config.php';
+// Allow header to render and send security headers even if DB is temporarily unavailable
+if (!defined('ALLOW_DB_FAIL_SOFT')) { define('ALLOW_DB_FAIL_SOFT', true); }
 require_once __DIR__.'/auth.php'; // ensure csrf_token() & session org context available
 $cfg = require __DIR__.'/config.php';
 // --- Per-organization branding resolution ---
@@ -15,8 +17,10 @@ try {
   require_once __DIR__.'/db.php';
   // Global overrides (system-wide baseline) FIRST
   $branding = [];
-  $st = $pdo->query("SELECT setting_key, setting_value FROM branding_settings");
-  foreach($st->fetchAll(PDO::FETCH_ASSOC) as $r){ $branding[$r['setting_key']] = $r['setting_value']; }
+  if ($pdo) {
+    $st = $pdo->query("SELECT setting_key, setting_value FROM branding_settings");
+    foreach($st->fetchAll(PDO::FETCH_ASSOC) as $r){ $branding[$r['setting_key']] = $r['setting_value']; }
+  }
   foreach(['site_name','logo_path','favicon_path','primary_color','accent_color','secondary_color','footer_text','support_contact'] as $k){
     if(isset($branding[$k]) && $branding[$k] !== '') $cfg[$k] = $branding[$k];
   }
@@ -27,8 +31,8 @@ try {
   } else {
     $orgId = current_org_id();
   }
-  if($orgId){
-  $stOrg = $pdo->prepare('SELECT id,name,code,logo_path,favicon_path,primary_color,accent_color,secondary_color,footer_text,support_contact FROM organizations WHERE id=? AND is_active=1');
+  if($orgId && $pdo){
+    $stOrg = $pdo->prepare('SELECT id,name,code,logo_path,favicon_path,primary_color,accent_color,secondary_color,footer_text,support_contact FROM organizations WHERE id=? AND is_active=1');
     $stOrg->execute([$orgId]);
     if($orgRow = $stOrg->fetch(PDO::FETCH_ASSOC)){
       foreach(['name'=>'site_name','logo_path'=>'logo_path','favicon_path'=>'favicon_path','primary_color'=>'primary_color','accent_color'=>'accent_color','secondary_color'=>'secondary_color','footer_text'=>'footer_text','support_contact'=>'support_contact'] as $col=>$mapKey){

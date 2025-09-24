@@ -1,5 +1,6 @@
 <?php
 $cfg = require __DIR__.'/config.php';
+if (!defined('ALLOW_DB_FAIL_SOFT')) { define('ALLOW_DB_FAIL_SOFT', true); }
 $p = $_GET['p'] ?? '';
 require_once __DIR__.'/db.php';
 // We will attempt to detect organization code either from payload canonical fields or fallback to config org_code

@@ -14,6 +14,11 @@ try {
     $options
   );
 } catch (PDOException $e) {
+  if (defined('ALLOW_DB_FAIL_SOFT') && ALLOW_DB_FAIL_SOFT) {
+    // In soft mode (e.g., header rendering in CI), do not exit; let caller handle gracefully
+    $pdo = null;
+    return;
+  }
   http_response_code(500);
   exit('Помилка зʼєднання з БД');
 }
