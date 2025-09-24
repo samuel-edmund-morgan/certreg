@@ -23,9 +23,9 @@
 - [x] Preview generation pipeline
 
 ### 1.4 Issuance Integration
-- [ ] Template select in single & bulk issuance
-- [ ] Persist `template_id` with token
-- [ ] Org ownership validation
+- [x] Template select in single & bulk issuance
+- [x] Persist `template_id` with token
+- [x] Org ownership validation
 - [ ] Coordinate-based render (image/PDF step)
 - [x] README section: Templates
 
@@ -132,7 +132,9 @@ Error:
 
 ---
 ## Immediate Next Step
-Implement Phase 1.1: DB migration + base CREATE endpoint.
+Add automated tests for issuance with templates:
+- API tests for `template_id` in register (happy path and error cases)
+- E2E tests to pick template during single/bulk issuance and verify on tokens list/detail
 
 ---
 ## Changelog Anchor

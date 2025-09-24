@@ -73,7 +73,15 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         if($im){ $out=imagecreatetruecolor($tw,$th); imagecopyresampled($out,$im,0,0,0,0,$tw,$th,imagesx($im),imagesy($im)); @imagejpeg($out,$tplDir.'/preview.jpg',82); imagedestroy($im); imagedestroy($out);} }
       header('Location: template.php?id='.$id.'&msg=replaced'); exit;
     } elseif($action==='delete') {
-      // TODO: add future constraint check (linked tokens) before deletion
+      // Block deletion if tokens reference this template (when tokens.template_id exists)
+      $hasTplFk = col_exists($pdo,'tokens','template_id');
+      if($hasTplFk){
+        try {
+          $cc=$pdo->prepare('SELECT COUNT(*) FROM tokens WHERE template_id=?');
+          $cc->execute([$id]);
+          if((int)$cc->fetchColumn() > 0){ header('Location: template.php?id='.$id.'&msg=in_use'); exit; }
+        } catch(Throwable $e){ header('Location: template.php?id='.$id.'&msg=err'); exit; }
+      }
       $pdo->prepare('DELETE FROM templates WHERE id=? LIMIT 1')->execute([$id]);
       header('Location: settings.php?tab=templates&msg=deleted'); exit;
     } else {
@@ -85,6 +93,13 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 // Reload row after any GET
 try { $st=$pdo->prepare('SELECT * FROM templates WHERE id=? LIMIT 1'); $st->execute([$id]); $row=$st->fetch(PDO::FETCH_ASSOC); if(!$row){ header('Location: settings.php?tab=templates&msg=nf'); exit; } } catch(Throwable $e){ $err='db'; }
 
+// Compute usage count if schema supports it
+$hasTplFk = col_exists($pdo,'tokens','template_id');
+$inUseCount = null;
+if($hasTplFk){
+  try { $c=$pdo->prepare('SELECT COUNT(*) FROM tokens WHERE template_id=?'); $c->execute([$id]); $inUseCount=(int)$c->fetchColumn(); } catch(Throwable $e){ $inUseCount=null; }
+}
+
 require_once __DIR__.'/header.php';
 $msg = $_GET['msg'] ?? '';
 ?>
@@ -92,7 +107,7 @@ $msg = $_GET['msg'] ?? '';
   <h1 class="mt-0">Шаблон #<?= htmlspecialchars($row['id']) ?></h1>
   <p class="fs-14 text-muted maxw-760">Управління окремим шаблоном. <a href="/settings.php?tab=templates" class="link-accent">← Повернутися до списку</a></p>
   <?php if($msg): ?><div class="mb-12 fs-13"><?php
-  $map=[ 'renamed'=>'Назву змінено','toggled'=>'Статус змінено','replaced'=>'Файл оновлено','deleted'=>'Видалено','badname'=>'Некоректна назва','badid'=>'ID не збігається','nofile'=>'Файл не надано','upload'=>'Помилка завантаження','invalid'=>'Невалідний upload','filesize'=>'Розмір файлу не підходить','badext'=>'Погане розширення','notimg'=>'Не зображення','dim'=>'Неприпустимі розміри','badstatus'=>'Неможливо змінити статус (невідомий або заборонений)','err'=>'Внутрішня помилка','unknown'=>'Невідома дія' ];
+  $map=[ 'renamed'=>'Назву змінено','toggled'=>'Статус змінено','replaced'=>'Файл оновлено','deleted'=>'Видалено','badname'=>'Некоректна назва','badid'=>'ID не збігається','nofile'=>'Файл не надано','upload'=>'Помилка завантаження','invalid'=>'Невалідний upload','filesize'=>'Розмір файлу не підходить','badext'=>'Погане розширення','notimg'=>'Не зображення','dim'=>'Неприпустимі розміри','badstatus'=>'Неможливо змінити статус (невідомий або заборонений)','in_use'=>'Шаблон використовується у вже виданих нагородах — видалення заблоковано.','err'=>'Внутрішня помилка','unknown'=>'Невідома дія' ];
     echo htmlspecialchars($map[$msg] ?? $msg);
   ?></div><?php endif; ?>
   <?php if($err==='db'): ?><div class="alert alert-error">Помилка БД.</div><?php else: ?>
@@ -117,6 +132,11 @@ $msg = $_GET['msg'] ?? '';
     <div class="mb-8 fs-13 text-muted">Поточний превʼю:</div>
     <div><img src="<?= htmlspecialchars($prevPath) ?>?v=<?= (int)$row['version'] ?>" alt="preview" style="max-width:480px;border:1px solid #e2e8f0;border-radius:8px" loading="lazy"></div>
   </div>
+  <?php if($hasTplFk): ?>
+  <div class="mb-18">
+    <a class="btn btn-light" href="/tokens.php?tpl=<?= (int)$row['id'] ?>">Переглянути всі нагороди з цим шаблоном</a>
+  </div>
+  <?php endif; ?>
   <h2 class="mt-0 fs-18">Дії</h2>
   <form method="post" class="form mb-12">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
@@ -150,7 +170,12 @@ $msg = $_GET['msg'] ?? '';
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
     <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
     <input type="hidden" name="action" value="delete">
-    <button class="btn btn-danger" type="submit">Видалити</button>
+    <?php if($hasTplFk && is_int($inUseCount) && $inUseCount>0): ?>
+      <div class="fs-12 text-muted mb-8">Використано у <?= (int)$inUseCount ?> нагородах. Видалення недоступне.</div>
+      <button class="btn btn-danger" type="submit" disabled aria-disabled="true" title="Шаблон використовується">Видалити</button>
+    <?php else: ?>
+      <button class="btn btn-danger" type="submit">Видалити</button>
+    <?php endif; ?>
   </form>
   <?php endif; ?>
   <div class="mt-18"><a href="/settings.php?tab=templates" class="btn btn-light">← Назад</a></div>

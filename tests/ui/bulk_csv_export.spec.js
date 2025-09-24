@@ -44,6 +44,6 @@ test('bulk CSV export has BOM and correct headers', async ({ page }) => {
   const text = buf.toString('utf8');
   // Remove potential BOM from the decoded string (already validated raw bytes above)
   const firstLine = text.split(/\r?\n/)[0].replace(/^\uFEFF/, '');
-  expect(firstLine).toBe('NAME_ORIG,CID,INT,ORG,ISSUED_DATE,VALID_UNTIL,EXTRA');
+  expect(firstLine).toBe('NAME_ORIG,CID,INT,ORG,ISSUED_DATE,VALID_UNTIL,EXTRA,Шаблон');
   }
 });

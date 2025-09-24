@@ -20,6 +20,25 @@ if(!empty($row['h'] ?? null)){
   $intShort = strtoupper(substr($row['h'],0,10));
   $intShort = substr($intShort,0,5).'-'.substr($intShort,5);
 }
+// Try to resolve template info for this token (if schema supports it)
+$hasTplCol = false;
+$tplInfo = null;
+$tplLabel = null;
+try {
+  $c = $pdo->query("SHOW COLUMNS FROM tokens LIKE 'template_id'");
+  if($c && $c->fetch()){
+    $hasTplCol = true;
+    if(!empty($row['template_id'])){
+      $s = $pdo->prepare("SELECT t.id, t.name, t.code, o.code AS org_code FROM templates t LEFT JOIN organizations o ON o.id = t.org_id WHERE t.id = ?");
+      $s->execute([$row['template_id']]);
+      $tplInfo = $s->fetch(PDO::FETCH_ASSOC) ?: null;
+      if($tplInfo){
+        $tplLabel = trim($tplInfo['name'] ?? '') !== '' ? $tplInfo['name'] : ($tplInfo['code'] ?? ('T'.(int)$tplInfo['id']));
+        if(!empty($tplInfo['org_code'])){ $tplLabel .= ' ['.$tplInfo['org_code'].']'; }
+      }
+    }
+  }
+} catch (Throwable $e) { /* noop */ }
 ?>
 <section class="section">
   <h2 class="mt-0 flex flex-wrap gap-8 align-center">Нагорода (CID): <span class="mono"><?= htmlspecialchars($row['cid']) ?></span>
@@ -36,6 +55,16 @@ if(!empty($row['h'] ?? null)){
   <div><strong>Додаткова інформація</strong></div><div><?= htmlspecialchars($row['extra_info'] ?? '') ?></div>
   <div><strong>Дата видачі</strong></div><div><?= htmlspecialchars($row['issued_date'] ?? '') ?></div>
   <div><strong>Створено (UTC)</strong></div><div><?= htmlspecialchars($row['created_at']) ?></div>
+      <?php if($hasTplCol): ?>
+        <div><strong>Шаблон</strong></div>
+        <div>
+          <?php if($tplInfo): ?>
+            <a class="link-plain" href="/template.php?id=<?= (int)$tplInfo['id'] ?>"><?= htmlspecialchars($tplLabel) ?></a>
+          <?php else: ?>
+            —
+          <?php endif; ?>
+        </div>
+      <?php endif; ?>
       <div><strong>Статус</strong></div><div>
         <?php if($row['revoked_at']): ?>
           <span class="badge badge-danger">Відкликано</span><br>

@@ -433,7 +433,16 @@
     const infinite = form.infinite.checked;
     const validUntil = infinite? INFINITE_SENTINEL : form.valid_until.value || '';
     const extraVal = (form.extra && typeof form.extra.value === 'string') ? form.extra.value.trim() : '';
-    const header = ['NAME_ORIG','CID','INT','ORG','ISSUED_DATE','VALID_UNTIL','EXTRA'];
+    // Визначаємо мітку шаблону для CSV (Name [ORG])
+    let tplLabel = '';
+    try {
+      const sel = document.getElementById('bulkTemplateSelect');
+      if(sel && sel.value){
+        const opt = sel.selectedOptions && sel.selectedOptions[0];
+        tplLabel = (opt && typeof opt.textContent==='string') ? opt.textContent.trim() : '';
+      }
+    } catch(_e){}
+    const header = ['NAME_ORIG','CID','INT','ORG','ISSUED_DATE','VALID_UNTIL','EXTRA','Шаблон'];
     const lines = [header.join(',')];
     okRows.forEach(r=>{
       const row = [
@@ -443,7 +452,8 @@
         ORG,
         date,
         validUntil,
-        (r.extra || extraVal || '').replace(/"/g,'""')
+        (r.extra || extraVal || '').replace(/\"/g,'\"\"'),
+        (tplLabel || '').replace(/\"/g,'\"\"')
       ];
       lines.push(row.map(f=>'"'+String(f)+'"').join(','));
     });
