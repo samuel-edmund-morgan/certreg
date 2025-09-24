@@ -47,13 +47,11 @@ try {
 
 // --- Security headers (no inline scripts) ---
 if (!headers_sent()) {
-  // Allow inline styles (style attributes) needed for dynamic color swatches in admin tables.
-  // Scripts remain strictly non-inline.
-  // Emit multiple short CSP headers (combined by browsers) to avoid line folding/wrapping by proxies/servers.
-  $cspDirectives = [
+  // Emit a single CSP header exactly as CI expects (no inline scripts; no 'unsafe-inline' for styles).
+  $cspParts = [
     "default-src 'self' blob:",
     "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",
     "object-src 'none'",
@@ -63,9 +61,9 @@ if (!headers_sent()) {
     "connect-src 'self'",
     'upgrade-insecure-requests',
   ];
-  foreach ($cspDirectives as $dir) {
-    header('Content-Security-Policy: ' . $dir, false);
-  }
+  $cspHeader = 'Content-Security-Policy: ' . implode('; ', $cspParts);
+  header($cspHeader);
+
   header('X-Content-Type-Options: nosniff');
   header('X-Frame-Options: DENY');
   header('Referrer-Policy: no-referrer');

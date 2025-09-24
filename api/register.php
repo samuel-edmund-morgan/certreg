@@ -49,6 +49,12 @@ if($validUntil !== $sentinel && $date && strcmp($validUntil,$date) < 0){ http_re
 // Determine effective org_id (operators must have one; admins may be global/null → use default org if provided code matches)
 $effectiveOrgId = null;
 try {
+  // Detect if organizations table exists (tests/CI may run without it)
+  $orgsExist = false;
+  try {
+    $chkOrg = $pdo->query("SHOW TABLES LIKE 'organizations'");
+    $orgsExist = ($chkOrg && $chkOrg->fetch() !== false);
+  } catch (Throwable $e) { $orgsExist = false; }
   // Detect tokens.org_id column presence
   static $tokensHasOrg = null;
   if($tokensHasOrg === null){
@@ -62,20 +68,21 @@ try {
     $effectiveOrgId = $sessionOrgId;
   }
   // If admin without org_id but provided org_code, attempt to map
-  if(!$effectiveOrgId && $orgCodeProvided){
+  if(!$effectiveOrgId && $orgCodeProvided && $orgsExist){
     $selOrg = $pdo->prepare('SELECT id FROM organizations WHERE code=? AND is_active=1');
     $selOrg->execute([$orgCodeProvided]);
     $rowOrgId = $selOrg->fetchColumn();
     if($rowOrgId){ $effectiveOrgId = (int)$rowOrgId; }
   }
   // If still null and default exists, fallback to default org id for backward compatibility
-  if(!$effectiveOrgId && $defaultOrgCode){
+  if(!$effectiveOrgId && $defaultOrgCode && $orgsExist){
     $selDef = $pdo->prepare('SELECT id FROM organizations WHERE code=?');
     $selDef->execute([$defaultOrgCode]);
-    $effectiveOrgId = ($selDef->fetchColumn()) ? (int)$selDef->fetchColumn() : null;
+    $row = $selDef->fetchColumn();
+    $effectiveOrgId = $row ? (int)$row : null;
   }
   // Validation: if provided org_code does not match resolved org id (when both known) reject
-  if($orgCodeProvided && $effectiveOrgId){
+  if($orgCodeProvided && $effectiveOrgId && $orgsExist){
     $chkMatch = $pdo->prepare('SELECT 1 FROM organizations WHERE id=? AND code=?');
     $chkMatch->execute([$effectiveOrgId,$orgCodeProvided]);
     if(!$chkMatch->fetch()){
