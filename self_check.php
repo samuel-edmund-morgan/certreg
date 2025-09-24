@@ -1,5 +1,6 @@
 <?php
 // Self-check script: run via CLI `php self_check.php`
+// Optional flags: `--auto-fix-missing-create`, `--auto-fix-state`, `--suggest-fixes`
 if (php_sapi_name() !== 'cli') { http_response_code(403); exit; }
 
 $root = __DIR__;
@@ -12,6 +13,7 @@ $whitelist = [
   'api/account_change_password.php',
   'api/operators_list.php','api/operator_create.php','api/operator_toggle_active.php','api/operator_reset_password.php','api/operator_rename.php','api/operator_delete.php',
   'api/org_create.php','api/org_update.php','api/org_set_active.php','api/org_delete.php',
+  'api/org_list.php',
   'api/operator_change_org.php',
   'api/templates_list.php',
   'api/template_create.php',
@@ -424,6 +426,81 @@ try {
     if(is_file($colorsCss)) echo "[WARN] branding_colors.css exists but no colors set (stale).\n"; else echo "[OK] No colors set; no branding_colors.css (expected).\n";
   }
 } catch(Throwable $e){ echo "[WARN] Branding checks error: ".$e->getMessage()."\n"; }
+
+// === DB index checks (I1) ===
+echo "[SECTION] DB index checks (I1)\n";
+try {
+  // Helper: fetch index definitions for a table as [key_name => [columns...]]
+  $getIndexes = function(string $table) use ($pdo): array {
+    $idx = [];
+    try {
+      $st = $pdo->query("SHOW INDEX FROM `".$table."`");
+    } catch (Throwable $e) { return $idx; }
+    while($r = $st->fetch(PDO::FETCH_ASSOC)){
+      $k = $r['Key_name'];
+      $seq = (int)$r['Seq_in_index'];
+      $col = $r['Column_name'];
+      if(!isset($idx[$k])) $idx[$k] = [];
+      $idx[$k][$seq] = $col;
+    }
+    // Normalize sequence ordering
+    foreach($idx as $k=>$cols){ ksort($cols); $idx[$k] = array_values($cols); }
+    return $idx;
+  };
+
+  // Requirement spec: [table => list of requirements], where each requirement is
+  // ['columns' => string|array, 'label' => string, 'mandatory' => bool, 'suggest' => string]
+  $reqs = [
+    'tokens' => [
+      ['columns'=>'template_id', 'label'=>'Index on tokens(template_id)', 'mandatory'=>true,  'suggest'=>'CREATE INDEX idx_tokens_template_id ON tokens(template_id);'],
+      ['columns'=>'created_at',  'label'=>'Index on tokens(created_at)',  'mandatory'=>true,  'suggest'=>'CREATE INDEX idx_tokens_created_at ON tokens(created_at);'],
+      ['columns'=>'revoked_at',  'label'=>'Index on tokens(revoked_at)',  'mandatory'=>true,  'suggest'=>'CREATE INDEX idx_tokens_revoked_at ON tokens(revoked_at);'],
+      ['columns'=>'h',           'label'=>'Index on tokens(h) (fast verify)', 'mandatory'=>false, 'suggest'=>'CREATE INDEX idx_tokens_h ON tokens(h);'],
+      ['columns'=>'cid',         'label'=>'Index on tokens(cid) (lookup)',    'mandatory'=>false, 'suggest'=>'CREATE INDEX idx_tokens_cid ON tokens(cid);'],
+    ],
+    'token_events' => [
+      ['columns'=>['cid','created_at'], 'label'=>'Composite index token_events(cid, created_at)', 'mandatory'=>false, 'suggest'=>'CREATE INDEX idx_token_events_cid_created_at ON token_events(cid, created_at);'],
+      ['columns'=>'cid',                 'label'=>'Index on token_events(cid)',                    'mandatory'=>true,  'suggest'=>'CREATE INDEX idx_token_events_cid ON token_events(cid);'],
+      ['columns'=>'created_at',          'label'=>'Index on token_events(created_at)',             'mandatory'=>false, 'suggest'=>'CREATE INDEX idx_token_events_created_at ON token_events(created_at);'],
+    ],
+  ];
+
+  $suggestions = [];
+  foreach($reqs as $table=>$list){
+    // Skip table if not present
+    try {
+      $pdo->query("SELECT 1 FROM `$table` LIMIT 1");
+    } catch(Throwable $e){ echo "[INFO] Skip index scan for $table (table not accessible).\n"; continue; }
+    $idx = $getIndexes($table);
+    // Build convenience list of index first-column prefixes
+    $prefixes = [];
+    foreach($idx as $k=>$cols){ if($cols){ $prefixes[] = $cols; } }
+
+    foreach($list as $r){
+      $colsReq = is_array($r['columns']) ? $r['columns'] : [$r['columns']];
+      $found = false;
+      foreach($prefixes as $cols){
+        // prefix match: index starts with required column sequence
+        $match = true;
+        foreach($colsReq as $i=>$c){ if(($cols[$i] ?? null) !== $c){ $match = false; break; } }
+        if($match){ $found = true; break; }
+      }
+      if($found){
+        echo "[OK] {$r['label']}.\n";
+      } else {
+        $sev = !empty($r['mandatory']) ? '[WARN]' : '[INFO]';
+        echo "$sev Missing {$r['label']}.\n";
+        if(!empty($r['suggest'])) $suggestions[] = $r['suggest'];
+      }
+    }
+  }
+  if($suggestions){
+    echo "[I1] Suggested SQL to add missing indexes (review before running):\n";
+    foreach(array_unique($suggestions) as $sql){ echo $sql."\n"; }
+  } else {
+    echo "[I1] All required indexes present.\n";
+  }
+} catch(Throwable $e){ echo "[WARN] Index checks error: ".$e->getMessage()."\n"; }
 
 // === Templates checks (T1) ===
 echo "[SECTION] Templates checks (T1)\n";
