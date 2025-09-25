@@ -17,6 +17,31 @@
 
 ## Установка
 
+### Швидкий старт (dev, сумісний з CI)
+Найпростіший спосіб розгорнути локально так само, як у CI:
+
+1) Скопіюйте конфіг і заповніть параметри БД (`db_host`, `db_name`, `db_user`, `db_pass`).
+2) Запустіть ідемпотентну міграцію, яка створить/оновить схему (organizations, templates, tokens.template_id, індекси тощо).
+3) Створіть тестового адміністратора.
+4) Встановіть Node залежності та браузер Playwright (для UI‑тестів).
+5) Запустіть тести або увімкніть dev‑сервер.
+
+Команди (приклад):
+
+```bash
+cp config.php.example config.php
+php scripts/migrate.php
+php tests/create_test_admin.php
+
+# Опція: тестовий цикл як у CI
+php tests/run_tests.php && php tests/lookup_count_test.php
+npm install
+npx playwright install --with-deps chromium
+CERTREG_TEST_MODE=1 npx playwright test
+```
+
+Цей шлях відтворює те, що робить CI, тому мінімізує різницю між локальним середовищем та пайплайном.
+
 ### 1. Встановлення залежностей
 Оновіть індекси пакетів та встановіть nginx, PHP 8.3 (з потрібними модулями), MySQL/MariaDB та Git:
 
@@ -125,20 +150,21 @@ Self‑check (`php self_check.php`) перевіряє: існування ло�
 
 Перенос рядків у назві сайту: введіть буквально `\\n` де потрібен розрив. Напр.: `Перша частина\\nДруга частина` → у шапці два рядки, у `<title>` один.
 
-### 5. Створення таблиць (v3)
-Початкова v3-схема. Виконайте (налаштувавши БД):
+### 5. Схема БД (актуальна, як у CI)
+Рекомендовано: замість ручного SQL використовуйте `php scripts/migrate.php` (ідемпотентно). Нижче — еквівалентна схема, що відповідає CI:
 
 ```sql
 USE certreg;
 
-CREATE TABLE creds (
+-- Користувачі (мінімальна схема як у CI; колонка role опціональна)
+CREATE TABLE IF NOT EXISTS creds (
    id INT AUTO_INCREMENT PRIMARY KEY,
    username VARCHAR(64) NOT NULL UNIQUE,
-   passhash VARCHAR(255) NOT NULL,
-   `role` ENUM('admin', 'operator') NOT NULL DEFAULT 'operator'
+   passhash VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE tokens (
+-- Токени + індекси
+CREATE TABLE IF NOT EXISTS tokens (
    id INT AUTO_INCREMENT PRIMARY KEY,
    cid VARCHAR(64) NOT NULL,
    version TINYINT NOT NULL DEFAULT 3,
@@ -157,7 +183,8 @@ CREATE TABLE tokens (
    KEY idx_tokens_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE token_events (
+-- Журнал подій + композитний індекс (cid, created_at)
+CREATE TABLE IF NOT EXISTS token_events (
    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
    cid VARCHAR(64) NOT NULL,
    event_type ENUM('revoke','unrevoke','delete','create','lookup') NOT NULL,
@@ -171,34 +198,54 @@ CREATE TABLE token_events (
    INDEX idx_event (event_type),
    INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE INDEX IF NOT EXISTS idx_token_events_cid_created_at ON token_events(cid, created_at);
 
-CREATE TABLE templates (
+-- Організації (мінімальна схема як у CI)
+CREATE TABLE IF NOT EXISTS organizations (
    id INT AUTO_INCREMENT PRIMARY KEY,
-   name VARCHAR(255) NOT NULL,
-   filename VARCHAR(255) NOT NULL,
-   coordinates JSON DEFAULT NULL,
-   created_by INT NULL,
-   is_active BOOLEAN NOT NULL DEFAULT TRUE,
-   INDEX idx_is_active (is_active)
+   name VARCHAR(160) NOT NULL,
+   code VARCHAR(32) NOT NULL UNIQUE,
+   is_active TINYINT(1) NOT NULL DEFAULT 1,
+   primary_color VARCHAR(7) NULL,
+   accent_color VARCHAR(7) NULL,
+   secondary_color VARCHAR(7) NULL,
+   footer_text VARCHAR(255) NULL,
+   support_contact VARCHAR(255) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO organizations (id,name,code,is_active) VALUES (1,'Test Org','ORG-CERT',1)
+   ON DUPLICATE KEY UPDATE name=VALUES(name), code=VALUES(code), is_active=VALUES(is_active);
+
+-- Шаблони (звʼязані з org)
+CREATE TABLE IF NOT EXISTS templates (
+   id INT AUTO_INCREMENT PRIMARY KEY,
+   org_id INT NOT NULL,
+   name VARCHAR(160) NOT NULL,
+   code VARCHAR(60) NOT NULL,
+   status ENUM('active','inactive','archived') DEFAULT 'active',
+   filename VARCHAR(255) NULL,
+   file_ext VARCHAR(10) NULL,
+   file_hash CHAR(64) NULL,
+   file_size INT NULL,
+   width INT NULL,
+   height INT NULL,
+   version INT NOT NULL DEFAULT 1,
+   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   KEY idx_org_status (org_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE branding_settings (
-   setting_key VARCHAR(100) PRIMARY KEY,
-   setting_value TEXT,
-   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- Привʼязка шаблону до токена (NULLable) + індекс
+ALTER TABLE tokens ADD COLUMN IF NOT EXISTS template_id INT NULL;
+CREATE INDEX IF NOT EXISTS idx_tokens_template_id ON tokens(template_id);
 ```
 
-Створіть адміністратора:
+Створення адміністратора (простий шлях):
 
 ```bash
-php -r "echo password_hash('YourStrongPass', PASSWORD_DEFAULT), PHP_EOL;"
+php tests/create_test_admin.php
 ```
-Вставте хеш у SQL:
 
-```sql
-INSERT INTO creds (username, passhash, `role`) VALUES ('admin','<HASH>', 'admin');
-```
+Або вручну через SQL/CLI — на ваш розсуд.
 
 ### Налаштування (AJAX) та акаунт
 
