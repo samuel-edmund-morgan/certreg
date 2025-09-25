@@ -126,8 +126,15 @@ try {
       $st->execute([$cid,$v,$effectiveOrgId,$h,$extra,$date,$validUntil]);
     }
   } else {
-    $st = $pdo->prepare("INSERT INTO tokens (cid, version, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?)");
-    $st->execute([$cid,$v,$h,$extra,$date,$validUntil]);
+    // No org_id column, but template_id may still exist in tokens schema
+    static $tokensHasTplOnly = null; if($tokensHasTplOnly===null){ try { $chk=$pdo->query("SHOW COLUMNS FROM `tokens` LIKE 'template_id'"); $tokensHasTplOnly = ($chk && $chk->rowCount()===1); } catch(Throwable $e){ $tokensHasTplOnly=false; } }
+    if($tokensHasTplOnly){
+      $st = $pdo->prepare("INSERT INTO tokens (cid, version, template_id, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?,?)");
+      $st->execute([$cid,$v,$templateId,$h,$extra,$date,$validUntil]);
+    } else {
+      $st = $pdo->prepare("INSERT INTO tokens (cid, version, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?)");
+      $st->execute([$cid,$v,$h,$extra,$date,$validUntil]);
+    }
   }
   $tokenId = $pdo->lastInsertId();
   // Audit: creation event (no PII)

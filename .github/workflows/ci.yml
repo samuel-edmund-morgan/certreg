@@ -94,6 +94,54 @@ jobs:
           );
           SET @sql := IF(@exists=0, 'CREATE INDEX idx_token_events_cid_created_at ON token_events(cid, created_at);', 'SELECT 1');
           PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+          -- Minimal multi-org schema to support templates and template_id
+          CREATE TABLE IF NOT EXISTS organizations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(160) NOT NULL,
+            code VARCHAR(32) NOT NULL UNIQUE,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            primary_color VARCHAR(7) NULL,
+            accent_color VARCHAR(7) NULL,
+            secondary_color VARCHAR(7) NULL,
+            footer_text VARCHAR(255) NULL,
+            support_contact VARCHAR(255) NULL
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+          INSERT INTO organizations (id,name,code,is_active) VALUES (1,'Test Org','ORG-CERT',1)
+            ON DUPLICATE KEY UPDATE name=VALUES(name), code=VALUES(code), is_active=VALUES(is_active);
+
+          CREATE TABLE IF NOT EXISTS templates (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            org_id INT NOT NULL,
+            name VARCHAR(160) NOT NULL,
+            code VARCHAR(60) NOT NULL,
+            status ENUM('active','inactive','archived') DEFAULT 'active',
+            filename VARCHAR(255) NULL,
+            file_ext VARCHAR(10) NULL,
+            file_hash CHAR(64) NULL,
+            file_size INT NULL,
+            width INT NULL,
+            height INT NULL,
+            version INT NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY idx_org_status (org_id, status)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+          -- Add tokens.template_id to enable template linkage in UI (safe if already present)
+          SET @has_tpl := (
+            SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tokens' AND COLUMN_NAME = 'template_id'
+          );
+          SET @sql2 := IF(@has_tpl=0, 'ALTER TABLE tokens ADD COLUMN template_id INT NULL', 'SELECT 1');
+          PREPARE stmt2 FROM @sql2; EXECUTE stmt2; DEALLOCATE PREPARE stmt2;
+          -- Index on tokens(template_id) for faster filters
+          SET @has_idx := (
+            SELECT COUNT(1) FROM INFORMATION_SCHEMA.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tokens' AND INDEX_NAME = 'idx_tokens_template_id'
+          );
+          SET @sql3 := IF(@has_idx=0, 'CREATE INDEX idx_tokens_template_id ON tokens(template_id)', 'SELECT 1');
+          PREPARE stmt3 FROM @sql3; EXECUTE stmt3; DEALLOCATE PREPARE stmt3;
           SQL
 
       - name: Prepare config.php
