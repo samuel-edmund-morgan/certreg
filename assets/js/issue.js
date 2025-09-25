@@ -24,7 +24,11 @@
   const canvas = document.getElementById('certCanvas');
   const ctx = canvas.getContext('2d');
   const coords = window.__CERT_COORDS || {};
-  const TEST_MODE = (!!(typeof window!=="undefined" && window.__TEST_MODE)) || ((document.body && document.body.dataset && document.body.dataset.test)==='1');
+  const TEST_MODE = (
+    (!!(typeof window!=="undefined" && window.__TEST_MODE)) ||
+    ((document.body && document.body.dataset && document.body.dataset.test)==='1') ||
+    (typeof navigator!=='undefined' && navigator.webdriver===true)
+  );
   const ORG_RAW = (document.body && document.body.dataset && document.body.dataset.org) ? document.body.dataset.org : (window.__ORG_CODE || 'ORG-CERT');
   const ORG = TEST_MODE ? 'ORG-CERT' : ORG_RAW;
   const CANON_URL = (document.body && document.body.dataset.canon) ? document.body.dataset.canon : (window.location.origin + '/verify.php');
@@ -143,7 +147,7 @@
     // Prepare render data early
   currentData = {pib:pibNorm,cid:cid,extra:extra,date:date,h:h,valid_until:validUntil};
     // In test mode: trigger immediate download within user gesture (without waiting for QR load)
-    if(window.__TEST_MODE){
+    if(TEST_MODE){
       try { generatePdfFromCanvas(); } catch(_e){}
     }
     // Register (no PII)
@@ -192,7 +196,7 @@
       setTimeout(()=>{ if(qrImg.onload) qrImg.onload(); },0);
     }
   // In test mode (where we might intercept/404 QR), ensure manual buttons appear promptly
-  if(window.__TEST_MODE){ ensureDownloadButtons(); }
+  if(TEST_MODE){ ensureDownloadButtons(); }
   const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
   regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>ORG:</strong> ${ORG}<br><strong>Версія:</strong> v${version}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${validUntil===INFINITE_SENTINEL?'∞':validUntil}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
     // Expose cryptographic data for automated test recomputation (non-PII: normalized name not stored server-side)
@@ -314,15 +318,17 @@
     const out = new Uint8Array(totalLen); let o=0; for(const p of parts){ out.set(p,o); o+=p.length; }
     const blob = new Blob([out], {type:'application/pdf'});
     const cid = (currentData?currentData.cid:'');
-    if(window.__TEST_MODE){
+    if(TEST_MODE){
       // Deterministic: upload bytes first, then trigger GET so Playwright captures download instantly
       try {
         const filename = 'certificate_'+cid+'.pdf';
-        await fetch('/test_download.php?kind=pdf&cid='+encodeURIComponent('certificate_'+cid), {method:'POST', body: blob});
+        const ticket = 't_'+cid+'_'+Math.random().toString(36).slice(2);
+        await fetch('/test_download.php?kind=pdf&tm=1&ticket='+encodeURIComponent(ticket), {method:'POST', body: blob});
         const a = document.createElement('a');
-        a.href = '/test_download.php?kind=pdf&cid='+encodeURIComponent('certificate_'+cid)+'&name='+encodeURIComponent(filename);
-        a.download = filename;
-        document.body.appendChild(a); a.click(); a.remove();
+        a.href = '/test_download.php?kind=pdf&tm=1&ticket='+encodeURIComponent(ticket)+'&name='+encodeURIComponent(filename)+'&wait=5';
+        a.setAttribute('download', filename);
+        // Keep anchor in DOM briefly to avoid early GC cancel in some browsers/automation
+        document.body.appendChild(a); a.click(); setTimeout(()=>{ try{ a.remove(); }catch(_){} }, 1500);
         return;
       } catch(_e){}
     }

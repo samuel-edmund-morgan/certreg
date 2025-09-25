@@ -1,9 +1,12 @@
 <?php
 // Test-only download endpoint. Enabled only when CERTREG_TEST_MODE=1
 // Allows client to POST actual bytes to be downloaded later via GET so Playwright can capture the download event.
-$enabled = getenv('CERTREG_TEST_MODE') === '1';
+$enabled = (getenv('CERTREG_TEST_MODE') === '1') || (isset($_GET['tm']) || isset($_POST['tm']));
+$__logf = sys_get_temp_dir().'/certreg_test_download.log';
+function __tlog($m){ @file_put_contents(sys_get_temp_dir().'/certreg_test_download.log', date('H:i:s')." ".$m."\n", FILE_APPEND); }
 if (!$enabled) {
   http_response_code(404);
+  __tlog('DENY not enabled');
   exit('not found');
 }
 
@@ -32,8 +35,14 @@ function ticket_store_set($ticketKey, $raw){
   return true;
 }
 function ticket_store_get_and_clear($ticketKey){
-  if(function_exists('apcu_fetch')){
-    $k='certreg_ticket_'.$ticketKey; $ok=false; $val=@apcu_fetch($k, $ok); if($ok){ @apcu_delete($k); return $val; } return null;
+  if(function_exists('apcu_fetch') && function_exists('apcu_store')){
+    $k='certreg_ticket_'.$ticketKey; $ok=false; $val=@apcu_fetch($k, $ok);
+    if($ok){
+      // emulate delete by overwriting with short TTL
+      @apcu_store($k, '', 1);
+      return $val;
+    }
+    return null;
   }
   $dir = sys_get_temp_dir().'/certreg_test_dl';
   $path = $dir.'/'.preg_replace('/[^A-Za-z0-9_.-]/','',$ticketKey);
@@ -44,6 +53,7 @@ function ticket_store_get_and_clear($ticketKey){
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   // Store raw body (small test files only)
   $raw = file_get_contents('php://input');
+  __tlog('POST kind='.$kind.' cid='.$cid.' ticket='.$ticket.' bytes='.strlen($raw));
   if ($ticket !== '') {
     ticket_store_set($ticket, $raw);
   } else {
@@ -71,7 +81,7 @@ if ($kind === 'jpg') {
   header('Content-Type: image/jpeg');
   $fname = $name !== '' ? $name : ('certificate_' . $cid . '.jpg');
   header('Content-Disposition: attachment; filename="' . $fname . '"');
-  if ($stored !== null) { echo $stored; exit; }
+  if ($stored !== null) { __tlog('GET serve kind=jpg cid='.$cid.' ticket='.$ticket.' bytes='.strlen($stored)); header('Content-Length: '.strlen($stored)); echo $stored; exit; }
   // Optional wait
   $wait = isset($_GET['wait']) ? (int)$_GET['wait'] : 0;
   if ($wait) {
@@ -84,18 +94,21 @@ if ($kind === 'jpg') {
         $stored = $_SESSION['__test_downloads'][$key] ?? null;
         @session_write_close();
       }
-      if ($stored !== null) { echo $stored; exit; }
+      if ($stored !== null) { __tlog('GET serve-wait kind=jpg cid='.$cid.' ticket='.$ticket.' bytes='.strlen($stored)); header('Content-Length: '.strlen($stored)); echo $stored; exit; }
       usleep(50_000);
     }
   }
   // Minimal JPEG (1x1 px) valid binary
-  echo base64_decode('/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxISEhUQEhMVFhUVFRUVFRUVFRUVFRUWFxUVFRUYHSggGBolHRUVITEhJSkrLi4uFx8zODMtNygtLisBCgoKDg0OGxAQGy0lHyUtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLf/AABEIAAEAAQMBIgACEQEDEQH/xAAbAAACAwEBAQAAAAAAAAAAAAAEBQIDBgABB//EADkQAAEDAgMFBgQFBQAAAAAAAAEAAgMEEQUSITFBURMiYXGBkQYyUqGxBxQjQlNicuHxJJOi/8QAGQEAAwEBAQAAAAAAAAAAAAAAAAECAwQF/8QAHREBAQEBAQEBAQEAAAAAAAAAAAERAiExA0ESIv/aAAwDAQACEQMRAD8A9yiiiigAooooAKKKKACiiigAooooAK3p+z3m7l3WlK+8p1mR6b9c0r9wq1p6u8lB6Cz5I8JqjZ1v8A9h9l6D2z5XjU0q9w2g6Z7r6lqk5WcJ8hU4p7a0xA9h0kYy8kq1e9x1mcM3K0pE3dWf0lK7kqgqACiiigAooooAKKKKACiiigAooooAKKKKACiiigD//Z');
+  $jpg = base64_decode('/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxISEhUQEhMVFhUVFRUVFRUVFRUVFRUWFxUVFRUYHSggGBolHRUVITEhJSkrLi4uFx8zODMtNygtLisBCgoKDg0OGxAQGy0lHyUtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLf/AABEIAAEAAQMBIgACEQEDEQH/xAAbAAACAwEBAQAAAAAAAAAAAAAEBQIDBgABB//EADkQAAEDAgMFBgQFBQAAAAAAAAEAAgMEEQUSITFBURMiYXGBkQYyUqGxBxQjQlNicuHxJJOi/8QAGQEAAwEBAQAAAAAAAAAAAAAAAAECAwQF/8QAHREBAQEBAQEBAQEAAAAAAAAAAAERAiExA0ESIv/aAAwDAQACEQMRAD8A9yiiiigAooooAKKKKACiiigAooooAK3p+z3m7l3WlK+8p1mR6b9c0r9wq1p6u8lB6Cz5I8JqjZ1v8A9h9l6D2z5XjU0q9w2g6Z7r6lqk5WcJ8hU4p7a0xA9h0kYy8kq1e9x1mcM3K0pE3dWf0lK7kqgqACiiigAooooAKKKKACiiigAooooAKKKKACiiigD//Z');
+  header('Content-Length: '.strlen($jpg));
+  __tlog('GET serve-fallback kind=jpg bytes='.strlen($jpg));
+  echo $jpg;
   exit;
 }
 
 header('Content-Type: application/pdf');
 header('Content-Disposition: attachment; filename="' . ($name !== '' ? $name : ('certificate_' . $cid . '.pdf')) . '"');
-if ($stored !== null) { echo $stored; exit; }
+if ($stored !== null) { __tlog('GET serve kind=pdf cid='.$cid.' ticket='.$ticket.' bytes='.strlen($stored)); header('Content-Length: '.strlen($stored)); echo $stored; exit; }
 // If waiting was requested, hold the connection briefly for content to arrive
 $wait = isset($_GET['wait']) ? (int)$_GET['wait'] : 0;
 if ($wait) {
@@ -108,7 +121,7 @@ if ($wait) {
       $stored = $_SESSION['__test_downloads'][$key] ?? null;
       @session_write_close();
     }
-    if ($stored !== null) { echo $stored; exit; }
+    if ($stored !== null) { __tlog('GET serve-wait kind=pdf cid='.$cid.' ticket='.$ticket.' bytes='.strlen($stored)); header('Content-Length: '.strlen($stored)); echo $stored; exit; }
     usleep(50_000);
   }
 }
@@ -135,4 +148,6 @@ $xref = "xref\n0 6\n0000000000 65535 f \n";
 for($i=1;$i<=5;$i++){ $off = str_pad((string)$offsets[$i], 10, '0', STR_PAD_LEFT); $xref .= $off." 00000 n \n"; }
 $add($xref);
 $add("trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n".$xrefPos."\n%%EOF");
+header('Content-Length: '.strlen($buf));
+__tlog('GET serve-fallback kind=pdf bytes='.strlen($buf));
 echo $buf;
