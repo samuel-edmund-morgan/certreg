@@ -130,7 +130,7 @@ $msg = $_GET['msg'] ?? '';
   <div class="mb-18">
   <?php $prevPath = '/files/templates/'.$row['org_id'].'/'.$row['id'].'/preview.jpg'; ?>
     <div class="mb-8 fs-13 text-muted">Поточний превʼю:</div>
-    <div><img src="<?= htmlspecialchars($prevPath) ?>?v=<?= (int)$row['version'] ?>" alt="preview" style="max-width:480px;border:1px solid #e2e8f0;border-radius:8px" loading="lazy"></div>
+  <div><img class="img-preview-480" src="<?= htmlspecialchars($prevPath) ?>?v=<?= (int)$row['version'] ?>" alt="preview" loading="lazy"></div>
   </div>
   <?php if($hasTplFk): ?>
   <div class="mb-18">

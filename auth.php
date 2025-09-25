@@ -90,18 +90,54 @@ function login_admin(string $u, string $p): bool {
             $hasOrgId = $chk2 && $chk2->rowCount() === 1;
         } catch (Throwable $e) { $hasOrgId = false; }
     }
-    if ($hasActive && $hasOrgId) {
-        $st = $pdo->prepare("SELECT id, passhash, role, org_id FROM creds WHERE username=? AND is_active=1");
+    // Detect presence of role column once; if absent, we'll default to 'admin' at runtime
+    static $hasRole = null;
+    if ($hasRole === null) {
+        try {
+            $chk3 = $pdo->query("SHOW COLUMNS FROM `creds` LIKE 'role'");
+            $hasRole = $chk3 && $chk3->rowCount() === 1;
+        } catch (Throwable $e) { $hasRole = false; }
+    }
+    // Build a safe SELECT list based on available columns to avoid SQL errors in minimal schemas
+    $cols = ['id', 'passhash'];
+    if ($hasRole)  { $cols[] = 'role'; }
+    if ($hasOrgId) { $cols[] = 'org_id'; }
+    $sql = 'SELECT '.implode(', ', $cols).' FROM creds WHERE username=?';
+    if ($hasActive) { $sql .= ' AND is_active=1'; }
+    // Prepare and execute with a resilient fallback if schema detection was incorrect
+    $st = $pdo->prepare($sql);
+    try {
         $st->execute([$u]);
-    } elseif($hasActive) {
-        $st = $pdo->prepare("SELECT id, passhash, role FROM creds WHERE username=? AND is_active=1");
-        $st->execute([$u]);
-    } elseif($hasOrgId) {
-        $st = $pdo->prepare("SELECT id, passhash, role, org_id FROM creds WHERE username=?");
-        $st->execute([$u]);
-    } else {
-        $st = $pdo->prepare("SELECT id, passhash, role FROM creds WHERE username=?");
-        $st->execute([$u]);
+    } catch (PDOException $ex) {
+        // If unknown column error happened despite detection, rebuild columns defensively and retry once
+        $code = $ex->getCode();
+        $msg  = $ex->getMessage();
+        if ($code === '42S22' || stripos($msg, 'Unknown column') !== false) {
+            try {
+                // Probe actual columns and rebuild a minimal safe SELECT
+                $colsMap = [];
+                $curs = $pdo->query('SHOW COLUMNS FROM `creds`');
+                foreach ($curs->fetchAll(PDO::FETCH_ASSOC) as $ci) {
+                    $colsMap[strtolower($ci['Field'])] = true;
+                }
+                $cols = ['id', 'passhash'];
+                $hasRole  = isset($colsMap['role']);
+                $hasOrgId = isset($colsMap['org_id']);
+                $hasActive = isset($colsMap['is_active']);
+                if ($hasRole) { $cols[] = 'role'; }
+                if ($hasOrgId) { $cols[] = 'org_id'; }
+                $sql = 'SELECT '.implode(', ', $cols).' FROM creds WHERE username=?';
+                if ($hasActive) { $sql .= ' AND is_active=1'; }
+                $st = $pdo->prepare($sql);
+                $st->execute([$u]);
+            } catch (Throwable $e2) {
+                // Give up and fail login gracefully
+                return false;
+            }
+        } else {
+            // Unexpected DB error
+            return false;
+        }
     }
     $row = $st->fetch();
     if ($row && password_verify($p, $row['passhash'])) {
@@ -130,9 +166,11 @@ function login_admin(string $u, string $p): bool {
         // prevent session fixation
         if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
         session_regenerate_id(true);
-        $_SESSION['admin_id'] = (int)$row['id'];
-        $_SESSION['admin_user'] = $u;
-        $_SESSION['admin_role'] = $row['role'];
+    $_SESSION['admin_id'] = (int)$row['id'];
+    $_SESSION['admin_user'] = $u;
+    // If role column is absent or empty, default to 'admin' to keep CI/login flows working
+    $roleVal = ($hasRole && isset($row['role']) && $row['role'] !== '') ? (string)$row['role'] : 'admin';
+    $_SESSION['admin_role'] = $roleVal;
         // Persist operator organization context (admins remain global with NULL)
         if(isset($row['org_id'])) {
             $_SESSION['org_id'] = $row['org_id'] !== null ? (int)$row['org_id'] : null;

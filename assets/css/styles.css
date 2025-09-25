@@ -573,6 +573,9 @@ main{flex:1}
   /* Color dots in organization table */
   .color-dot{display:inline-block;width:18px;height:18px;border-radius:6px;border:1px solid var(--border);background:var(--c,#ccc);position:relative}
   .color-dot:after{content:"";position:absolute;inset:0;border-radius:6px;box-shadow:inset 0 0 0 2px rgba(255,255,255,0.5)}
+  /* SVG-based alternative (CSP-safe, no inline styles) */
+  .color-dot-svg{width:18px;height:18px;display:inline-block;border-radius:6px;border:1px solid var(--border)}
+  .color-dot-svg circle{stroke:rgba(255,255,255,0.5);stroke-width:2}
   .badge.ok{background:#15803d;color:#fff}
   .badge.off{background:#64748b;color:#fff}
   /* Specific template status variants (inactive vs archived) */
@@ -588,6 +591,8 @@ main{flex:1}
   .tpl-big-prev{max-width:90vw;max-height:80vh;display:block;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.25);}
   dialog.tpl-prev-dialog{border:0;padding:14px 18px;border-radius:14px;background:#fff;}
   dialog.tpl-prev-dialog::backdrop{background:rgba(0,0,0,.45)}
+  /* Image preview fixed width used on template.php */
+  .img-preview-480{max-width:480px;border:1px solid var(--border);border-radius:8px;height:auto;display:block}
 /* NOTE: Removed temporary canonical override with !important for .topbar__actions .btn
    (kept single definition near top). This comment left intentionally for audit trace. */
 

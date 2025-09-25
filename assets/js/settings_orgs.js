@@ -26,9 +26,10 @@
   }
 
   function renderRow(o){
-    const brandParts=[]; if(o.primary_color) brandParts.push('<span class="color-dot" style="--c:'+esc(o.primary_color)+'" title="primary"></span>');
-    if(o.accent_color) brandParts.push('<span class="color-dot" style="--c:'+esc(o.accent_color)+'" title="accent"></span>');
-    if(o.secondary_color) brandParts.push('<span class="color-dot" style="--c:'+esc(o.secondary_color)+'" title="secondary"></span>');
+    const brandParts=[];
+    if(o.primary_color) brandParts.push(`<svg class="color-dot-svg" viewBox="0 0 18 18" role="img" aria-label="primary"><title>primary</title><circle cx="9" cy="9" r="7" fill="${esc(o.primary_color)}"/></svg>`);
+    if(o.accent_color) brandParts.push(`<svg class="color-dot-svg" viewBox="0 0 18 18" role="img" aria-label="accent"><title>accent</title><circle cx="9" cy="9" r="7" fill="${esc(o.accent_color)}"/></svg>`);
+    if(o.secondary_color) brandParts.push(`<svg class="color-dot-svg" viewBox="0 0 18 18" role="img" aria-label="secondary"><title>secondary</title><circle cx="9" cy="9" r="7" fill="${esc(o.secondary_color)}"/></svg>`);
     const logo = o.logo_path?'<span class="fs-12 text-muted">logo</span>':'';
     const fav  = o.favicon_path?'<span class="fs-12 text-muted">fav</span>':'';
     const status = o.is_active==1?'<span class="badge ok">Активна</span>':'<span class="badge off">Вимкнена</span>';

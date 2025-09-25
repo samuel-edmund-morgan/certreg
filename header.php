@@ -144,15 +144,24 @@ $tplPath = htmlspecialchars($cfg['cert_template_path'] ?? '/files/cert_template.
       // Replace literal backslash + n sequences with <br> for display only.
   $htmlSiteName = htmlspecialchars($rawSiteName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
   $htmlSiteName = str_replace('\\n','<br>',$htmlSiteName); // Keep multiline display in header
+      // Conditionally render logo image only if file exists to avoid 404 noise in CI
+      $logoPath = (string)($cfg['logo_path'] ?? '');
+      $logoHtml = '';
+      if ($logoPath !== '') {
+        $absLogo = $_SERVER['DOCUMENT_ROOT'] . $logoPath;
+        if (is_file($absLogo)) {
+          $logoHtml = '<div class="logo"><img src="'.htmlspecialchars($logoPath,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8').'" alt="Логотип"></div>';
+        }
+      }
     ?>
     <?php if (is_admin_logged()): ?>
       <a href="/admin.php" class="brand link-plain">
-        <div class="logo"><img src="<?= htmlspecialchars($cfg['logo_path']) ?>" alt="Логотип"></div>
+        <?= $logoHtml ?>
         <div class="title"><?= $htmlSiteName ?></div>
       </a>
     <?php else: ?>
       <div class="brand">
-        <div class="logo"><img src="<?= htmlspecialchars($cfg['logo_path']) ?>" alt="Логотип"></div>
+        <?= $logoHtml ?>
         <div class="title"><?= $htmlSiteName ?></div>
       </div>
     <?php endif; ?>
