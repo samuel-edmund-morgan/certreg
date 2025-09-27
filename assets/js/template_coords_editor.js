@@ -101,9 +101,13 @@
       }
     }
     const lineHeightFactor = Number.isFinite(data?.line_height) && data.line_height > 0 ? data.line_height : 1.2;
-    const padding = fontSizePx * 0.35;
-    const width = Math.max(measuredWidth, fontSizePx) + padding;
-    const height = Math.max(fontSizePx * lineHeightFactor, fontSizePx * 0.9) + padding;
+    const chromeBorder = 4; // 2px dashed border on each side
+    const chromePaddingX = 12; // padding-left/right applied in CSS
+    const chromePaddingY = 8; // padding-top/bottom applied in CSS
+    const slackX = Math.max(fontSizePx * 0.25, 8);
+    const slackY = Math.max(fontSizePx * 0.15, 6);
+    const width = Math.max(measuredWidth + chromePaddingX + chromeBorder + slackX, fontSizePx + chromePaddingX + chromeBorder + slackX);
+    const height = Math.max((fontSizePx * lineHeightFactor) + chromePaddingY + chromeBorder + slackY, (fontSizePx * 0.9) + chromePaddingY + chromeBorder + slackY);
     return { width, height, lineHeightFactor };
   }
 
@@ -433,7 +437,10 @@
           placeholder.style.textTransform = data.uppercase ? 'uppercase' : 'none';
           const align = (data.align || defaultsSource[field]?.align || 'left');
           placeholder.style.textAlign = align;
-          placeholder.style.whiteSpace = data.wrap === false ? 'nowrap' : 'normal';
+          const allowWrap = data.wrap === true;
+          placeholder.style.whiteSpace = allowWrap ? 'normal' : 'nowrap';
+          placeholder.style.wordBreak = allowWrap ? 'break-word' : 'normal';
+          placeholder.style.overflow = allowWrap ? 'visible' : 'hidden';
           if(data.tracking !== undefined && Number.isFinite(data.tracking)){
             placeholder.style.letterSpacing = (data.tracking * state.scale)+'px';
           } else {
