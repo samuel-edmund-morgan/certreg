@@ -226,8 +226,7 @@
       obj.x = round(data.x);
       obj.y = round(data.y);
       if(meta.supportsSize !== false && data.size !== undefined) obj.size = round(data.size);
-      if(meta.supportsAngle && data.angle !== undefined) obj.angle = round(data.angle);
-      if(meta.supportsAlign && data.align) obj.align = data.align;
+  if(meta.supportsAngle && data.angle !== undefined) obj.angle = round(data.angle);
       if(data.color) obj.color = data.color;
       if(data.font) obj.font = data.font;
       if(data.text) obj.text = data.text;

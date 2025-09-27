@@ -195,12 +195,6 @@ $msg = $_GET['msg'] ?? '';
           <input type="number" id="coordsFieldSize" step="1" min="1" max="5000">
           <label for="coordsFieldAngle" class="coords-editor__angle">Кут</label>
           <input type="number" id="coordsFieldAngle" class="coords-editor__angle" step="1" min="-360" max="360">
-          <label for="coordsFieldAlign" class="coords-editor__align">Вирівнювання</label>
-          <select id="coordsFieldAlign" class="coords-editor__align">
-            <option value="left">Ліворуч</option>
-            <option value="center">По центру</option>
-            <option value="right">Праворуч</option>
-          </select>
         </div>
         <div class="coords-editor__hint fs-12 text-muted" id="coordsEditorHint"></div>
       </div>
