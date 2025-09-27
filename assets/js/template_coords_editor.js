@@ -205,8 +205,8 @@
       if(data.line_height !== undefined) obj.line_height = round(data.line_height);
       if(data.radius !== undefined) obj.radius = round(data.radius);
       if(data.scale !== undefined) obj.scale = round(data.scale);
-  if(data.width !== undefined) obj.width = round(data.width);
-  if(data.height !== undefined) obj.height = round(data.height);
+      if(data.width !== undefined) obj.width = round(data.width);
+      if(data.height !== undefined) obj.height = round(data.height);
       if(data.order !== undefined) obj.order = Math.round(data.order);
       BOOL_PROPS.forEach(prop => { if(data[prop] !== undefined) obj[prop] = !!data[prop]; });
       out[field] = obj;
@@ -251,7 +251,7 @@
   function setSummaryMessage(message, tone){
     if(!summaryText) return;
     summaryText.textContent = message;
-    summaryText.classList.remove('text-muted','text-success','text-warning');
+    summaryText.classList.remove('text-muted','text-success','text-warning','text-danger');
     if(tone){ summaryText.classList.add('text-'+tone); }
   }
 
@@ -335,34 +335,43 @@
     const data = state.coords[field];
     if(!data) return;
     const meta = FIELD_META[field] || {};
-    const left = data.x * state.scale;
-    const top = data.y * state.scale;
-    marker.style.left = left+'px';
-    marker.style.top = top+'px';
-    marker.classList.toggle('is-active', state.activeField === field);
+    const baseLeft = data.x * state.scale;
+    const baseTop = data.y * state.scale;
     if(meta.isQr){
+      marker.style.left = baseLeft+'px';
+      marker.style.top = baseTop+'px';
       const box = marker.querySelector('.coords-marker__qr-box');
       if(box){
         const size = (data.size || 0) * state.scale;
         box.style.width = Math.max(8, size)+'px';
         box.style.height = Math.max(8, size)+'px';
+        marker.style.width = Math.max(8, size)+'px';
+        marker.style.height = Math.max(8, size)+'px';
       }
-      marker.style.width = Math.max(8, (data.size || 0) * state.scale)+'px';
-      marker.style.height = Math.max(8, (data.size || 0) * state.scale)+'px';
     } else if(meta.supportsBox){
       const box = marker.querySelector('.coords-marker__text-box');
-      const boxWidth = Math.max(12, (data.width || 0) * state.scale);
-      const boxHeight = Math.max(10, (data.height || 0) * state.scale);
       if(box){
-        box.style.width = boxWidth+'px';
-        box.style.height = boxHeight+'px';
+        const widthUnits = Number.isFinite(data.width) ? data.width : (defaultsSource[field]?.width || 320);
+        const heightUnits = Number.isFinite(data.height) ? data.height : (defaultsSource[field]?.height || Math.max(24, (data.size || 24) * 1.4));
+        const widthPx = Math.max(20, widthUnits * state.scale);
+        const heightPx = Math.max(12, heightUnits * state.scale);
+        marker.style.left = baseLeft+'px';
+        marker.style.top = (baseTop - heightPx)+'px';
+        marker.style.width = widthPx+'px';
+        marker.style.height = heightPx+'px';
+        box.style.width = widthPx+'px';
+        box.style.height = heightPx+'px';
+        box.style.top = '0px';
+        box.style.left = '0px';
+      } else {
+        marker.style.left = baseLeft+'px';
+        marker.style.top = baseTop+'px';
       }
-      marker.style.width = boxWidth+'px';
-      marker.style.height = boxHeight+'px';
     } else {
-      marker.style.width = '14px';
-      marker.style.height = '14px';
+      marker.style.left = baseLeft+'px';
+      marker.style.top = baseTop+'px';
     }
+    marker.classList.toggle('is-active', state.activeField === field);
     marker.setAttribute('aria-label', `${meta.label}: x=${Math.round(data.x)}, y=${Math.round(data.y)}`);
   }
 
@@ -449,11 +458,16 @@
     marker.classList.add('dragging');
     const rect = stageInner.getBoundingClientRect();
     const pointerId = event.pointerId;
+    const data = state.coords[field] || {x:0,y:0};
+    const startRelX = (event.clientX - rect.left) / state.scale;
+    const startRelY = (event.clientY - rect.top) / state.scale;
+    const offsetX = startRelX - data.x;
+    const offsetY = startRelY - data.y;
 
     function onMove(ev){
       if(ev.pointerId !== pointerId) return;
-      const relX = (ev.clientX - rect.left) / state.scale;
-      const relY = (ev.clientY - rect.top) / state.scale;
+      const relX = ((ev.clientX - rect.left) / state.scale) - offsetX;
+      const relY = ((ev.clientY - rect.top) / state.scale) - offsetY;
       applyPatch(field, { x: relX, y: relY });
     }
 
