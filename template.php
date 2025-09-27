@@ -116,7 +116,8 @@ $tplWidth = isset($row['width']) ? (int)$row['width'] : 0;
 $tplHeight = isset($row['height']) ? (int)$row['height'] : 0;
 $tplExt = isset($row['file_ext']) && $row['file_ext'] ? $row['file_ext'] : 'jpg';
 $tplOriginalPath = '/files/templates/'.$row['org_id'].'/'.$row['id'].'/original.'.$tplExt;
-$tplOriginalEsc = htmlspecialchars($tplOriginalPath, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$tplOriginalPathVer = $tplOriginalPath.'?v='.(int)$row['version'];
+$tplOriginalEsc = htmlspecialchars($tplOriginalPathVer, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $tplPreviewEsc = htmlspecialchars('/files/templates/'.$row['org_id'].'/'.$row['id'].'/preview.jpg?v='.(int)$row['version'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $coordsEditorJsVer = @filemtime($_SERVER['DOCUMENT_ROOT'].'/assets/js/template_coords_editor.js') ?: time();
 

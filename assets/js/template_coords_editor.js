@@ -41,6 +41,14 @@
     qr: 'Блок QR-коду. Розмір – ширина квадрату в пікселях.',
     int: 'Службовий код INT (короткий хеш).'
   };
+  const FIELD_PLACEHOLDERS = {
+    name: 'ОЛЕКСАНДР ОЛЕКСАНДРОВИЧ ОЛЕКСАНДРОВ',
+    id: 'Cmg28rac7-c897',
+    extra: 'Якась додаткова інформація',
+    date: 'Дата: 25-09-28',
+    expires: 'Термін дії до: Безтерміновий',
+    int: 'INT 4167D-784D9'
+  };
 
   const NUM_PROPS = new Set(['x','y','size','width','height','angle','max_width','tracking','line_height','radius','scale','order']);
   const BOOL_PROPS = new Set(['uppercase','wrap','bold','italic']);
@@ -50,6 +58,7 @@
 
   const tplWidth = Number(hostSection.dataset.templateWidth || '0');
   const tplHeight = Number(hostSection.dataset.templateHeight || '0');
+  const tplOriginalUrl = hostSection.dataset.templateOriginal || '';
 
   function baseDefaults(width, height){
     const usableWidth = width || 1200;
@@ -245,6 +254,20 @@
     resizing: false
   };
 
+  function applyNativeDimensions(width, height){
+    const w = Number(width);
+    const h = Number(height);
+    if(!Number.isFinite(w) || !Number.isFinite(h) || w<=0 || h<=0) return;
+    let changed = false;
+    if(state.canvasWidth !== w){ state.canvasWidth = w; changed = true; }
+    if(state.canvasHeight !== h){ state.canvasHeight = h; changed = true; }
+    if(changed){
+      bounds.maxX = (state.canvasWidth || 2000) + 2000;
+      bounds.maxY = (state.canvasHeight || 1400) + 2000;
+      updateScale();
+    }
+  }
+
   state.storedSnapshot = cloneCoords(state.coords);
   state.savedSerialized = JSON.stringify(serializeForSave(state.coords));
 
@@ -284,7 +307,12 @@
       if(meta.supportsBox && !meta.isQr){
         const box = document.createElement('div');
         box.className = 'coords-marker__text-box';
+        const placeholder = document.createElement('div');
+        placeholder.className = 'coords-marker__placeholder';
+        placeholder.textContent = FIELD_PLACEHOLDERS[field] || meta.label;
+        box.appendChild(placeholder);
         marker.appendChild(box);
+        marker.__placeholderEl = placeholder;
       }
       const label = document.createElement('span');
       label.className = 'coords-marker__label';
@@ -307,9 +335,9 @@
     if(rect.width === 0){ return; }
     overlay.style.width = rect.width+'px';
     overlay.style.height = rect.height+'px';
-  const baseWidth = state.canvasWidth || 0;
-  const naturalWidth = baseWidth || bgImg.naturalWidth || rect.width;
-  const naturalHeight = state.canvasHeight || bgImg.naturalHeight || rect.height;
+    const baseWidth = state.canvasWidth || 0;
+    const naturalWidth = baseWidth || bgImg.naturalWidth || rect.width;
+    const naturalHeight = state.canvasHeight || bgImg.naturalHeight || rect.height;
     if(!state.canvasWidth && bgImg.naturalWidth){ state.canvasWidth = bgImg.naturalWidth; }
     if(!state.canvasHeight && bgImg.naturalHeight){ state.canvasHeight = bgImg.naturalHeight; }
     if(state.canvasWidth){
@@ -363,6 +391,37 @@
         box.style.height = heightPx+'px';
         box.style.top = '0px';
         box.style.left = '0px';
+        const placeholder = marker.__placeholderEl || box.querySelector('.coords-marker__placeholder');
+        if(placeholder){
+          const sample = FIELD_PLACEHOLDERS[field] || (FIELD_META[field]?.label || field.toUpperCase());
+          if(placeholder.textContent !== sample){ placeholder.textContent = sample; }
+          const fontUnits = Number.isFinite(data.size) ? data.size : (defaultsSource[field]?.size || 24);
+          const fontPx = Math.max(6, fontUnits * state.scale);
+          placeholder.style.fontSize = fontPx+'px';
+          if(Number.isFinite(data.line_height) && data.line_height>0){
+            placeholder.style.lineHeight = (data.line_height * fontPx)+'px';
+          } else {
+            placeholder.style.lineHeight = '1.2';
+          }
+          placeholder.style.fontWeight = data.bold ? '600' : '500';
+          placeholder.style.fontStyle = data.italic ? 'italic' : 'normal';
+          placeholder.style.textTransform = data.uppercase ? 'uppercase' : 'none';
+          const align = (data.align || defaultsSource[field]?.align || 'left');
+          placeholder.style.textAlign = align;
+          placeholder.style.whiteSpace = data.wrap === false ? 'nowrap' : 'normal';
+          if(data.tracking !== undefined && Number.isFinite(data.tracking)){
+            placeholder.style.letterSpacing = (data.tracking * state.scale)+'px';
+          } else {
+            placeholder.style.letterSpacing = 'normal';
+          }
+          if(data.angle !== undefined && Number.isFinite(data.angle) && data.angle !== 0){
+            placeholder.style.transform = `rotate(${data.angle}deg)`;
+            placeholder.style.transformOrigin = align === 'center' ? '50% 0%' : (align === 'right' ? '100% 0%' : '0% 0%');
+          } else {
+            placeholder.style.transform = 'none';
+            placeholder.style.transformOrigin = '';
+          }
+        }
       } else {
         marker.style.left = baseLeft+'px';
         marker.style.top = baseTop+'px';
@@ -566,6 +625,14 @@
     updateScale();
   } else {
     bgImg.addEventListener('load', ()=> updateScale(), { once: true });
+  }
+  if(tplOriginalUrl){
+    try {
+      const probe = new Image();
+      probe.decoding = 'async';
+      probe.onload = ()=>{ applyNativeDimensions(probe.naturalWidth, probe.naturalHeight); };
+      probe.src = tplOriginalUrl;
+    } catch(_e){}
   }
   createMarkers();
   renderAllMarkers();

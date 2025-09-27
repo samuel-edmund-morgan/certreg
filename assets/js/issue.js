@@ -23,6 +23,20 @@
   const resetBtn = document.getElementById('resetBtn');
   const canvas = document.getElementById('certCanvas');
   const ctx = canvas.getContext('2d');
+  function normalizeDimension(value){
+    const num = Number(value);
+    return Number.isFinite(num) && num > 0 ? num : null;
+  }
+  const metaSeed = (typeof window !== 'undefined' && window.__ACTIVE_TEMPLATE_META && typeof window.__ACTIVE_TEMPLATE_META === 'object') ? window.__ACTIVE_TEMPLATE_META : {};
+  let activeTemplateMeta = {
+    width: normalizeDimension(metaSeed.width),
+    height: normalizeDimension(metaSeed.height)
+  };
+  function getTemplateBaseSize(){
+    const width = normalizeDimension(activeTemplateMeta.width) || normalizeDimension(bgImage && bgImage.naturalWidth) || canvas.width;
+    const height = normalizeDimension(activeTemplateMeta.height) || normalizeDimension(bgImage && bgImage.naturalHeight) || canvas.height;
+    return { width, height };
+  }
   function resolveActiveCoords(){
     if(typeof window !== 'undefined'){
       try {
@@ -95,28 +109,51 @@
     return 'C'+ts+'-'+toHex(rnd);
   }
   let currentData = null;
+  function ensureCanvasMatchesTemplate(meta, img){
+    const imgWidth = img ? normalizeDimension(img.naturalWidth) : null;
+    const imgHeight = img ? normalizeDimension(img.naturalHeight) : null;
+    const width = normalizeDimension(meta && meta.width) || imgWidth;
+    const height = normalizeDimension(meta && meta.height) || imgHeight;
+    if(width && height && (canvas.width !== width || canvas.height !== height)){
+      canvas.width = width;
+      canvas.height = height;
+    }
+  }
   function renderAll(){
     if(!currentData) return;
+    const baseSize = getTemplateBaseSize();
+    const scaleX = baseSize.width ? (canvas.width / baseSize.width) : 1;
+    const scaleY = baseSize.height ? (canvas.height / baseSize.height) : 1;
     ctx.clearRect(0,0,canvas.width,canvas.height);
     if(bgImage.complete){ ctx.drawImage(bgImage,0,0,canvas.width,canvas.height); }
-    ctx.fillStyle = '#000';
-    ctx.font = '28px sans-serif';
     const coords = activeCoords || {};
-    const cName = coords.name || {x:600,y:420};
-    const cId   = coords.id   || {x:600,y:445};
-    const cExtra = coords.extra || {x:600,y:520};
-    const cDate = coords.date || {x:600,y:570};
-    const cExp  = coords.expires || {x:600,y:600};
-    const cQR   = coords.qr   || {x:150,y:420,size:220};
+    ctx.save();
+    ctx.scale(scaleX || 1, scaleY || 1);
+    ctx.fillStyle = '#000';
+    const fallback = {
+      name: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.6, size: 28},
+      id: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.635, size: 20},
+      extra: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.74, size: 24},
+      date: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.81, size: 24},
+      expires: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.86, size: 20},
+      qr: {x: (baseSize.width||1000) * 0.15, y: (baseSize.height||700) * 0.6, size: 220},
+      int: {x: (baseSize.width||1000) - 180, y: (baseSize.height||700) - 30, size: 14}
+    };
+    const cName = coords.name || fallback.name;
+    const cId   = coords.id   || fallback.id;
+    const cExtra = coords.extra || fallback.extra;
+    const cDate = coords.date || fallback.date;
+    const cExp  = coords.expires || fallback.expires;
+    const cQR   = coords.qr   || fallback.qr;
+    ctx.font = `${cName.size || 28}px sans-serif`;
     ctx.fillText(currentData.pib, cName.x, cName.y);
-    ctx.font = '20px sans-serif'; ctx.fillText(currentData.cid, cId.x, cId.y);
-    // v3 only: render extra if provided
-    ctx.font = '24px sans-serif';
+    ctx.font = `${cId.size || 20}px sans-serif`;
+    ctx.fillText(currentData.cid, cId.x, cId.y);
+    ctx.font = `${cExtra.size || 24}px sans-serif`;
     if(currentData.extra){ ctx.fillText(String(currentData.extra), cExtra.x, cExtra.y); }
     ctx.fillText('Дата: '+currentData.date, cDate.x, cDate.y);
-    // Expiry line (uses sentinel for infinite)
     const expLabel = currentData.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : currentData.valid_until;
-    ctx.font = (cExp.size?cExp.size:20)+'px sans-serif';
+    ctx.font = `${cExp.size || 20}px sans-serif`;
     if(cExp.angle){
       ctx.save(); ctx.translate(cExp.x, cExp.y); ctx.rotate((cExp.angle*Math.PI)/180);
       ctx.fillText('Термін дії до: '+expLabel, 0, 0);
@@ -127,17 +164,17 @@
     if(qrImg.complete){
       ctx.drawImage(qrImg, cQR.x, cQR.y, cQR.size, cQR.size);
     }
-    // Integrity short code (first 10 hex chars of H) if available
     if(currentData.h){
       const short = (currentData.h.slice(0,10).toUpperCase()).replace(/(.{5})(.{5})/, '$1-$2');
-  const cInt = coords.int || {x: canvas.width - 180, y: canvas.height - 30, size:14};
+      const cInt = coords.int || fallback.int;
       ctx.save();
-      ctx.font = (cInt.size||14) + 'px monospace';
+      ctx.font = `${cInt.size || 14}px monospace`;
       ctx.fillStyle = '#111';
       if(cInt.angle){ ctx.translate(cInt.x, cInt.y); ctx.rotate(cInt.angle * Math.PI/180); ctx.fillText('INT '+short, 0, 0); }
       else { ctx.fillText('INT '+short, cInt.x, cInt.y); }
       ctx.restore();
     }
+    ctx.restore();
   }
   async function handleSubmit(e){
     e.preventDefault();
@@ -257,7 +294,7 @@
   resultWrap.classList.remove('d-none');
   }
   let bgImage = new Image();
-  bgImage.onload = ()=>{ renderAll(); };
+  bgImage.onload = ()=>{ ensureCanvasMatchesTemplate(activeTemplateMeta, bgImage); renderAll(); };
   // Use configurable template path exposed via <body data-template> or override (falls back to default)
   (function(){
     try {
@@ -269,6 +306,14 @@
   // Реакція на зміну шаблону (подія від issue_templates.js)
   document.addEventListener('cert-template-change', function(ev){
     if(ev.detail){
+      if(Object.prototype.hasOwnProperty.call(ev.detail, 'width') || Object.prototype.hasOwnProperty.call(ev.detail, 'height')){
+        activeTemplateMeta = {
+          width: normalizeDimension(ev.detail.width),
+          height: normalizeDimension(ev.detail.height)
+        };
+        if(typeof window!=='undefined'){ window.__ACTIVE_TEMPLATE_META = activeTemplateMeta; }
+        ensureCanvasMatchesTemplate(activeTemplateMeta, bgImage);
+      }
       if(ev.detail.path){
         bgImage.src = ev.detail.path;
       }
@@ -276,6 +321,7 @@
         activeCoords = resolveActiveCoords();
         try { renderAll(); } catch(_e){}
       }
+      if(!ev.detail.path){ ensureCanvasMatchesTemplate(activeTemplateMeta, bgImage); if(currentData){ try{ renderAll(); }catch(_e){} } }
     }
   });
   form.addEventListener('submit', handleSubmit);

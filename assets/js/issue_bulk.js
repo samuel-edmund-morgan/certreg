@@ -56,6 +56,15 @@
     || (window.location.origin + '/verify.php');
   const TEST_MODE = (!!(typeof window!=="undefined" && window.__TEST_MODE)) || ((document.body && document.body.dataset && document.body.dataset.test)==='1');
   const ORG = TEST_MODE ? 'ORG-CERT' : ORG_RAW;
+  function normalizeDimension(value){
+    const num = Number(value);
+    return Number.isFinite(num) && num > 0 ? num : null;
+  }
+  const metaSeed = (typeof window !== 'undefined' && window.__ACTIVE_TEMPLATE_META && typeof window.__ACTIVE_TEMPLATE_META === 'object') ? window.__ACTIVE_TEMPLATE_META : {};
+  let bulkTemplateMeta = {
+    width: normalizeDimension(metaSeed.width),
+    height: normalizeDimension(metaSeed.height)
+  };
   function getActiveCoords(){
     if(typeof window !== 'undefined'){
       try {
@@ -540,8 +549,7 @@
     const date=form.date.value; const infinite=form.infinite.checked; const validUntil=infinite?INFINITE_SENTINEL:(form.valid_until.value||'');
     ensureBg(()=>{
       // Sequentially render each to same canvas and capture JPEG buffers
-  const canvas = getRenderCanvas();
-  const ctx = canvas.getContext('2d');
+  let activeCanvas = getRenderCanvas();
       const pages=[];
       (async function loop(){
         for(const r of okRows){
@@ -549,11 +557,9 @@
             // Build QR for row then render
             const data = {ver:3, pib:normName(r.name), cid:r.cid, extra: (r.extra||''), date, valid_until:validUntil, h:r.h, salt:r.saltB64, canon: CANON_URL};
             buildQrForRow(data, (qrImgEl)=>{
-              renderCertToCanvas(data);
-              const coordsNow = getActiveCoords();
-              const cQR = coordsNow.qr || {x:150,y:420,size:220};
-              ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
-              const jpg = canvas.toDataURL('image/jpeg',0.92).split(',')[1];
+              const rendered = renderCertToCanvas(data, qrImgEl);
+              activeCanvas = rendered.canvas;
+              const jpg = activeCanvas.toDataURL('image/jpeg',0.92).split(',')[1];
               pages.push(Uint8Array.from(atob(jpg), c=>c.charCodeAt(0)));
               res();
             });
@@ -563,7 +569,7 @@
         if(pages.length && pages.length < okRows.length){
           while(pages.length < okRows.length){ pages.push(pages[pages.length-1]); }
         }
-  const pdfBytes = buildMultiPagePdfFromJpegs(pages, canvas.width, canvas.height);
+  const pdfBytes = buildMultiPagePdfFromJpegs(pages, activeCanvas.width, activeCanvas.height);
   const blob = new Blob([pdfBytes], {type:'application/pdf'});
   try { logBulk && logBulk('batchPdf.size', {bytes: pdfBytes.length, pages: pages.length, avgPageBytes: pages.length? Math.round(pdfBytes.length/pages.length) : 0}); } catch(_e){}
         if(window.__TEST_MODE){
@@ -638,18 +644,49 @@
   // ===== Certificate rendering & PDF/JPG generation for bulk (on-demand) =====
   // This duplicates minimal logic from issue.js (kept separate to avoid large refactor now).
   const BULK_CANVAS_ID = 'bulkRenderCanvas';
+  function ensureBulkCanvasSize(canvas){
+    if(!canvas) return;
+    const imgWidth = bulkBgImg && bulkBgImg.complete ? normalizeDimension(bulkBgImg.naturalWidth) : null;
+    const imgHeight = bulkBgImg && bulkBgImg.complete ? normalizeDimension(bulkBgImg.naturalHeight) : null;
+    let width = normalizeDimension(bulkTemplateMeta && bulkTemplateMeta.width) || imgWidth;
+    let height = normalizeDimension(bulkTemplateMeta && bulkTemplateMeta.height) || imgHeight;
+    if(!width) width = canvas.width || 1000;
+    if(!height) height = canvas.height || 700;
+    if(width && height && (canvas.width !== width || canvas.height !== height)){
+      canvas.width = width;
+      canvas.height = height;
+    }
+  }
   function getRenderCanvas(){
     let c = document.getElementById(BULK_CANVAS_ID);
-    if(!c){ c = document.createElement('canvas'); c.width=1000; c.height=700; c.id=BULK_CANVAS_ID; c.className='d-none'; document.body.appendChild(c); }
+    if(!c){
+      c = document.createElement('canvas');
+      c.id = BULK_CANVAS_ID;
+      c.className = 'd-none';
+      c.width = 1000;
+      c.height = 700;
+      document.body.appendChild(c);
+    }
+    ensureBulkCanvasSize(c);
     return c;
   }
   let bulkBgImg = null; let bulkBgLoading=false; let bulkBgReadyCb=[];
   document.addEventListener('cert-template-change', function(ev){
     if(!(ev && ev.detail)) return;
+    if(Object.prototype.hasOwnProperty.call(ev.detail,'width') || Object.prototype.hasOwnProperty.call(ev.detail,'height')){
+      bulkTemplateMeta = {
+        width: normalizeDimension(ev.detail.width),
+        height: normalizeDimension(ev.detail.height)
+      };
+      if(typeof window!=='undefined'){ window.__ACTIVE_TEMPLATE_META = bulkTemplateMeta; }
+      ensureBulkCanvasSize(document.getElementById(BULK_CANVAS_ID));
+    }
     if(ev.detail.path){
       bulkBgImg = null;
       bulkBgLoading = false;
       bulkBgReadyCb = [];
+    } else {
+      ensureBulkCanvasSize(document.getElementById(BULK_CANVAS_ID));
     }
   });
   function ensureBg(cb){
@@ -659,7 +696,7 @@
   bulkBgLoading=true;
   bulkBgImg = new Image();
   let done=false; const flush=()=>{ if(done) return; done=true; bulkBgReadyCb.splice(0).forEach(fn=>{ try{ fn(); }catch(_e){} }); };
-  bulkBgImg.onload = flush;
+  bulkBgImg.onload = ()=>{ ensureBulkCanvasSize(document.getElementById(BULK_CANVAS_ID)); flush(); };
   bulkBgImg.onerror = flush; // proceed without background on error
   // Timeout fallback in case neither onload nor onerror fires
   setTimeout(flush, 1500);
@@ -669,41 +706,59 @@
     bulkBgImg.src = tpl || '/files/cert_template.jpg';
   } catch(_e){ bulkBgImg.src = '/files/cert_template.jpg'; }
   }
-  function renderCertToCanvas(data){
+  function renderCertToCanvas(data, qrImage){
     const canvas = getRenderCanvas();
     const ctx = canvas.getContext('2d');
-  const coords = getActiveCoords();
+    const coords = getActiveCoords();
+    const baseWidth = normalizeDimension(bulkTemplateMeta.width) || normalizeDimension(bulkBgImg && bulkBgImg.naturalWidth) || canvas.width;
+    const baseHeight = normalizeDimension(bulkTemplateMeta.height) || normalizeDimension(bulkBgImg && bulkBgImg.naturalHeight) || canvas.height;
+    const scaleX = baseWidth ? (canvas.width / baseWidth) : 1;
+    const scaleY = baseHeight ? (canvas.height / baseHeight) : 1;
     ctx.clearRect(0,0,canvas.width,canvas.height);
     if(bulkBgImg && bulkBgImg.complete){ ctx.drawImage(bulkBgImg,0,0,canvas.width,canvas.height); }
+    ctx.save();
+    ctx.scale(scaleX || 1, scaleY || 1);
     ctx.fillStyle='#000';
-    ctx.font='28px sans-serif';
-    const cName = coords.name || {x:600,y:420};
-    const cId   = coords.id   || {x:600,y:445};
-  const cExtra = coords.extra || {x:600,y:520};
-    const cDate = coords.date || {x:600,y:570};
-    const cExp  = coords.expires || {x:600,y:600};
-    const cQR   = coords.qr || {x:150,y:420,size:220};
+    const fallback = {
+      name: {x:(baseWidth||1000)*0.6,y:(baseHeight||700)*0.6,size:28},
+      id: {x:(baseWidth||1000)*0.6,y:(baseHeight||700)*0.635,size:20},
+      extra: {x:(baseWidth||1000)*0.6,y:(baseHeight||700)*0.74,size:24},
+      date: {x:(baseWidth||1000)*0.6,y:(baseHeight||700)*0.81,size:24},
+      expires: {x:(baseWidth||1000)*0.6,y:(baseHeight||700)*0.86,size:20},
+      qr: {x:(baseWidth||1000)*0.15,y:(baseHeight||700)*0.6,size:220},
+      int: {x:(baseWidth||1000)-180,y:(baseHeight||700)-30,size:14}
+    };
+    const cName = coords.name || fallback.name;
+    const cId   = coords.id   || fallback.id;
+    const cExtra = coords.extra || fallback.extra;
+    const cDate = coords.date || fallback.date;
+  const cExp  = coords.expires || fallback.expires;
+  const cQR   = coords.qr || fallback.qr;
+    ctx.font = `${cName.size || 28}px sans-serif`;
     ctx.fillText(data.pib, cName.x, cName.y);
-    ctx.font='20px sans-serif'; ctx.fillText(data.cid, cId.x, cId.y);
-    // v3 only: render extra if provided
-    ctx.font='24px sans-serif';
+    ctx.font = `${cId.size || 20}px sans-serif`;
+    ctx.fillText(data.cid, cId.x, cId.y);
     const extraText = (data.extra||'').trim();
+    ctx.font = `${cExtra.size || 24}px sans-serif`;
     if(extraText){ ctx.fillText(extraText, cExtra.x, cExtra.y); }
     ctx.fillText('Дата: '+data.date, cDate.x, cDate.y);
     const expLabel = data.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : data.valid_until;
-    ctx.font=(cExp.size?cExp.size:20)+'px sans-serif';
+    ctx.font = `${cExp.size || 20}px sans-serif`;
     if(cExp.angle){ ctx.save(); ctx.translate(cExp.x,cExp.y); ctx.rotate(cExp.angle*Math.PI/180); ctx.fillText('Термін дії до: '+expLabel,0,0); ctx.restore(); }
     else { ctx.fillText('Термін дії до: '+expLabel, cExp.x, cExp.y); }
-    // Short INT
     if(data.h){
       const short = data.h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
-      const cInt = coords.int || {x: canvas.width - 180, y: canvas.height - 30, size:14};
-      ctx.save(); ctx.font=(cInt.size||14)+'px monospace'; ctx.fillStyle='#111';
+      const cInt = coords.int || fallback.int;
+      ctx.save(); ctx.font = `${cInt.size || 14}px monospace`; ctx.fillStyle='#111';
       if(cInt.angle){ ctx.translate(cInt.x,cInt.y); ctx.rotate(cInt.angle*Math.PI/180); ctx.fillText('INT '+short,0,0); }
       else { ctx.fillText('INT '+short, cInt.x, cInt.y); }
       ctx.restore();
     }
-    return canvas;
+    if(qrImage){
+      ctx.drawImage(qrImage, cQR.x, cQR.y, cQR.size, cQR.size);
+    }
+    ctx.restore();
+    return { canvas, qrBox: cQR };
   }
   async function generatePdfFromCanvas(canvas, cid){
     const jpegDataUrl = canvas.toDataURL('image/jpeg',0.92);
@@ -794,11 +849,7 @@
     // Trigger QR request immediately; render once QR and background are ready
     buildQrForRow(data, (qrImgEl)=>{
       ensureBg(()=>{
-    const canvas = getRenderCanvas();
-    renderCertToCanvas(data);
-    const coords = getActiveCoords();
-    const cQR = coords.qr || {x:150,y:420,size:220};
-    const ctx = canvas.getContext('2d'); ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
+    const { canvas } = renderCertToCanvas(data, qrImgEl);
         if(kind==='pdf') generatePdfFromCanvas(canvas, r.cid); else downloadJpg(canvas, r.cid);
       });
     });

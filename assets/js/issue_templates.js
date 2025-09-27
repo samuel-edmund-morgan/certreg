@@ -4,6 +4,8 @@
   const singleSel = document.getElementById('templateSelect');
   const bulkSel = document.getElementById('bulkTemplateSelect');
   const coordsMap = new Map();
+  const metaMap = new Map();
+  window.__ACTIVE_TEMPLATE_META = window.__ACTIVE_TEMPLATE_META || { width: null, height: null };
   if(!singleSel && !bulkSel) return; // якщо UI ще не додано
 
   function buildOption(it){
@@ -16,6 +18,8 @@
     // Збережемо допоміжні поля для побудови шляху до файла
     if(it.org_id) o.dataset.orgId = String(it.org_id);
     if(it.file_ext) o.dataset.ext = String(it.file_ext);
+    if(Number.isFinite(Number(it.width)) && Number(it.width) > 0) o.dataset.width = String(it.width);
+    if(Number.isFinite(Number(it.height)) && Number(it.height) > 0) o.dataset.height = String(it.height);
     return o;
   }
 
@@ -28,7 +32,7 @@
       return;
     }
     const defOpt=document.createElement('option'); defOpt.textContent='(Стандартний)'; defOpt.value=''; sel.appendChild(defOpt);
-    items.forEach(it=> sel.appendChild(buildOption(it)));
+      items.forEach(it=> sel.appendChild(buildOption(it)));
     sel.disabled=false;
   }
 
@@ -45,6 +49,10 @@
         } else {
           coordsMap.set(key, null);
         }
+        metaMap.set(key, {
+          width: (Number.isFinite(Number(it.width)) && Number(it.width) > 0) ? Number(it.width) : null,
+          height: (Number.isFinite(Number(it.height)) && Number(it.height) > 0) ? Number(it.height) : null
+        });
       });
       fillSelect(singleSel, items);
       fillSelect(bulkSel, items);
@@ -62,14 +70,27 @@
     return '/files/templates/'+orgId+'/'+id+'/original.'+ext;
   }
 
+  function normalizeDimension(val){
+    const num = Number(val);
+    return Number.isFinite(num) && num > 0 ? num : null;
+  }
+
   function onChange(sel){
     const path = resolvePathFromSelect(sel);
     let coords = null;
+    let meta = { width: null, height: null };
     try {
       if(sel && sel.value){
         const stored = coordsMap.get(String(sel.value));
         if(stored && typeof stored === 'object'){
           coords = stored;
+        }
+        const optMeta = metaMap.get(String(sel.value));
+        if(optMeta){
+          meta = {
+            width: normalizeDimension(optMeta.width),
+            height: normalizeDimension(optMeta.height)
+          };
         }
       }
     } catch(_e){}
@@ -77,22 +98,30 @@
       // ensure null when undefined so listeners can reset to defaults
       coords = null;
     }
+    const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
+    if(opt){
+      const w = normalizeDimension(opt.dataset?.width);
+      const h = normalizeDimension(opt.dataset?.height);
+      if(w) meta.width = w;
+      if(h) meta.height = h;
+    }
     if(sel === singleSel){
       window.__SINGLE_TEMPLATE_COORDS = coords;
     } else if(sel === bulkSel){
       window.__BULK_TEMPLATE_COORDS = coords;
     }
     window.__ACTIVE_TEMPLATE_COORDS = coords;
+    window.__ACTIVE_TEMPLATE_META = meta;
     if(!path){
       // revert до дефолту
       const body = document.body;
       const tpl = body ? body.getAttribute('data-template') : '/files/cert_template.jpg';
       window.__ISSUE_TEMPLATE_OVERRIDE = null;
-      document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path: tpl, coords}}));
+      document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path: tpl, coords, width: meta.width, height: meta.height}}));
       return;
     }
     window.__ISSUE_TEMPLATE_OVERRIDE = path;
-    document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path, coords}}));
+    document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path, coords, width: meta.width, height: meta.height}}));
   }
 
   if(singleSel){
