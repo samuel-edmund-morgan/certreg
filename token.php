@@ -59,8 +59,8 @@ try {
     <div class="details-grid">
       <div><strong>Версія</strong></div><div><?= (int)$row['version'] ?></div>
   <div><strong>Додаткова інформація</strong></div><div><?= htmlspecialchars($row['extra_info'] ?? '') ?></div>
-  <div><strong>Дата видачі</strong></div><div><?= htmlspecialchars($row['issued_date'] ?? '') ?></div>
-  <div><strong>Створено (UTC)</strong></div><div><?= htmlspecialchars($row['created_at']) ?></div>
+  <div><strong>Дата видачі</strong></div><div><?= htmlspecialchars($issuedDateDisplay ?? '') ?></div>
+  <div><strong>Створено (UTC)</strong></div><div><?= htmlspecialchars($createdAtDisplay ?? '') ?></div>
       <?php if($hasTplCol): ?>
         <div><strong>Шаблон</strong></div>
         <div>
@@ -74,14 +74,14 @@ try {
       <div><strong>Статус</strong></div><div>
         <?php if($row['revoked_at']): ?>
           <span class="badge badge-danger">Відкликано</span><br>
-          <small>Дата: <?= htmlspecialchars($row['revoked_at']) ?></small><br>
+          <small>Дата: <?= htmlspecialchars($revokedAtDisplay ?? '') ?></small><br>
           <small>Причина: <?= htmlspecialchars($row['revoke_reason'] ?? '') ?></small>
         <?php else: ?>
           <span class="badge badge-success">Активний</span>
         <?php endif; ?>
       </div>
   <div><strong>Перевірок</strong></div><div><?= (int)($row['lookup_count'] ?? 0) ?></div>
-  <div><strong>Остання перевірка</strong></div><div><?= $row['last_lookup_at'] ? htmlspecialchars($row['last_lookup_at']) : '—' ?></div>
+  <div><strong>Остання перевірка</strong></div><div><?= $lastLookupDisplay ? htmlspecialchars($lastLookupDisplay) : '—' ?></div>
     </div>
     <hr class="my-18">
   <?php if(is_admin() || is_operator()): ?>

@@ -56,6 +56,18 @@
     || (window.location.origin + '/verify.php');
   const TEST_MODE = (!!(typeof window!=="undefined" && window.__TEST_MODE)) || ((document.body && document.body.dataset && document.body.dataset.test)==='1');
   const ORG = TEST_MODE ? 'ORG-CERT' : ORG_RAW;
+
+  function formatDisplayDate(value){
+    if(!value || typeof value !== 'string') return null;
+    const iso = value.trim();
+    if(!iso) return null;
+    const datePart = iso.split('T')[0];
+    const parts = datePart.split('-');
+    if(parts.length !== 3) return null;
+    const [year, month, day] = parts;
+    if(year.length !== 4 || month.length !== 2 || day.length !== 2) return null;
+    return `${day}.${month}.${year}`;
+  }
   function normalizeDimension(value){
     const num = Number(value);
     return Number.isFinite(num) && num > 0 ? num : null;
@@ -780,8 +792,9 @@
     drawTextBlock(data.cid, cId, { size: 20, family: 'sans-serif', color: '#000' });
     const extraText = (data.extra||'').trim();
     if(extraText){ drawTextBlock(extraText, cExtra, { size: 24, family: 'sans-serif', color: '#000' }); }
-    drawTextBlock('Дата: '+data.date, cDate, { size: 24, family: 'sans-serif', color: '#000' });
-    const expLabel = data.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : data.valid_until;
+  const dateDisplay = formatDisplayDate(data.date) || data.date;
+  drawTextBlock('Дата: '+dateDisplay, cDate, { size: 24, family: 'sans-serif', color: '#000' });
+  const expLabel = data.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : (formatDisplayDate(data.valid_until) || data.valid_until);
     drawTextBlock('Термін дії до: '+expLabel, cExp, { size: 20, family: 'sans-serif', color: '#000' });
     if(data.h){
       const short = data.h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');

@@ -68,6 +68,18 @@
   const CANON_URL = (document.body && document.body.dataset.canon) ? document.body.dataset.canon : (window.location.origin + '/verify.php');
   const INFINITE_SENTINEL = window.__INFINITE_SENTINEL || '4000-01-01';
 
+  function formatDisplayDate(value){
+    if(!value || typeof value !== 'string') return null;
+    const iso = value.trim();
+    if(!iso) return null;
+    const datePart = iso.split('T')[0];
+    const parts = datePart.split('-');
+    if(parts.length !== 3) return null;
+    const [year, month, day] = parts;
+    if(year.length !== 4 || month.length !== 2 || day.length !== 2) return null;
+    return `${day}.${month}.${year}`;
+  }
+
   function normName(s){
     return s.normalize('NFC')
       .replace(/[\u2019'`’\u02BC]/g,'') // видаляємо різні апострофи включно з U+02BC
@@ -190,8 +202,9 @@
     drawTextBlock(currentData.pib, cName, { size: 28, family: 'sans-serif', color: '#000' });
     drawTextBlock(currentData.cid, cId, { size: 20, family: 'sans-serif', color: '#000' });
     if(currentData.extra){ drawTextBlock(String(currentData.extra), cExtra, { size: 24, family: 'sans-serif', color: '#000' }); }
-    drawTextBlock('Дата: '+currentData.date, cDate, { size: 24, family: 'sans-serif', color: '#000' });
-    const expLabel = currentData.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : currentData.valid_until;
+  const dateDisplay = currentData.dateDisplay || currentData.date;
+  drawTextBlock('Дата: '+dateDisplay, cDate, { size: 24, family: 'sans-serif', color: '#000' });
+  const expLabel = currentData.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : (currentData.validUntilDisplay || currentData.valid_until);
     drawTextBlock('Термін дії до: '+expLabel, cExp, { size: 20, family: 'sans-serif', color: '#000' });
     if(qrImg.complete){
       ctx.drawImage(qrImg, cQR.x, cQR.y, cQR.size, cQR.size);
@@ -230,7 +243,16 @@
   const sig = await hmacSha256(salt, canonical);
   const h = toHex(sig);
     // Prepare render data early
-  currentData = {pib:pibNorm,cid:cid,extra:extra,date:date,h:h,valid_until:validUntil};
+  currentData = {
+    pib: pibNorm,
+    cid,
+    extra,
+    date,
+    dateDisplay: formatDisplayDate(date) || date,
+    h,
+    valid_until: validUntil,
+    validUntilDisplay: validUntil===INFINITE_SENTINEL ? null : (formatDisplayDate(validUntil) || validUntil)
+  };
     // In test mode: trigger immediate download within user gesture (without waiting for QR load)
     if(TEST_MODE){
       try { generatePdfFromCanvas(); } catch(_e){}
@@ -283,7 +305,8 @@
   // In test mode (where we might intercept/404 QR), ensure manual buttons appear promptly
   if(TEST_MODE){ ensureDownloadButtons(); }
   const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
-  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>ORG:</strong> ${ORG}<br><strong>Версія:</strong> v${version}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${validUntil===INFINITE_SENTINEL?'∞':validUntil}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
+  const expiresDisplay = validUntil===INFINITE_SENTINEL ? '∞' : (formatDisplayDate(validUntil) || validUntil);
+  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>ORG:</strong> ${ORG}<br><strong>Версія:</strong> v${version}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${expiresDisplay}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
     // Expose cryptographic data for automated test recomputation (non-PII: normalized name not stored server-side)
     try {
       regMeta.dataset.h = h;

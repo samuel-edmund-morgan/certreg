@@ -8,6 +8,7 @@ $cfg = require __DIR__.'/config.php';
 require_once __DIR__.'/header.php';
 require_once __DIR__.'/common_pagination.php';
 require_once __DIR__.'/db.php';
+require_once __DIR__.'/helpers.php';
 
 $q = trim($_GET['q'] ?? '');
 $state = $_GET['state'] ?? '';
@@ -295,12 +296,17 @@ function render_sort_arrow($column, $sort, $dir) {
       </thead>
       <tbody>
       <?php foreach($rows as $r): ?>
-  <tr class="<?= $r['revoked_at'] ? 'row-revoked':'' ?>" data-cid="<?= htmlspecialchars($r['cid']) ?>" data-created="<?= htmlspecialchars($r['created_at']) ?>" data-status="<?= $r['revoked_at'] ? 'revoked':'active' ?>">
+          <?php
+            $issuedDisplay = format_display_date($r['issued_date'] ?? null) ?? ($r['issued_date'] ?? '');
+            $createdDisplay = format_display_datetime($r['created_at'] ?? null, true) ?? ($r['created_at'] ?? '');
+            $lastLookupDisplay = format_display_datetime($r['last_lookup_at'] ?? null, true);
+          ?>
+  <tr class="<?= $r['revoked_at'] ? 'row-revoked':'' ?>" data-cid="<?= htmlspecialchars($r['cid']) ?>" data-created="<?= htmlspecialchars($createdDisplay) ?>" data-status="<?= $r['revoked_at'] ? 'revoked':'active' ?>">
           <td><input type="checkbox" class="rowChk" value="<?= htmlspecialchars($r['cid']) ?>"></td>
           <td class="mono fs-12"><a class="link-plain" href="/token.php?cid=<?= urlencode($r['cid']) ?>"><?= htmlspecialchars($r['cid']) ?></a></td>
           <td><?= htmlspecialchars($r['extra_info'] ?? '') ?></td>
-          <td><?= htmlspecialchars($r['issued_date'] ?? '') ?></td>
-          <td><?= htmlspecialchars($r['created_at']) ?></td>
+          <td><?= htmlspecialchars($issuedDisplay) ?></td>
+          <td><?= htmlspecialchars($createdDisplay) ?></td>
           <?php if($hasTplIdCol && $hasTemplatesTable): ?>
             <td class="fs-12">
               <?php if(!empty($r['tpl_id'])): ?>
@@ -321,8 +327,8 @@ function render_sort_arrow($column, $sort, $dir) {
           </td>
           <td class="fs-11 nowrap">
             <?= (int)($r['lookup_count'] ?? 0) ?>
-            <?php if(!empty($r['last_lookup_at'])): ?>
-              <br><span class="text-muted" title="Остання перевірка (UTC)"><?= htmlspecialchars(substr($r['last_lookup_at'],0,19)) ?></span>
+            <?php if($lastLookupDisplay): ?>
+              <br><span class="text-muted" title="Остання перевірка (UTC)"><?= htmlspecialchars($lastLookupDisplay) ?></span>
             <?php else: ?>
               <br><span class="text-muted">—</span>
             <?php endif; ?>
