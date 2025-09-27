@@ -5,6 +5,7 @@ require_csrf();
 $isAdminPage = true;
 $cfg = require __DIR__.'/config.php';
 require_once __DIR__.'/db.php';
+require_once __DIR__.'/helpers.php';
 $cid = trim($_GET['cid'] ?? '');
 if($cid===''){ http_response_code(400); echo 'Missing cid'; exit; }
 $st = $pdo->prepare("SELECT * FROM tokens WHERE cid=? LIMIT 1");
@@ -13,6 +14,11 @@ $row = $st->fetch(PDO::FETCH_ASSOC);
 require_once __DIR__.'/header.php';
 if(!$row){ echo '<section class="section"><div class="alert alert-error">Не знайдено</div></section>'; require_once __DIR__.'/footer.php'; exit; }
 $csrf = csrf_token();
+
+$issuedDateDisplay = format_display_date($row['issued_date'] ?? null) ?? ($row['issued_date'] ?? null);
+$createdAtDisplay = format_display_datetime($row['created_at'] ?? null, true) ?? ($row['created_at'] ?? null);
+$revokedAtDisplay = format_display_datetime($row['revoked_at'] ?? null, true) ?? ($row['revoked_at'] ?? null);
+$lastLookupDisplay = format_display_datetime($row['last_lookup_at'] ?? null, true) ?? ($row['last_lookup_at'] ?? null);
 
 // Derive short integrity code (first 10 hex of h) if available
 $intShort = null;
