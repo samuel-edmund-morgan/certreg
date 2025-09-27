@@ -13,7 +13,10 @@ body.admin-page .alert-banner {
 
 *{box-sizing:border-box}
 html,body{height:100%}
-html{scroll-padding-top:var(--sticky-stack)}
+html{scroll-padding-top:var(--sticky-stack);overflow-y:auto;scrollbar-gutter:stable both-edges}
+@supports not (scrollbar-gutter: stable){
+  html{overflow-y:scroll}
+}
 /* Колонковий флекс для «прибитого» футера */
 body{
   margin:0;
@@ -620,13 +623,13 @@ main{flex:1}
 .coords-editor__bg{display:block;width:100%;height:auto;border-radius:12px;border:1px solid rgba(15,23,42,.08);box-shadow:0 8px 26px rgba(15,23,42,.12)}
 .coords-editor__overlay{position:absolute;inset:0;pointer-events:none}
 .coords-editor__overlay .coords-marker{pointer-events:auto}
-.coords-editor__panel{flex:0 0 260px;max-width:320px;min-height:320px;background:#f8fafc;border:1px solid rgba(148,163,184,.35);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.coords-editor__panel{flex:0 0 320px;width:320px;max-width:340px;min-height:340px;background:#f8fafc;border:1px solid rgba(148,163,184,.35);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
 .coords-editor__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}
 .coords-editor__grid .is-disabled{opacity:.5;pointer-events:none;cursor:default}
 .coords-editor__grid input.is-disabled{background:#e2e8f0;border-color:rgba(148,163,184,.6)}
-.coords-editor__hint{min-height:18px}
+.coords-editor__hint{min-height:76px;line-height:1.45;display:flex;align-items:flex-start}
 .coords-editor__actions{margin-top:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.coords-editor__status{min-width:180px;font-size:12px;color:#475569}
+.coords-editor__status{min-width:180px;min-height:22px;font-size:12px;color:#475569;display:inline-flex;align-items:center}
 .coords-marker{position:absolute;cursor:grab;transform:translate(-7px,-7px);color:#f8fafc;font-size:11px;font-weight:600;text-shadow:0 1px 3px rgba(15,23,42,.6);min-width:14px;min-height:14px}
 .coords-marker::before{content:"";position:absolute;top:0;left:0;width:14px;height:14px;border-radius:4px;background:rgba(37,99,235,.85);border:2px solid rgba(255,255,255,.95);box-shadow:0 2px 8px rgba(15,23,42,.45)}
 .coords-marker__label{position:absolute;top:18px;left:0;background:rgba(15,23,42,.85);padding:2px 6px;border-radius:6px;white-space:nowrap;pointer-events:none}
@@ -653,6 +656,6 @@ main{flex:1}
 .coords-editor__panel label[hidden]{display:none!important}
 @media (max-width:1024px){
   .coords-editor{flex-direction:column}
-  .coords-editor__panel{width:100%;max-width:none}
+  .coords-editor__panel{flex:1 1 auto;width:100%;max-width:none}
   .coords-editor__stage{width:100%}
 }
