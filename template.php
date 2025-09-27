@@ -124,7 +124,7 @@ $coordsEditorJsVer = @filemtime($_SERVER['DOCUMENT_ROOT'].'/assets/js/template_c
 require_once __DIR__.'/header.php';
 $msg = $_GET['msg'] ?? '';
 ?>
-<section class="section" data-template-id="<?= (int)$row['id'] ?>" data-template-width="<?= $tplWidth ?>" data-template-height="<?= $tplHeight ?>" data-template-original="<?= $tplOriginalEsc ?>" data-template-preview="<?= $tplPreviewEsc ?>">
+<section class="section" data-template-id="<?= (int)$row['id'] ?>" data-template-org="<?= (int)$row['org_id'] ?>" data-template-width="<?= $tplWidth ?>" data-template-height="<?= $tplHeight ?>" data-template-original="<?= $tplOriginalEsc ?>" data-template-preview="<?= $tplPreviewEsc ?>">
   <h1 class="mt-0">Шаблон #<?= htmlspecialchars($row['id']) ?></h1>
   <p class="fs-14 text-muted maxw-760">Управління окремим шаблоном. <a href="/settings.php?tab=templates" class="link-accent">← Повернутися до списку</a></p>
   <?php if($msg): ?><div class="mb-12 fs-13"><?php

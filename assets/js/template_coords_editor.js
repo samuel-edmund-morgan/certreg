@@ -10,6 +10,7 @@
   const bgImg = document.getElementById('coordsEditorBg');
   const stageInner = bgImg ? bgImg.parentElement : null;
   if(!editorRoot || !overlay || !bgImg || !stageInner) return;
+  const templateOrgId = Number(hostSection.dataset.templateOrg || '0');
 
   function parseJsonSafe(str){
     if(!str) return null;
@@ -49,6 +50,9 @@
     expires: 'Термін дії до: Безтерміновий',
     int: 'INT 4167D-784D9'
   };
+  const DEFAULT_FONT_FAMILY = 'Montserrat, "DejaVu Sans", sans-serif';
+  const measureCanvas = document.createElement('canvas');
+  const measureCtx = measureCanvas.getContext('2d');
 
   const NUM_PROPS = new Set(['x','y','size','width','height','angle','max_width','tracking','line_height','radius','scale','order']);
   const BOOL_PROPS = new Set(['uppercase','wrap','bold','italic']);
@@ -76,6 +80,32 @@
   }
 
   const defaultsSource = baseDefaults(tplWidth, tplHeight);
+
+  function computeAutoBox(field, data){
+    const fontUnits = Number.isFinite(data?.size) ? data.size : (defaultsSource[field]?.size || 24);
+    const sample = FIELD_PLACEHOLDERS[field] || (FIELD_META[field]?.label || field.toUpperCase());
+    const familyRaw = (typeof data?.font === 'string' && data.font.trim()) ? data.font : DEFAULT_FONT_FAMILY;
+    const fontSizePx = Math.max(fontUnits, 1);
+    const weight = data?.bold ? 600 : 500;
+    const italic = data?.italic ? 'italic ' : '';
+    let measuredWidth = fontSizePx * Math.max(sample.length * 0.55, 1);
+    if(measureCtx){
+      try {
+        measureCtx.font = `${italic}${weight} ${fontSizePx}px ${familyRaw}`;
+        const metrics = measureCtx.measureText(sample);
+        if(metrics && Number.isFinite(metrics.width)){
+          measuredWidth = Math.max(metrics.width, measuredWidth);
+        }
+      } catch(_e){
+        // fallback keeps measuredWidth from heuristic
+      }
+    }
+    const lineHeightFactor = Number.isFinite(data?.line_height) && data.line_height > 0 ? data.line_height : 1.2;
+    const padding = fontSizePx * 0.35;
+    const width = Math.max(measuredWidth, fontSizePx) + padding;
+    const height = Math.max(fontSizePx * lineHeightFactor, fontSizePx * 0.9) + padding;
+    return { width, height, lineHeightFactor };
+  }
 
   function mergeProps(target, source){
     if(!source || typeof source !== 'object') return;
@@ -149,12 +179,9 @@
       delete target.width;
       delete target.height;
     } else if(meta.supportsBox){
-      const baseWidth = Number.isFinite(base.width) ? base.width : Math.max(240, (target.size || base.size || 24) * 8);
-      const baseHeight = Number.isFinite(base.height) ? base.height : Math.max(bounds.minHeight, (target.size || base.size || 24) * 1.4);
-      let width = Number.isFinite(target.width) ? target.width : baseWidth;
-      let height = Number.isFinite(target.height) ? target.height : baseHeight;
-      width = clamp(width, bounds.minWidth, bounds.maxWidth);
-      height = clamp(height, bounds.minHeight, bounds.maxHeight);
+      const auto = computeAutoBox(field, target);
+      const width = clamp(auto.width, bounds.minWidth, bounds.maxWidth);
+      const height = clamp(auto.height, bounds.minHeight, bounds.maxHeight);
       target.width = width;
       target.height = height;
     } else {
@@ -379,8 +406,9 @@
     } else if(meta.supportsBox){
       const box = marker.querySelector('.coords-marker__text-box');
       if(box){
-        const widthUnits = Number.isFinite(data.width) ? data.width : (defaultsSource[field]?.width || 320);
-        const heightUnits = Number.isFinite(data.height) ? data.height : (defaultsSource[field]?.height || Math.max(24, (data.size || 24) * 1.4));
+        const auto = computeAutoBox(field, data);
+        const widthUnits = auto.width;
+        const heightUnits = auto.height;
         const widthPx = Math.max(20, widthUnits * state.scale);
         const heightPx = Math.max(12, heightUnits * state.scale);
         marker.style.left = baseLeft+'px';
@@ -398,11 +426,8 @@
           const fontUnits = Number.isFinite(data.size) ? data.size : (defaultsSource[field]?.size || 24);
           const fontPx = Math.max(6, fontUnits * state.scale);
           placeholder.style.fontSize = fontPx+'px';
-          if(Number.isFinite(data.line_height) && data.line_height>0){
-            placeholder.style.lineHeight = (data.line_height * fontPx)+'px';
-          } else {
-            placeholder.style.lineHeight = '1.2';
-          }
+          const lineHeightFactor = auto.lineHeightFactor;
+          placeholder.style.lineHeight = (lineHeightFactor * fontPx)+'px';
           placeholder.style.fontWeight = data.bold ? '600' : '500';
           placeholder.style.fontStyle = data.italic ? 'italic' : 'normal';
           placeholder.style.textTransform = data.uppercase ? 'uppercase' : 'none';
@@ -638,4 +663,46 @@
   renderAllMarkers();
   setActiveField(state.activeField);
   updateDirty();
+
+  async function hydrateFromServer(){
+    const serializedBefore = JSON.stringify(serializeForSave(state.coords));
+    if(serializedBefore !== state.savedSerialized) return; // користувач вже вніс зміни
+    let url = '/api/templates_list.php';
+    if(templateOrgId){
+      url += '?org_id='+encodeURIComponent(templateOrgId);
+    }
+    try {
+      const res = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+      if(!res.ok) return;
+      const payload = await res.json().catch(()=>null);
+      if(!payload || !payload.ok || !Array.isArray(payload.items)) return;
+      const match = payload.items.find(item => Number(item.id) === templateId);
+      if(!match) return;
+      if(Number.isFinite(match.width) && Number.isFinite(match.height)){
+        applyNativeDimensions(match.width, match.height);
+      }
+      if(match.coords && typeof match.coords === 'object'){
+        const nextCoords = cloneCoords(state.coords);
+        for(const field of FIELD_ORDER){
+          if(match.coords[field]){
+            nextCoords[field] = sanitizeField(field, match.coords[field]);
+          }
+        }
+        const serializedNext = JSON.stringify(serializeForSave(nextCoords));
+        if(serializedNext !== state.savedSerialized){
+          state.coords = nextCoords;
+          state.storedSnapshot = cloneCoords(nextCoords);
+          state.savedSerialized = serializedNext;
+          renderAllMarkers();
+          populateInputs(state.activeField);
+          updateDirty();
+          setSummaryMessage('Відновлено збережені координати з сервера.', 'success');
+        }
+      }
+    } catch(err){
+      console.warn('Не вдалося підвантажити координати шаблону', err);
+    }
+  }
+
+  hydrateFromServer();
 })();
