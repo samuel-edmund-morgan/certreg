@@ -153,12 +153,14 @@ $msg = $_GET['msg'] ?? '';
   <div><img class="img-preview-480" src="<?= htmlspecialchars($prevPath) ?>?v=<?= (int)$row['version'] ?>" alt="preview" loading="lazy"></div>
   </div>
   <div class="mb-18" id="templateCoordsSummary">
-    <div class="mb-8 fs-13 text-muted">Поточні координати:</div>
-    <?php if($coordsDecoded !== null): ?>
-      <pre class="code-block small-scroll" aria-label="coords json"><?= $coordsJsonPrettyEsc ?></pre>
-    <?php else: ?>
-      <p class="fs-13 text-muted">Не налаштовано. Використовуються глобальні координати з конфігурації.</p>
-    <?php endif; ?>
+    <div class="mb-8 fs-13 text-muted">Статус координат:</div>
+    <div class="coords-summary fs-13 <?= $coordsDecoded !== null ? 'text-success' : 'text-muted' ?>" id="coordsSummaryText">
+      <?php if($coordsDecoded !== null): ?>
+        Індивідуальні координати збережено для цього шаблону.
+      <?php else: ?>
+        Налаштування ще не змінювалися – використовуються глобальні координати з конфігурації.
+      <?php endif; ?>
+    </div>
   </div>
   <div class="coords-editor-block" id="coordsEditorBlock">
     <h2 class="fs-18 mt-0">Редактор координат</h2>

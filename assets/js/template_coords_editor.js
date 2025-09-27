@@ -23,13 +23,13 @@
 
   const FIELD_ORDER = ['name','id','extra','date','expires','qr','int'];
   const FIELD_META = {
-    name: { label: 'ПІБ', supportsAngle: true, supportsAlign: true, supportsSize: true },
-    id: { label: 'CID', supportsAngle: false, supportsAlign: true, supportsSize: true },
-    extra: { label: 'Додаткова', supportsAngle: true, supportsAlign: true, supportsSize: true },
-    date: { label: 'Дата', supportsAngle: false, supportsAlign: true, supportsSize: true },
-    expires: { label: 'Дійсний до', supportsAngle: true, supportsAlign: true, supportsSize: true },
+    name: { label: 'ПІБ', supportsAngle: true, supportsAlign: true, supportsSize: true, supportsBox: true },
+    id: { label: 'CID', supportsAngle: false, supportsAlign: true, supportsSize: true, supportsBox: true },
+    extra: { label: 'Додаткова', supportsAngle: true, supportsAlign: true, supportsSize: true, supportsBox: true },
+    date: { label: 'Дата', supportsAngle: false, supportsAlign: true, supportsSize: true, supportsBox: true },
+    expires: { label: 'Дійсний до', supportsAngle: true, supportsAlign: true, supportsSize: true, supportsBox: true },
     qr: { label: 'QR', supportsAngle: false, supportsAlign: false, supportsSize: true, isQr: true },
-    int: { label: 'INT', supportsAngle: false, supportsAlign: true, supportsSize: true }
+    int: { label: 'INT', supportsAngle: false, supportsAlign: true, supportsSize: true, supportsBox: true }
   };
 
   const FIELD_HINTS = {
@@ -52,16 +52,18 @@
   const tplHeight = Number(hostSection.dataset.templateHeight || '0');
 
   function baseDefaults(width, height){
-    const result = {
-      name: { x: 600, y: 420, size: 28, align: 'left' },
-      id: { x: 600, y: 445, size: 20, align: 'left' },
-      extra: { x: 600, y: 520, size: 24, align: 'left' },
-      date: { x: 600, y: 570, size: 24, align: 'left' },
-      expires: { x: 600, y: 600, size: 20, align: 'left', angle: 0 },
+    const usableWidth = width || 1200;
+    const nameFieldWidth = Math.max(420, Math.round(usableWidth * 0.46));
+    const block = {
+      name: { x: 600, y: 420, size: 28, align: 'left', width: nameFieldWidth, height: 48 },
+      id: { x: 600, y: 445, size: 20, align: 'left', width: Math.max(280, Math.round(usableWidth * 0.32)), height: 32 },
+      extra: { x: 600, y: 520, size: 24, align: 'left', width: nameFieldWidth, height: 44 },
+      date: { x: 600, y: 570, size: 24, align: 'left', width: Math.max(260, Math.round(usableWidth * 0.28)), height: 36 },
+      expires: { x: 600, y: 600, size: 20, align: 'left', angle: 0, width: Math.max(320, Math.round(usableWidth * 0.34)), height: 34 },
       qr: { x: 150, y: 420, size: 220 },
-      int: { x: (width ? Math.max(40, width - 200) : 820), y: (height ? Math.max(40, height - 40) : 650), size: 14, align: 'left' }
+      int: { x: (width ? Math.max(40, width - 200) : 820), y: (height ? Math.max(40, height - 40) : 650), size: 14, align: 'left', width: Math.max(220, Math.round(usableWidth * 0.22)), height: 28 }
     };
-    return result;
+    return block;
   }
 
   const defaultsSource = baseDefaults(tplWidth, tplHeight);
@@ -96,7 +98,11 @@
     minSize: 1,
     maxSize: 5000,
     minAngle: -360,
-    maxAngle: 360
+    maxAngle: 360,
+    minWidth: 20,
+    maxWidth: (tplWidth || 2000) + 200,
+    minHeight: 12,
+    maxHeight: (tplHeight || 1400) + 200
   };
 
   function sanitizeField(field, value){
@@ -131,6 +137,20 @@
       target.size = clamp(target.size, 20, bounds.maxSize);
       delete target.align;
       delete target.angle;
+      delete target.width;
+      delete target.height;
+    } else if(meta.supportsBox){
+      const baseWidth = Number.isFinite(base.width) ? base.width : Math.max(240, (target.size || base.size || 24) * 8);
+      const baseHeight = Number.isFinite(base.height) ? base.height : Math.max(bounds.minHeight, (target.size || base.size || 24) * 1.4);
+      let width = Number.isFinite(target.width) ? target.width : baseWidth;
+      let height = Number.isFinite(target.height) ? target.height : baseHeight;
+      width = clamp(width, bounds.minWidth, bounds.maxWidth);
+      height = clamp(height, bounds.minHeight, bounds.maxHeight);
+      target.width = width;
+      target.height = height;
+    } else {
+      delete target.width;
+      delete target.height;
     }
     return target;
   }
@@ -209,8 +229,7 @@
   const saveBtn = document.getElementById('coordsSaveBtn');
   const resetBtn = document.getElementById('coordsResetBtn');
   const defaultsBtn = document.getElementById('coordsDefaultsBtn');
-  const summaryPre = document.querySelector('#templateCoordsSummary pre');
-  const summaryEmpty = document.querySelector('#templateCoordsSummary p');
+  const summaryText = document.getElementById('coordsSummaryText');
 
   if(!selectField || !inputX || !inputY || !inputSize || !saveBtn || !resetBtn || !defaultsBtn) return;
 
@@ -229,11 +248,11 @@
   state.storedSnapshot = cloneCoords(state.coords);
   state.savedSerialized = JSON.stringify(serializeForSave(state.coords));
 
-  function updateSummary(){
-    const payload = serializeForSave(state.coords);
-    const json = JSON.stringify(payload, null, 2);
-    if(summaryPre){ summaryPre.textContent = json; if(summaryPre.classList.contains('d-none')) summaryPre.classList.remove('d-none'); }
-    if(summaryEmpty){ summaryEmpty.textContent = ''; summaryEmpty.classList.add('d-none'); }
+  function setSummaryMessage(message, tone){
+    if(!summaryText) return;
+    summaryText.textContent = message;
+    summaryText.classList.remove('text-muted','text-success','text-warning');
+    if(tone){ summaryText.classList.add('text-'+tone); }
   }
 
   function updateStatus(message, variant){
@@ -262,6 +281,11 @@
       const marker = document.createElement('div');
       marker.className = 'coords-marker'+(meta.isQr ? ' coords-marker--qr' : ' coords-marker--text');
       marker.dataset.field = field;
+      if(meta.supportsBox && !meta.isQr){
+        const box = document.createElement('div');
+        box.className = 'coords-marker__text-box';
+        marker.appendChild(box);
+      }
       const label = document.createElement('span');
       label.className = 'coords-marker__label';
       label.textContent = meta.label;
@@ -283,12 +307,19 @@
     if(rect.width === 0){ return; }
     overlay.style.width = rect.width+'px';
     overlay.style.height = rect.height+'px';
-    const naturalWidth = bgImg.naturalWidth || state.canvasWidth || rect.width;
-    const naturalHeight = bgImg.naturalHeight || state.canvasHeight || rect.height;
-    if(!state.canvasWidth && naturalWidth) state.canvasWidth = naturalWidth;
-    if(!state.canvasHeight && naturalHeight) state.canvasHeight = naturalHeight;
-    if(naturalWidth){ state.scale = rect.width / naturalWidth; }
-    else { state.scale = 1; }
+  const baseWidth = state.canvasWidth || 0;
+  const naturalWidth = baseWidth || bgImg.naturalWidth || rect.width;
+  const naturalHeight = state.canvasHeight || bgImg.naturalHeight || rect.height;
+    if(!state.canvasWidth && bgImg.naturalWidth){ state.canvasWidth = bgImg.naturalWidth; }
+    if(!state.canvasHeight && bgImg.naturalHeight){ state.canvasHeight = bgImg.naturalHeight; }
+    if(state.canvasWidth){
+      state.scale = rect.width / state.canvasWidth;
+    } else if(naturalWidth){
+      state.scale = rect.width / naturalWidth;
+      state.canvasWidth = naturalWidth;
+    } else {
+      state.scale = 1;
+    }
     bounds.maxX = (state.canvasWidth || 2000) + 2000;
     bounds.maxY = (state.canvasHeight || 1400) + 2000;
     renderAllMarkers();
@@ -316,6 +347,21 @@
         box.style.width = Math.max(8, size)+'px';
         box.style.height = Math.max(8, size)+'px';
       }
+      marker.style.width = Math.max(8, (data.size || 0) * state.scale)+'px';
+      marker.style.height = Math.max(8, (data.size || 0) * state.scale)+'px';
+    } else if(meta.supportsBox){
+      const box = marker.querySelector('.coords-marker__text-box');
+      const boxWidth = Math.max(12, (data.width || 0) * state.scale);
+      const boxHeight = Math.max(10, (data.height || 0) * state.scale);
+      if(box){
+        box.style.width = boxWidth+'px';
+        box.style.height = boxHeight+'px';
+      }
+      marker.style.width = boxWidth+'px';
+      marker.style.height = boxHeight+'px';
+    } else {
+      marker.style.width = '14px';
+      marker.style.height = '14px';
     }
     marker.setAttribute('aria-label', `${meta.label}: x=${Math.round(data.x)}, y=${Math.round(data.y)}`);
   }
@@ -462,10 +508,10 @@
       }
       state.storedSnapshot = cloneCoords(state.coords);
       state.savedSerialized = JSON.stringify(serializeForSave(state.coords));
-      updateSummary();
       updateDirty();
       const stamp = new Date().toLocaleTimeString('uk-UA', { hour12:false });
       updateStatus('Збережено о '+stamp, 'success');
+      setSummaryMessage('Індивідуальні координати збережено о '+stamp, 'success');
     } catch(err){
       updateStatus('Мережева помилка збереження', 'danger');
       saveBtn.disabled = false;
@@ -483,6 +529,7 @@
     populateInputs(state.activeField);
     updateDirty();
     updateStatus('Повернуто до збережених координат', 'muted');
+    setSummaryMessage('Повернуто до останньо збережених координат.', 'muted');
   });
 
   defaultsBtn.addEventListener('click', ()=>{
@@ -491,6 +538,7 @@
     populateInputs(state.activeField);
     updateDirty();
     updateStatus('Завантажено глобальні координати (потрібно зберегти)', 'warning');
+    setSummaryMessage('Завантажено глобальні координати. Збережіть, якщо хочете застосувати їх для шаблону.', 'warning');
   });
 
   function onResize(){ updateScale(); }

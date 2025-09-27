@@ -373,6 +373,7 @@ main{flex:1}
   .badge-int{font-size:13px;user-select:all}
   .text-muted{color:var(--muted)}
   .text-success{color:#15803d}
+  .text-warning{color:#b45309}
   /* QR benchmark table (CSP-safe) */
   .qr-bench-head{border-bottom:1px solid silver}
   .qr-bench-title{text-align:center;font-weight:600}
@@ -624,15 +625,20 @@ main{flex:1}
 .coords-editor__hint{min-height:18px}
 .coords-editor__actions{margin-top:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .coords-editor__status{min-width:180px;font-size:12px;color:#475569}
-.coords-marker{position:absolute;cursor:grab;transform:translate(-7px,-7px);color:#f8fafc;font-size:11px;font-weight:600;text-shadow:0 1px 3px rgba(15,23,42,.6)}
+.coords-marker{position:absolute;cursor:grab;transform:translate(-7px,-7px);color:#f8fafc;font-size:11px;font-weight:600;text-shadow:0 1px 3px rgba(15,23,42,.6);min-width:14px;min-height:14px}
 .coords-marker::before{content:"";position:absolute;top:0;left:0;width:14px;height:14px;border-radius:4px;background:rgba(37,99,235,.85);border:2px solid rgba(255,255,255,.95);box-shadow:0 2px 8px rgba(15,23,42,.45)}
 .coords-marker__label{position:absolute;top:18px;left:0;background:rgba(15,23,42,.85);padding:2px 6px;border-radius:6px;white-space:nowrap;pointer-events:none}
 .coords-marker--qr{transform:none}
 .coords-marker--qr::before{display:none}
-.coords-marker__qr-box{position:absolute;top:0;left:0;min-width:12px;min-height:12px;border:2px dashed rgba(37,99,235,.8);background:rgba(37,99,235,.12);box-shadow:0 0 0 1px rgba(15,23,42,.25) inset}
+.coords-marker__qr-box{position:absolute;top:0;left:0;min-width:12px;min-height:12px;border:2px dashed rgba(37,99,235,.8);background:rgba(37,99,235,.12);box-shadow:0 0 0 1px rgba(15,23,42,.25) inset;border-radius:6px}
 .coords-marker--qr .coords-marker__label{top:-26px}
+.coords-marker--text{transform:none;cursor:move;color:#e2e8f0}
+.coords-marker--text::before{top:-8px;left:-8px;width:16px;height:16px;border-radius:50%;background:rgba(37,99,235,.9);box-shadow:0 2px 6px rgba(15,23,42,.45)}
+.coords-marker__text-box{position:absolute;top:0;left:0;min-width:28px;min-height:18px;border:2px dashed rgba(59,130,246,.78);background:rgba(59,130,246,.12);border-radius:8px;pointer-events:none;transition:border-color .15s ease,background-color .15s ease}
+.coords-marker--text .coords-marker__label{top:auto;bottom:-26px;background:rgba(15,23,42,.9)}
 .coords-marker.is-active::before{background:#f59e0b}
 .coords-marker.is-active .coords-marker__label{background:rgba(250,204,21,.92);color:#312e81}
+.coords-marker--text.is-active .coords-marker__text-box{border-color:rgba(249,115,22,.9);background:rgba(249,115,22,.12)}
 .coords-marker:active{cursor:grabbing}
 .coords-marker.dragging::before{background:#f97316}
 .coords-editor__panel select[hidden],
