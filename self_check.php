@@ -22,6 +22,7 @@ $whitelist = [
   'api/template_delete.php',
   // Support / layout (not directly exposed in nginx whitelist, but present in fs)
   'header.php','footer.php','auth.php','db.php','config.php','common_pagination.php',
+  'helpers.php',
   'settings.php','settings_section.php',
   // Infrastructure helpers
   'rate_limit.php',

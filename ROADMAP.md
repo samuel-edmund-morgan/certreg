@@ -19,22 +19,22 @@
 ### 1.3 UI & Editor
 - [x] Templates tab in `settings.php`
 - [x] `template.php` detail page (basic manage: rename/toggle/replace/delete)
-- [ ] JS coords editor (canvas + drag/drop, property panel, save)
+- [x] JS coords editor (canvas + drag/drop, property panel, save)
 - [x] Preview generation pipeline
 
 ### 1.4 Issuance Integration
 - [x] Template select in single & bulk issuance
 - [x] Persist `template_id` with token
 - [x] Org ownership validation
-- [ ] Coordinate-based render (image/PDF step)
+- [x] Coordinate-based render (image/PDF step)
 - [x] README section: Templates
 
 ---
 ## Phase 2: Issuance Enhancements (High Priority)
 ### 2.1 Batch PDF Generation
-- [ ] PDF/ZIP pipeline
-- [ ] Real-time progress indicator
-- [ ] Memory/stream optimizations
+- [x] PDF/ZIP pipeline
+- [x] Real-time progress indicator
+- [x] Memory/stream optimizations
 - [ ] Page size options (A4/Letter/Custom)
 
 ### 2.2 Statistics & Reporting
@@ -51,7 +51,6 @@
 - [ ] Filtered viewer UI
 - [ ] Retention cleanup (>90d)
 
-### 3.2 Security Hardening
 - [ ] Rate limiting middleware
 - [ ] 2FA (TOTP) for admins
 - [ ] Session token refactor
@@ -85,7 +84,7 @@
 - [ ] Stronger data isolation patterns
 
 ---
-## Technical Debt & Foundations
+### Technical Debt & Foundations
 - [ ] Unified API error format `{ ok:false, error, message }`
 - [ ] Central validation helpers (lengths, patterns, file checks)
 - [ ] Query/index optimization pass
