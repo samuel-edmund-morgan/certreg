@@ -3,7 +3,17 @@
 // Allows client to POST actual bytes to be downloaded later via GET so Playwright can capture the download event.
 $enabled = (getenv('CERTREG_TEST_MODE') === '1') || (isset($_GET['tm']) || isset($_POST['tm']));
 $__logf = sys_get_temp_dir().'/certreg_test_download.log';
-function __tlog($m){ @file_put_contents(sys_get_temp_dir().'/certreg_test_download.log', date('H:i:s')." ".$m."\n", FILE_APPEND); }
+$__log_enabled = (
+  getenv('CERTREG_TEST_DL_LOG') === '1' ||
+  (isset($_GET['log']) && $_GET['log'] !== '0') ||
+  (isset($_POST['log']) && $_POST['log'] !== '0')
+);
+function __tlog($m){
+  global $__log_enabled, $__logf;
+  if(!$__log_enabled) return;
+  if(@filesize($__logf) > 512000){ @unlink($__logf); }
+  @file_put_contents($__logf, date('H:i:s')." ".$m."\n", FILE_APPEND);
+}
 if (!$enabled) {
   http_response_code(404);
   __tlog('DENY not enabled');

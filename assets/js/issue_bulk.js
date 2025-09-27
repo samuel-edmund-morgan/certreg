@@ -56,6 +56,26 @@
     || (window.location.origin + '/verify.php');
   const TEST_MODE = (!!(typeof window!=="undefined" && window.__TEST_MODE)) || ((document.body && document.body.dataset && document.body.dataset.test)==='1');
   const ORG = TEST_MODE ? 'ORG-CERT' : ORG_RAW;
+  function getActiveCoords(){
+    if(typeof window !== 'undefined'){
+      try {
+        if(window.__BULK_TEMPLATE_COORDS && typeof window.__BULK_TEMPLATE_COORDS === 'object'){
+          return window.__BULK_TEMPLATE_COORDS;
+        }
+      } catch(_e){}
+      try {
+        if(window.__ACTIVE_TEMPLATE_COORDS && typeof window.__ACTIVE_TEMPLATE_COORDS === 'object'){
+          return window.__ACTIVE_TEMPLATE_COORDS;
+        }
+      } catch(_e){}
+      try {
+        if(window.__CERT_COORDS && typeof window.__CERT_COORDS === 'object'){
+          return window.__CERT_COORDS;
+        }
+      } catch(_e){}
+    }
+    return {};
+  }
   let rows = []; // {id, name, status, cid, h, error, int}
   let nextId = 1;
   const MAX_ROWS = 100;
@@ -520,7 +540,8 @@
     const date=form.date.value; const infinite=form.infinite.checked; const validUntil=infinite?INFINITE_SENTINEL:(form.valid_until.value||'');
     ensureBg(()=>{
       // Sequentially render each to same canvas and capture JPEG buffers
-      const canvas = getRenderCanvas(); const ctx = canvas.getContext('2d'); const coords = window.__CERT_COORDS || {}; const cQR = coords.qr || {x:150,y:420,size:220};
+  const canvas = getRenderCanvas();
+  const ctx = canvas.getContext('2d');
       const pages=[];
       (async function loop(){
         for(const r of okRows){
@@ -528,7 +549,10 @@
             // Build QR for row then render
             const data = {ver:3, pib:normName(r.name), cid:r.cid, extra: (r.extra||''), date, valid_until:validUntil, h:r.h, salt:r.saltB64, canon: CANON_URL};
             buildQrForRow(data, (qrImgEl)=>{
-              renderCertToCanvas(data); ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
+              renderCertToCanvas(data);
+              const coordsNow = getActiveCoords();
+              const cQR = coordsNow.qr || {x:150,y:420,size:220};
+              ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
               const jpg = canvas.toDataURL('image/jpeg',0.92).split(',')[1];
               pages.push(Uint8Array.from(atob(jpg), c=>c.charCodeAt(0)));
               res();
@@ -620,6 +644,14 @@
     return c;
   }
   let bulkBgImg = null; let bulkBgLoading=false; let bulkBgReadyCb=[];
+  document.addEventListener('cert-template-change', function(ev){
+    if(!(ev && ev.detail)) return;
+    if(ev.detail.path){
+      bulkBgImg = null;
+      bulkBgLoading = false;
+      bulkBgReadyCb = [];
+    }
+  });
   function ensureBg(cb){
   if(bulkBgImg && bulkBgImg.complete){ cb(); return; }
   bulkBgReadyCb.push(cb);
@@ -640,7 +672,7 @@
   function renderCertToCanvas(data){
     const canvas = getRenderCanvas();
     const ctx = canvas.getContext('2d');
-    const coords = window.__CERT_COORDS || {};
+  const coords = getActiveCoords();
     ctx.clearRect(0,0,canvas.width,canvas.height);
     if(bulkBgImg && bulkBgImg.complete){ ctx.drawImage(bulkBgImg,0,0,canvas.width,canvas.height); }
     ctx.fillStyle='#000';
@@ -762,10 +794,11 @@
     // Trigger QR request immediately; render once QR and background are ready
     buildQrForRow(data, (qrImgEl)=>{
       ensureBg(()=>{
-        const canvas = getRenderCanvas();
-        renderCertToCanvas(data);
-        const coords = window.__CERT_COORDS || {}; const cQR = coords.qr || {x:150,y:420,size:220};
-        const ctx = canvas.getContext('2d'); ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
+    const canvas = getRenderCanvas();
+    renderCertToCanvas(data);
+    const coords = getActiveCoords();
+    const cQR = coords.qr || {x:150,y:420,size:220};
+    const ctx = canvas.getContext('2d'); ctx.drawImage(qrImgEl, cQR.x, cQR.y, cQR.size, cQR.size);
         if(kind==='pdf') generatePdfFromCanvas(canvas, r.cid); else downloadJpg(canvas, r.cid);
       });
     });

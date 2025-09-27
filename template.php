@@ -100,10 +100,30 @@ if($hasTplFk){
   try { $c=$pdo->prepare('SELECT COUNT(*) FROM tokens WHERE template_id=?'); $c->execute([$id]); $inUseCount=(int)$c->fetchColumn(); } catch(Throwable $e){ $inUseCount=null; }
 }
 
+$coordsDecoded = null;
+if(isset($row['coords']) && $row['coords'] !== null){
+  $tmp = json_decode($row['coords'], true);
+  if($tmp !== null || trim((string)$row['coords']) === 'null'){
+    $coordsDecoded = $tmp;
+  }
+}
+$coordsJsonPretty = $coordsDecoded !== null ? json_encode($coordsDecoded, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT) : null;
+$coordsJsonForScript = json_encode($coordsDecoded, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+if($coordsJsonForScript === false) { $coordsJsonForScript = 'null'; }
+$coordsJsonForScriptEsc = htmlspecialchars($coordsJsonForScript, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$coordsJsonPrettyEsc = $coordsJsonPretty !== null ? htmlspecialchars($coordsJsonPretty, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : null;
+$tplWidth = isset($row['width']) ? (int)$row['width'] : 0;
+$tplHeight = isset($row['height']) ? (int)$row['height'] : 0;
+$tplExt = isset($row['file_ext']) && $row['file_ext'] ? $row['file_ext'] : 'jpg';
+$tplOriginalPath = '/files/templates/'.$row['org_id'].'/'.$row['id'].'/original.'.$tplExt;
+$tplOriginalEsc = htmlspecialchars($tplOriginalPath, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$tplPreviewEsc = htmlspecialchars('/files/templates/'.$row['org_id'].'/'.$row['id'].'/preview.jpg?v='.(int)$row['version'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$coordsEditorJsVer = @filemtime($_SERVER['DOCUMENT_ROOT'].'/assets/js/template_coords_editor.js') ?: time();
+
 require_once __DIR__.'/header.php';
 $msg = $_GET['msg'] ?? '';
 ?>
-<section class="section">
+<section class="section" data-template-id="<?= (int)$row['id'] ?>" data-template-width="<?= $tplWidth ?>" data-template-height="<?= $tplHeight ?>" data-template-original="<?= $tplOriginalEsc ?>" data-template-preview="<?= $tplPreviewEsc ?>">
   <h1 class="mt-0">Шаблон #<?= htmlspecialchars($row['id']) ?></h1>
   <p class="fs-14 text-muted maxw-760">Управління окремим шаблоном. <a href="/settings.php?tab=templates" class="link-accent">← Повернутися до списку</a></p>
   <?php if($msg): ?><div class="mb-12 fs-13"><?php
@@ -131,6 +151,63 @@ $msg = $_GET['msg'] ?? '';
   <?php $prevPath = '/files/templates/'.$row['org_id'].'/'.$row['id'].'/preview.jpg'; ?>
     <div class="mb-8 fs-13 text-muted">Поточний превʼю:</div>
   <div><img class="img-preview-480" src="<?= htmlspecialchars($prevPath) ?>?v=<?= (int)$row['version'] ?>" alt="preview" loading="lazy"></div>
+  </div>
+  <div class="mb-18" id="templateCoordsSummary">
+    <div class="mb-8 fs-13 text-muted">Поточні координати:</div>
+    <?php if($coordsDecoded !== null): ?>
+      <pre class="code-block small-scroll" aria-label="coords json"><?= $coordsJsonPrettyEsc ?></pre>
+    <?php else: ?>
+      <p class="fs-13 text-muted">Не налаштовано. Використовуються глобальні координати з конфігурації.</p>
+    <?php endif; ?>
+  </div>
+  <div class="coords-editor-block" id="coordsEditorBlock">
+    <h2 class="fs-18 mt-0">Редактор координат</h2>
+    <p class="fs-13 text-muted">Перетягніть маркери на зображенні або скористайтесь полями справа. Координати зберігаються у пікселях відносно оригінального зображення шаблону.</p>
+    <div class="coords-editor" id="coordsEditorRoot">
+      <div class="coords-editor__stage" id="coordsEditorStage">
+        <div class="coords-editor__stage-inner">
+          <img src="<?= htmlspecialchars($prevPath) ?>?v=<?= (int)$row['version'] ?>" alt="Фон шаблону" id="coordsEditorBg" class="coords-editor__bg" loading="lazy">
+          <div class="coords-editor__overlay" id="coordsEditorOverlay" role="presentation"></div>
+        </div>
+      </div>
+  <div class="coords-editor__panel form" id="coordsEditorPanel">
+        <div class="coords-editor__field">
+          <label for="coordsFieldSelect">Поле</label>
+          <select id="coordsFieldSelect">
+            <option value="name">ПІБ</option>
+            <option value="id">CID</option>
+            <option value="extra">Додаткова інформація</option>
+            <option value="date">Дата</option>
+            <option value="expires">Дійсний до</option>
+            <option value="qr">QR</option>
+            <option value="int">INT код</option>
+          </select>
+        </div>
+        <div class="coords-editor__grid">
+          <label for="coordsFieldX">X</label>
+          <input type="number" id="coordsFieldX" step="1" min="-2000" max="20000">
+          <label for="coordsFieldY">Y</label>
+          <input type="number" id="coordsFieldY" step="1" min="-2000" max="20000">
+          <label for="coordsFieldSize">Розмір</label>
+          <input type="number" id="coordsFieldSize" step="1" min="1" max="5000">
+          <label for="coordsFieldAngle" class="coords-editor__angle">Кут</label>
+          <input type="number" id="coordsFieldAngle" class="coords-editor__angle" step="1" min="-360" max="360">
+          <label for="coordsFieldAlign" class="coords-editor__align">Вирівнювання</label>
+          <select id="coordsFieldAlign" class="coords-editor__align">
+            <option value="left">Ліворуч</option>
+            <option value="center">По центру</option>
+            <option value="right">Праворуч</option>
+          </select>
+        </div>
+        <div class="coords-editor__hint fs-12 text-muted" id="coordsEditorHint"></div>
+      </div>
+    </div>
+    <div class="coords-editor__actions">
+      <button type="button" class="btn btn-primary" id="coordsSaveBtn">Зберегти координати</button>
+      <button type="button" class="btn btn-light" id="coordsResetBtn">Скинути зміни</button>
+      <button type="button" class="btn btn-light" id="coordsDefaultsBtn">Глобальні за замовчанням</button>
+      <span class="coords-editor__status fs-12" id="coordsStatus"></span>
+    </div>
   </div>
   <?php if($hasTplFk): ?>
   <div class="mb-18">
@@ -180,4 +257,6 @@ $msg = $_GET['msg'] ?? '';
   <?php endif; ?>
   <div class="mt-18"><a href="/settings.php?tab=templates" class="btn btn-light">← Назад</a></div>
 </section>
+<script type="application/json" id="template-coords-data"><?= $coordsJsonForScriptEsc ?></script>
+<script src="/assets/js/template_coords_editor.js?v=<?= (int)$coordsEditorJsVer ?>" defer></script>
 <?php require_once __DIR__.'/footer.php'; ?>

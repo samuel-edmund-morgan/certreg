@@ -3,6 +3,7 @@
 (function(){
   const singleSel = document.getElementById('templateSelect');
   const bulkSel = document.getElementById('bulkTemplateSelect');
+  const coordsMap = new Map();
   if(!singleSel && !bulkSel) return; // якщо UI ще не додано
 
   function buildOption(it){
@@ -37,6 +38,14 @@
       if(!js || !js.ok){ if(singleSel) singleSel.disabled=true; if(bulkSel) bulkSel.disabled=true; return; }
       // Показуємо тільки активні шаблони
       const items = (js.items||[]).filter(it=> String(it.status).toLowerCase()==='active');
+      items.forEach(it=>{
+        const key = String(it.id);
+        if(it && typeof it.coords === 'object' && it.coords !== null){
+          coordsMap.set(key, it.coords);
+        } else {
+          coordsMap.set(key, null);
+        }
+      });
       fillSelect(singleSel, items);
       fillSelect(bulkSel, items);
     }).catch(()=>{ try{ if(singleSel) singleSel.disabled=true; if(bulkSel) bulkSel.disabled=true; }catch(_e){} });
@@ -55,16 +64,35 @@
 
   function onChange(sel){
     const path = resolvePathFromSelect(sel);
+    let coords = null;
+    try {
+      if(sel && sel.value){
+        const stored = coordsMap.get(String(sel.value));
+        if(stored && typeof stored === 'object'){
+          coords = stored;
+        }
+      }
+    } catch(_e){}
+    if(coords === null){
+      // ensure null when undefined so listeners can reset to defaults
+      coords = null;
+    }
+    if(sel === singleSel){
+      window.__SINGLE_TEMPLATE_COORDS = coords;
+    } else if(sel === bulkSel){
+      window.__BULK_TEMPLATE_COORDS = coords;
+    }
+    window.__ACTIVE_TEMPLATE_COORDS = coords;
     if(!path){
       // revert до дефолту
       const body = document.body;
       const tpl = body ? body.getAttribute('data-template') : '/files/cert_template.jpg';
       window.__ISSUE_TEMPLATE_OVERRIDE = null;
-      document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path: tpl}}));
+      document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path: tpl, coords}}));
       return;
     }
     window.__ISSUE_TEMPLATE_OVERRIDE = path;
-    document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path}}));
+    document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path, coords}}));
   }
 
   if(singleSel){

@@ -610,3 +610,36 @@ main{flex:1}
 #templatesTable th.col-actions{width:60px}
 #templatesTable th.col-code{width:140px}
 #templatesTable th.col-org{width:80px}
+
+/* === Template coordinates editor === */
+.coords-editor-block{margin-bottom:32px;padding:20px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.08)}
+.coords-editor{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.coords-editor__stage{flex:1 1 520px;max-width:780px}
+.coords-editor__stage-inner{position:relative;width:100%}
+.coords-editor__bg{display:block;width:100%;height:auto;border-radius:12px;border:1px solid rgba(15,23,42,.08);box-shadow:0 8px 26px rgba(15,23,42,.12)}
+.coords-editor__overlay{position:absolute;inset:0;pointer-events:none}
+.coords-editor__overlay .coords-marker{pointer-events:auto}
+.coords-editor__panel{flex:0 0 260px;max-width:320px;background:#f8fafc;border:1px solid rgba(148,163,184,.35);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.coords-editor__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}
+.coords-editor__hint{min-height:18px}
+.coords-editor__actions{margin-top:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.coords-editor__status{min-width:180px;font-size:12px;color:#475569}
+.coords-marker{position:absolute;cursor:grab;transform:translate(-7px,-7px);color:#f8fafc;font-size:11px;font-weight:600;text-shadow:0 1px 3px rgba(15,23,42,.6)}
+.coords-marker::before{content:"";position:absolute;top:0;left:0;width:14px;height:14px;border-radius:4px;background:rgba(37,99,235,.85);border:2px solid rgba(255,255,255,.95);box-shadow:0 2px 8px rgba(15,23,42,.45)}
+.coords-marker__label{position:absolute;top:18px;left:0;background:rgba(15,23,42,.85);padding:2px 6px;border-radius:6px;white-space:nowrap;pointer-events:none}
+.coords-marker--qr{transform:none}
+.coords-marker--qr::before{display:none}
+.coords-marker__qr-box{position:absolute;top:0;left:0;min-width:12px;min-height:12px;border:2px dashed rgba(37,99,235,.8);background:rgba(37,99,235,.12);box-shadow:0 0 0 1px rgba(15,23,42,.25) inset}
+.coords-marker--qr .coords-marker__label{top:-26px}
+.coords-marker.is-active::before{background:#f59e0b}
+.coords-marker.is-active .coords-marker__label{background:rgba(250,204,21,.92);color:#312e81}
+.coords-marker:active{cursor:grabbing}
+.coords-marker.dragging::before{background:#f97316}
+.coords-editor__panel select[hidden],
+.coords-editor__panel input[hidden],
+.coords-editor__panel label[hidden]{display:none!important}
+@media (max-width:1024px){
+  .coords-editor{flex-direction:column}
+  .coords-editor__panel{width:100%;max-width:none}
+  .coords-editor__stage{width:100%}
+}

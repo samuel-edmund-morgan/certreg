@@ -131,12 +131,6 @@ Error:
 ```
 
 ---
-## Immediate Next Step
-Add automated tests for issuance with templates:
-- API tests for `template_id` in register (happy path and error cases)
-- E2E tests to pick template during single/bulk issuance and verify on tokens list/detail
-
----
 ## Changelog Anchor
 Maintain updates here when milestones are completed.
 

@@ -23,7 +23,27 @@
   const resetBtn = document.getElementById('resetBtn');
   const canvas = document.getElementById('certCanvas');
   const ctx = canvas.getContext('2d');
-  const coords = window.__CERT_COORDS || {};
+  function resolveActiveCoords(){
+    if(typeof window !== 'undefined'){
+      try {
+        if(window.__SINGLE_TEMPLATE_COORDS && typeof window.__SINGLE_TEMPLATE_COORDS === 'object'){
+          return window.__SINGLE_TEMPLATE_COORDS;
+        }
+      } catch(_e){}
+      try {
+        if(window.__ACTIVE_TEMPLATE_COORDS && typeof window.__ACTIVE_TEMPLATE_COORDS === 'object'){
+          return window.__ACTIVE_TEMPLATE_COORDS;
+        }
+      } catch(_e){}
+      try {
+        if(window.__CERT_COORDS && typeof window.__CERT_COORDS === 'object'){
+          return window.__CERT_COORDS;
+        }
+      } catch(_e){}
+    }
+    return {};
+  }
+  let activeCoords = resolveActiveCoords();
   const TEST_MODE = (
     (!!(typeof window!=="undefined" && window.__TEST_MODE)) ||
     ((document.body && document.body.dataset && document.body.dataset.test)==='1') ||
@@ -81,11 +101,12 @@
     if(bgImage.complete){ ctx.drawImage(bgImage,0,0,canvas.width,canvas.height); }
     ctx.fillStyle = '#000';
     ctx.font = '28px sans-serif';
+    const coords = activeCoords || {};
     const cName = coords.name || {x:600,y:420};
     const cId   = coords.id   || {x:600,y:445};
-  const cExtra = coords.extra || {x:600,y:520};
-  const cDate = coords.date || {x:600,y:570};
-  const cExp  = coords.expires || {x:600,y:600};
+    const cExtra = coords.extra || {x:600,y:520};
+    const cDate = coords.date || {x:600,y:570};
+    const cExp  = coords.expires || {x:600,y:600};
     const cQR   = coords.qr   || {x:150,y:420,size:220};
     ctx.fillText(currentData.pib, cName.x, cName.y);
     ctx.font = '20px sans-serif'; ctx.fillText(currentData.cid, cId.x, cId.y);
@@ -109,7 +130,7 @@
     // Integrity short code (first 10 hex chars of H) if available
     if(currentData.h){
       const short = (currentData.h.slice(0,10).toUpperCase()).replace(/(.{5})(.{5})/, '$1-$2');
-      const cInt = coords.int || {x: canvas.width - 180, y: canvas.height - 30, size:14};
+  const cInt = coords.int || {x: canvas.width - 180, y: canvas.height - 30, size:14};
       ctx.save();
       ctx.font = (cInt.size||14) + 'px monospace';
       ctx.fillStyle = '#111';
@@ -247,8 +268,14 @@
   })();
   // Реакція на зміну шаблону (подія від issue_templates.js)
   document.addEventListener('cert-template-change', function(ev){
-    if(ev.detail && ev.detail.path){
-      bgImage.src = ev.detail.path;
+    if(ev.detail){
+      if(ev.detail.path){
+        bgImage.src = ev.detail.path;
+      }
+      if(Object.prototype.hasOwnProperty.call(ev.detail,'coords')){
+        activeCoords = resolveActiveCoords();
+        try { renderAll(); } catch(_e){}
+      }
     }
   });
   form.addEventListener('submit', handleSubmit);
