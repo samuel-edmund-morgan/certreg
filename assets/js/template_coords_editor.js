@@ -24,13 +24,13 @@
 
   const FIELD_ORDER = ['name','id','extra','date','expires','qr','int'];
   const FIELD_META = {
-    name: { label: 'ПІБ', supportsAngle: true, supportsAlign: true, supportsSize: true, supportsBox: true },
-    id: { label: 'CID', supportsAngle: false, supportsAlign: true, supportsSize: true, supportsBox: true },
-    extra: { label: 'Додаткова', supportsAngle: true, supportsAlign: true, supportsSize: true, supportsBox: true },
-    date: { label: 'Дата', supportsAngle: false, supportsAlign: true, supportsSize: true, supportsBox: true },
-    expires: { label: 'Дійсний до', supportsAngle: true, supportsAlign: true, supportsSize: true, supportsBox: true },
-    qr: { label: 'QR', supportsAngle: false, supportsAlign: false, supportsSize: true, isQr: true },
-    int: { label: 'INT', supportsAngle: false, supportsAlign: true, supportsSize: true, supportsBox: true }
+    name: { label: 'ПІБ', supportsAngle: true, supportsSize: true, supportsBox: true },
+    id: { label: 'CID', supportsAngle: true, supportsSize: true, supportsBox: true },
+    extra: { label: 'Додаткова', supportsAngle: true, supportsSize: true, supportsBox: true },
+    date: { label: 'Дата', supportsAngle: true, supportsSize: true, supportsBox: true },
+    expires: { label: 'Дійсний до', supportsAngle: true, supportsSize: true, supportsBox: true },
+    qr: { label: 'QR', supportsAngle: false, supportsSize: true, isQr: true },
+    int: { label: 'INT', supportsAngle: true, supportsSize: true, supportsBox: true }
   };
 
   const FIELD_HINTS = {
@@ -56,8 +56,7 @@
 
   const NUM_PROPS = new Set(['x','y','size','width','height','angle','max_width','tracking','line_height','radius','scale','order']);
   const BOOL_PROPS = new Set(['uppercase','wrap','bold','italic']);
-  const STRING_PROPS = new Set(['align','font','color','text']);
-  const ALIGN_VALUES = new Set(['left','center','right','justify']);
+  const STRING_PROPS = new Set(['font','color','text']);
   const COLOR_RE = /^#[0-9a-f]{3,8}$/i;
 
   const tplWidth = Number(hostSection.dataset.templateWidth || '0');
@@ -68,13 +67,13 @@
     const usableWidth = width || 1200;
     const nameFieldWidth = Math.max(420, Math.round(usableWidth * 0.46));
     const block = {
-      name: { x: 600, y: 420, size: 28, align: 'left', width: nameFieldWidth, height: 48 },
-      id: { x: 600, y: 445, size: 20, align: 'left', width: Math.max(280, Math.round(usableWidth * 0.32)), height: 32 },
-      extra: { x: 600, y: 520, size: 24, align: 'left', width: nameFieldWidth, height: 44 },
-      date: { x: 600, y: 570, size: 24, align: 'left', width: Math.max(260, Math.round(usableWidth * 0.28)), height: 36 },
-      expires: { x: 600, y: 600, size: 20, align: 'left', angle: 0, width: Math.max(320, Math.round(usableWidth * 0.34)), height: 34 },
+      name: { x: 600, y: 420, size: 28, angle: 0, width: nameFieldWidth, height: 48 },
+      id: { x: 600, y: 445, size: 20, angle: 0, width: Math.max(280, Math.round(usableWidth * 0.32)), height: 32 },
+      extra: { x: 600, y: 520, size: 24, angle: 0, width: nameFieldWidth, height: 44 },
+      date: { x: 600, y: 570, size: 24, angle: 0, width: Math.max(260, Math.round(usableWidth * 0.28)), height: 36 },
+      expires: { x: 600, y: 600, size: 20, angle: 0, width: Math.max(320, Math.round(usableWidth * 0.34)), height: 34 },
       qr: { x: 150, y: 420, size: 220 },
-      int: { x: (width ? Math.max(40, width - 200) : 820), y: (height ? Math.max(40, height - 40) : 650), size: 14, align: 'left', width: Math.max(220, Math.round(usableWidth * 0.22)), height: 28 }
+      int: { x: (width ? Math.max(40, width - 200) : 820), y: (height ? Math.max(40, height - 40) : 650), size: 14, angle: 0, width: Math.max(220, Math.round(usableWidth * 0.22)), height: 28 }
     };
     return block;
   }
@@ -121,10 +120,7 @@
         target[key] = !!val;
       } else if(STRING_PROPS.has(key)){
         const str = String(val).trim();
-        if(key === 'align'){
-          const lower = str.toLowerCase();
-          if(ALIGN_VALUES.has(lower)) target[key] = lower;
-        } else if(key === 'color'){
+        if(key === 'color'){
           if(str === '' || COLOR_RE.test(str)) target[key] = str.toLowerCase();
         } else {
           if(str !== '') target[key] = str;
@@ -169,12 +165,7 @@
     } else {
       delete target.angle;
     }
-    if(meta.supportsAlign){
-      const align = typeof target.align === 'string' ? target.align.toLowerCase() : (base.align || 'left');
-      target.align = ALIGN_VALUES.has(align) ? align : 'left';
-    } else {
-      delete target.align;
-    }
+    delete target.align;
     if(meta.isQr){
       if(!Number.isFinite(target.size)) target.size = base.size || 200;
       target.size = clamp(target.size, 20, bounds.maxSize);
@@ -263,7 +254,6 @@
   const inputY = document.getElementById('coordsFieldY');
   const inputSize = document.getElementById('coordsFieldSize');
   const inputAngle = document.getElementById('coordsFieldAngle');
-  const inputAlign = document.getElementById('coordsFieldAlign');
   const hintEl = document.getElementById('coordsEditorHint');
   const statusEl = document.getElementById('coordsStatus');
   const saveBtn = document.getElementById('coordsSaveBtn');
@@ -271,7 +261,7 @@
   const defaultsBtn = document.getElementById('coordsDefaultsBtn');
   const summaryText = document.getElementById('coordsSummaryText');
 
-  if(!selectField || !inputX || !inputY || !inputSize || !saveBtn || !resetBtn || !defaultsBtn) return;
+  if(!selectField || !inputX || !inputY || !inputSize || !inputAngle || !saveBtn || !resetBtn || !defaultsBtn) return;
 
   const state = {
     coords: composeCoords(),
@@ -394,8 +384,10 @@
     const data = state.coords[field];
     if(!data) return;
     const meta = FIELD_META[field] || {};
-    const baseLeft = data.x * state.scale;
-    const baseTop = data.y * state.scale;
+  const baseLeft = data.x * state.scale;
+  const baseTop = data.y * state.scale;
+  const alignRaw = (typeof data.align === 'string' && data.align) ? data.align.toLowerCase() : 'left';
+  const align = (alignRaw === 'center' || alignRaw === 'right' || alignRaw === 'justify') ? alignRaw : 'left';
     if(meta.isQr){
       marker.style.left = baseLeft+'px';
       marker.style.top = baseTop+'px';
@@ -413,10 +405,12 @@
         const auto = computeAutoBox(field, data);
         const widthUnits = auto.width;
         const heightUnits = auto.height;
-        const widthPx = Math.max(20, widthUnits * state.scale);
-        const heightPx = Math.max(12, heightUnits * state.scale);
-        marker.style.left = baseLeft+'px';
-        marker.style.top = (baseTop - heightPx)+'px';
+  const widthPx = Math.max(20, widthUnits * state.scale);
+  const heightPx = Math.max(12, heightUnits * state.scale);
+  const anchor = align === 'center' ? 0.5 : (align === 'right' ? 1 : (align === 'justify' ? 0.5 : 0));
+  const adjustedLeft = baseLeft - (widthPx * anchor);
+  marker.style.left = adjustedLeft+'px';
+  marker.style.top = (baseTop - heightPx)+'px';
         marker.style.width = widthPx+'px';
         marker.style.height = heightPx+'px';
         box.style.width = widthPx+'px';
@@ -435,7 +429,6 @@
           placeholder.style.fontWeight = data.bold ? '600' : '500';
           placeholder.style.fontStyle = data.italic ? 'italic' : 'normal';
           placeholder.style.textTransform = data.uppercase ? 'uppercase' : 'none';
-          const align = (data.align || defaultsSource[field]?.align || 'left');
           placeholder.style.textAlign = align;
           const allowWrap = data.wrap === true;
           placeholder.style.whiteSpace = allowWrap ? 'normal' : 'nowrap';
@@ -448,7 +441,8 @@
           }
           if(data.angle !== undefined && Number.isFinite(data.angle) && data.angle !== 0){
             placeholder.style.transform = `rotate(${data.angle}deg)`;
-            placeholder.style.transformOrigin = align === 'center' ? '50% 0%' : (align === 'right' ? '100% 0%' : '0% 0%');
+            const origin = align === 'center' || align === 'justify' ? '50% 0%' : (align === 'right' ? '100% 0%' : '0% 0%');
+            placeholder.style.transformOrigin = origin;
           } else {
             placeholder.style.transform = 'none';
             placeholder.style.transformOrigin = '';
@@ -489,24 +483,16 @@
       inputSize.disabled = true;
     }
     const labelAngle = editorRoot.querySelector('label[for="coordsFieldAngle"]');
-    const labelAlign = editorRoot.querySelector('label[for="coordsFieldAlign"]');
     if(meta.supportsAngle){
       inputAngle.value = data.angle !== undefined ? Math.round(data.angle * 10)/10 : 0;
-      inputAngle.hidden = false;
-      if(labelAngle) labelAngle.hidden = false;
+      inputAngle.disabled = false;
+      inputAngle.classList.remove('is-disabled');
+      if(labelAngle) labelAngle.classList.remove('is-disabled');
     } else {
       inputAngle.value = '';
-      inputAngle.hidden = true;
-      if(labelAngle) labelAngle.hidden = true;
-    }
-    if(meta.supportsAlign){
-      inputAlign.value = data.align || 'left';
-      inputAlign.hidden = false;
-      if(labelAlign) labelAlign.hidden = false;
-    } else {
-      inputAlign.value = 'left';
-      inputAlign.hidden = true;
-      if(labelAlign) labelAlign.hidden = true;
+      inputAngle.disabled = true;
+      inputAngle.classList.add('is-disabled');
+      if(labelAngle) labelAngle.classList.add('is-disabled');
     }
     if(hintEl){ hintEl.textContent = FIELD_HINTS[field] || ''; }
   }
@@ -530,10 +516,6 @@
     if(patch.angle !== undefined && (FIELD_META[field] || {}).supportsAngle){
       const na = clamp(Number(patch.angle), bounds.minAngle, bounds.maxAngle);
       if(Number.isFinite(na) && na !== data.angle){ data.angle = na; changed = true; }
-    }
-    if(patch.align !== undefined && (FIELD_META[field] || {}).supportsAlign){
-      const align = String(patch.align).toLowerCase();
-      if(ALIGN_VALUES.has(align) && align !== data.align){ data.align = align; changed = true; }
     }
     if(changed){
       renderMarker(field);
@@ -581,7 +563,6 @@
   inputY.addEventListener('input', ()=> applyPatch(state.activeField, { y: Number(inputY.value) }));
   inputSize.addEventListener('input', ()=> applyPatch(state.activeField, { size: Number(inputSize.value) }));
   inputAngle.addEventListener('input', ()=> applyPatch(state.activeField, { angle: Number(inputAngle.value) }));
-  inputAlign.addEventListener('change', ()=> applyPatch(state.activeField, { align: inputAlign.value }));
 
   const csrfToken = (document.querySelector('input[name="_csrf"]') || document.querySelector('meta[name="csrf"]'))?.value || '';
 

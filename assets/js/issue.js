@@ -130,14 +130,56 @@
     ctx.save();
     ctx.scale(scaleX || 1, scaleY || 1);
     ctx.fillStyle = '#000';
+    function resolveAlign(raw){
+      const val = typeof raw === 'string' ? raw.toLowerCase() : '';
+      if(val === 'center' || val === 'middle') return 'center';
+      if(val === 'right' || val === 'end') return 'right';
+      if(val === 'justify') return 'center';
+      return 'left';
+    }
+    function buildFont(cfg, fallbackSize, fallbackFamily){
+      const size = Number.isFinite(cfg?.size) ? cfg.size : fallbackSize;
+      const family = (typeof cfg?.font === 'string' && cfg.font.trim()) ? cfg.font : (fallbackFamily || 'sans-serif');
+      const weight = cfg?.bold ? '600' : '400';
+      const italic = cfg?.italic ? 'italic ' : '';
+      return { css: `${italic}${weight} ${size}px ${family}`, size };
+    }
+    function normalizeText(value, cfg){
+      if(value === null || value === undefined) return '';
+      let out = String(value);
+      if(cfg?.uppercase) out = out.toUpperCase();
+      return out;
+    }
+    function drawTextBlock(rawText, cfg, defaults){
+      if(!cfg) return;
+      const text = normalizeText(rawText, cfg);
+      if(!text) return;
+      const font = buildFont(cfg, defaults.size, defaults.family);
+      const align = resolveAlign(cfg.align);
+      const angle = Number.isFinite(cfg.angle) ? cfg.angle : 0;
+      const color = (typeof cfg.color === 'string' && cfg.color.trim()) ? cfg.color : (defaults.color || '#000');
+      ctx.save();
+      ctx.font = font.css;
+      ctx.fillStyle = color;
+      ctx.textAlign = align;
+      ctx.textBaseline = 'alphabetic';
+      if(angle !== 0){
+        ctx.translate(cfg.x, cfg.y);
+        ctx.rotate((angle * Math.PI) / 180);
+        ctx.fillText(text, 0, 0);
+      } else {
+        ctx.fillText(text, cfg.x, cfg.y);
+      }
+      ctx.restore();
+    }
     const fallback = {
-      name: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.6, size: 28},
-      id: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.635, size: 20},
-      extra: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.74, size: 24},
-      date: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.81, size: 24},
-      expires: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.86, size: 20},
+      name: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.6, size: 28, align: 'left', angle: 0},
+      id: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.635, size: 20, align: 'left', angle: 0},
+      extra: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.74, size: 24, align: 'left', angle: 0},
+      date: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.81, size: 24, align: 'left', angle: 0},
+      expires: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.86, size: 20, align: 'left', angle: 0},
       qr: {x: (baseSize.width||1000) * 0.15, y: (baseSize.height||700) * 0.6, size: 220},
-      int: {x: (baseSize.width||1000) - 180, y: (baseSize.height||700) - 30, size: 14}
+      int: {x: (baseSize.width||1000) - 180, y: (baseSize.height||700) - 30, size: 14, align: 'left', angle: 0}
     };
     const cName = coords.name || fallback.name;
     const cId   = coords.id   || fallback.id;
@@ -145,34 +187,19 @@
     const cDate = coords.date || fallback.date;
     const cExp  = coords.expires || fallback.expires;
     const cQR   = coords.qr   || fallback.qr;
-    ctx.font = `${cName.size || 28}px sans-serif`;
-    ctx.fillText(currentData.pib, cName.x, cName.y);
-    ctx.font = `${cId.size || 20}px sans-serif`;
-    ctx.fillText(currentData.cid, cId.x, cId.y);
-    ctx.font = `${cExtra.size || 24}px sans-serif`;
-    if(currentData.extra){ ctx.fillText(String(currentData.extra), cExtra.x, cExtra.y); }
-    ctx.fillText('Дата: '+currentData.date, cDate.x, cDate.y);
+    drawTextBlock(currentData.pib, cName, { size: 28, family: 'sans-serif', color: '#000' });
+    drawTextBlock(currentData.cid, cId, { size: 20, family: 'sans-serif', color: '#000' });
+    if(currentData.extra){ drawTextBlock(String(currentData.extra), cExtra, { size: 24, family: 'sans-serif', color: '#000' }); }
+    drawTextBlock('Дата: '+currentData.date, cDate, { size: 24, family: 'sans-serif', color: '#000' });
     const expLabel = currentData.valid_until===INFINITE_SENTINEL ? 'Безтерміновий' : currentData.valid_until;
-    ctx.font = `${cExp.size || 20}px sans-serif`;
-    if(cExp.angle){
-      ctx.save(); ctx.translate(cExp.x, cExp.y); ctx.rotate((cExp.angle*Math.PI)/180);
-      ctx.fillText('Термін дії до: '+expLabel, 0, 0);
-      ctx.restore();
-    } else {
-      ctx.fillText('Термін дії до: '+expLabel, cExp.x, cExp.y);
-    }
+    drawTextBlock('Термін дії до: '+expLabel, cExp, { size: 20, family: 'sans-serif', color: '#000' });
     if(qrImg.complete){
       ctx.drawImage(qrImg, cQR.x, cQR.y, cQR.size, cQR.size);
     }
     if(currentData.h){
       const short = (currentData.h.slice(0,10).toUpperCase()).replace(/(.{5})(.{5})/, '$1-$2');
       const cInt = coords.int || fallback.int;
-      ctx.save();
-      ctx.font = `${cInt.size || 14}px monospace`;
-      ctx.fillStyle = '#111';
-      if(cInt.angle){ ctx.translate(cInt.x, cInt.y); ctx.rotate(cInt.angle * Math.PI/180); ctx.fillText('INT '+short, 0, 0); }
-      else { ctx.fillText('INT '+short, cInt.x, cInt.y); }
-      ctx.restore();
+      drawTextBlock('INT '+short, Object.assign({ color: '#111', font: 'monospace' }, cInt), { size: 14, family: 'monospace', color: '#111' });
     }
     ctx.restore();
   }
