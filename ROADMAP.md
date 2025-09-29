@@ -37,51 +37,13 @@
 - [x] Memory/stream optimizations
 - [ ] Page size options (A4/Letter/Custom)
 
-### 2.2 Statistics & Reporting
-- [ ] Dashboard (counts per org/time)
-- [ ] Stats API endpoints
-- [ ] CSV/Excel export
-- [ ] Charts UI (daily/monthly)
-
----
-## Phase 3: Audit & Security (Medium Priority)
-### 3.1 Audit Logging
-- [ ] `audit_log` table
-- [ ] Hooks for org/template/operator CRUD
-- [ ] Filtered viewer UI
-- [ ] Retention cleanup (>90d)
-
-- [ ] Rate limiting middleware
-- [ ] 2FA (TOTP) for admins
-- [ ] Session token refactor
-- [ ] First login password reset enforcement
 
 ---
 ## Phase 4: UX Improvements (Low Priority)
-### 4.1 Notifications
-- [ ] Toast system
-- [ ] Server flash messages
-- [ ] Realtime channel (SSE/WebSocket)
-- [ ] Email notifications
 
-### 4.2 Interface Enhancements
-- [ ] Dark mode
-- [ ] Keyboard shortcuts (e.g., Ctrl+S)
-- [ ] Onboarding tour
+### 4.1 Interface Enhancements
 - [ ] Mobile layout refinements
 
----
-## Phase 5: Extended Features (Optional)
-### 5.1 External API & Integrations
-- [ ] OAuth2 REST API
-- [ ] Webhooks
-- [ ] SDK scaffolding
-- [ ] OpenAPI spec
-
-### 5.2 White Label & Multi-Tenancy
-- [ ] Custom domains
-- [ ] Branded emails per org
-- [ ] Stronger data isolation patterns
 
 ---
 ### Technical Debt & Foundations
