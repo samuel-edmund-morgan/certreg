@@ -51,8 +51,9 @@ Use the provided migration script:
 php scripts/migrate.php
 ```
 It will:
-1. Add `extra_info` after `h` if missing
-2. Drop `course` and `grade` if present
+1. Create or normalize the `templates` table and wire `tokens.template_id`
+2. Add `extra_info` after `h` if missing, dropping legacy `course`/`grade`
+3. Add `award_title` columns to `templates` and `tokens`, backfilling from templates when possible
 
 If you maintain SQL manually, the essential steps are:
 ```sql
@@ -91,6 +92,16 @@ $h = hmac_sha256_hex($salt, $canonical);
 - Verify `/api/status.php` returns `exists`, `h`, `valid_until`
 - Revoke/unrevoke/delete flows update `token_events` as expected
 - `self_check.php` (if present) passes
+
+## 2025-09-28: Award title support
+
+Adds `award_title` columns to `templates` and `tokens` to support custom award names in canonical payloads.
+
+```
+php migrations/2025_09_28_add_award_title.php
+```
+
+> **Tip:** Running `php scripts/migrate.php` will execute the same column additions and backfill routine as part of the standard migration flow.
 
 ## Rollback
 1. Keep a DB backup prior to schema changes

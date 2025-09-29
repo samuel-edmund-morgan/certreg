@@ -34,11 +34,12 @@
       default: statusLabel=esc(t.status||'?'); statusBadgeCls='badge-status-inactive';
     }
     const status = `<span class="badge ${statusBadgeCls}">${statusLabel}</span>`;
+    const award = t.award_title ? `<div class="tpl-award fs-12 text-muted">${esc(t.award_title)}</div>` : '';
     const code = `<code>${esc(t.code||'')}</code>`;
     return `<tr data-id="${t.id}">
       <td>${t.id}</td>
       <td class="tpl-prev">${prev}</td>
-  <td class="mono" title="${esc(t.name)}">${code}</td>
+  <td class="mono" title="${esc(t.name)}">${code}${award}</td>
   <td class="mono fs-12">${t.org_code?esc(t.org_code):'<span class="text-muted">—</span>'}</td>
       <td class="fs-12">${size}</td>
       <td class="fs-12">v${t.version}</td>
@@ -53,7 +54,8 @@
 
   function bindCreate(){
     if(!createForm) return;
-    const btn = qs('#tplCreateBtn');
+  const btn = qs('#tplCreateBtn');
+  const awardInput = createForm.querySelector('input[name="award_title"]');
     const st  = qs('#tplCreateStatus');
     createForm.addEventListener('submit', async e=>{
       e.preventDefault();
@@ -65,7 +67,12 @@
         const fd = new FormData(createForm);
         const r = await fetch(createForm.action,{method:'POST',body:fd,credentials:'same-origin'});
         const j = await r.json().catch(()=>({}));
-        if(j.ok){ st.textContent='OK'; createForm.reset(); loadList(); }
+        if(j.ok){
+          st.textContent='OK';
+          createForm.reset();
+          if(awardInput){ awardInput.value = 'Нагорода'; }
+          loadList();
+        }
         else { st.textContent='Помилка: '+(j.error||''); }
       } catch(err){ st.textContent='Мережа'; }
       finally { btn.disabled=false; setTimeout(()=>{ st.textContent=''; },3500); }

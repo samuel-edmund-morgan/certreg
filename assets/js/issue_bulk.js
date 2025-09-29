@@ -49,8 +49,8 @@
   // Prefer values provided via header <body data-*>; fall back to legacy globals, then safe defaults
   const INFINITE_SENTINEL = (document.body && document.body.dataset && document.body.dataset.inf) || window.__INFINITE_SENTINEL || '4000-01-01';
   const ORG_RAW = (document.body && document.body.dataset && document.body.dataset.org) || window.__ORG_CODE || 'ORG-CERT';
-  // v3-only flow
-  const VERSION = 3;
+  // v4 flow
+  const VERSION = 4;
   const CANON_URL = (window.__CANON_URL)
     || ((document.body && document.body.dataset && document.body.dataset.canon) ? document.body.dataset.canon : '')
     || (window.location.origin + '/verify.php');
@@ -114,6 +114,9 @@
 
   function normName(s){
     return s.normalize('NFC').replace(/[\u2019'`’\u02BC]/g,'').replace(/\s+/g,' ').trim().toUpperCase();
+  }
+  function normAwardTitle(s){
+    return String(s||'').normalize('NFC').replace(/\s+/g,' ').trim();
   }
   function hasMixedRisk(raw){
   // Original heuristic flagged certain Latin letters that visually resemble Cyrillic.
@@ -221,8 +224,9 @@
   const validUntilInput = form.querySelector('input[name="valid_until"]');
   const validWrap = document.getElementById('bulkValidUntilWrap');
   const extraInput = form.querySelector('input[name="extra"]');
-  function syncV3Bulk(){ /* v3-only: no course/grade toggling */ }
-  if(extraInput){ extraInput.addEventListener('input', ()=>{ syncV3Bulk(); updateGenerateState(); }); setTimeout(syncV3Bulk,0); }
+  const awardInput = form.querySelector('input[name="award_title"]');
+  function syncBulkHints(){ /* placeholder for future award-specific hints */ }
+  if(extraInput){ extraInput.addEventListener('input', ()=>{ syncBulkHints(); updateGenerateState(); }); setTimeout(syncBulkHints,0); }
   function syncExpiry(){
     if(infiniteCb.checked){ validUntilInput.disabled=true; validUntilInput.value=''; validWrap.classList.add('hidden-slot'); }
     else { validUntilInput.disabled=false; validWrap.classList.remove('hidden-slot'); }
@@ -250,6 +254,10 @@
     function clearWatch(){ try { clearInterval(watchdog); } catch(_e){} }
   const extra = (form.extra && typeof form.extra.value === 'string') ? form.extra.value.trim() : '';
     const effectiveExtra = extra || (TEST_MODE ? 'Bulk Crypto' : '');
+    const awardRaw = awardInput ? awardInput.value : '';
+    let awardTitle = normAwardTitle(awardRaw);
+    if(!awardTitle){ awardTitle = 'Нагорода'; }
+    if(awardTitle.length > 160){ alert('Назва нагороди занадто довга (максимум 160 символів).'); return; }
     const date = form.date.value;
     const infinite = form.infinite.checked;
     let validUntil = form.valid_until.value;
@@ -278,18 +286,20 @@
         const err = validateRow(r);
         if(err){ r.status='error'; r.error=err; updateRowBadge(r.id,'err','ERR'); appendLine(r); failed++; done++; updateProgress(done,targetRows.length); continue; }
         const pibNorm = normName(r.name);
-        // v3: grade not used
+  // Grade field not used in current flow
         try {
           let cid = r.cid; if(!cid){ cid = genCid(); r.cid=cid; }
-          const ver = 3;
+          const ver = VERSION;
           r.ver = ver;
+          r.award_title = awardTitle;
           if(!r.h || !r.saltB64){
             const salt = crypto.getRandomValues(new Uint8Array(32));
             let canonical;
-            // v3 canonical: v3|PIB|ORG|CID|DATE|VALID_UNTIL|CANON_URL|EXTRA
-            canonical = `v3|${pibNorm}|${ORG}|${cid}|${date}|${validUntil}|${CANON_URL}|${effectiveExtra}`;
+            // v4 canonical: v4|PIB|ORG|AWARD|CID|DATE|VALID_UNTIL|CANON_URL|EXTRA
+            canonical = `v4|${pibNorm}|${ORG}|${awardTitle}|${cid}|${date}|${validUntil}|${CANON_URL}|${effectiveExtra}`;
             r.canon = canonical;
             r.extra = effectiveExtra;
+            r.award_title = awardTitle;
             const sig = await hmacSha256(salt, canonical);
             r.h = toHex(sig);
             r.saltB64 = b64url(salt);
@@ -301,7 +311,7 @@
           r.org = ORG;
           r.canonUrl = CANON_URL;
           logBulk('register.fetch', {id: r.id, cid: r.cid});
-          const reqPayload = {cid, v:3, h:r.h, date, valid_until:validUntil, extra_info: r.extra || effectiveExtra};
+          const reqPayload = {cid, v:VERSION, h:r.h, date, valid_until:validUntil, extra_info: r.extra || effectiveExtra, award_title: awardTitle};
           // Додамо template_id якщо обрано у bulk селекті
           (function(){
             try {
@@ -385,11 +395,11 @@
         div.dataset.int = r.int || '';
         div.dataset.salt = r.saltB64 || '';
         div.dataset.nameOrig = r.name || '';
-        div.dataset.nameNorm = r.name ? normName(r.name) : '';
-  // v3 only; no grade in dataset
+    div.dataset.nameNorm = r.name ? normName(r.name) : '';
         if(r.ver){ div.dataset.ver = String(r.ver); }
         // Always expose canonical constituents for tests
         div.dataset.extra = r.extra || '';
+  if(r.award_title){ div.dataset.awardTitle = r.award_title; }
         div.dataset.org = r.org || ORG;
         if(r.date) div.dataset.date = r.date;
         if(r.valid_until) { div.dataset.valid = r.valid_until; div.dataset.validUntil = r.valid_until; }
@@ -567,7 +577,18 @@
         for(const r of okRows){
           await new Promise(res=>{
             // Build QR for row then render
-            const data = {ver:3, pib:normName(r.name), cid:r.cid, extra: (r.extra||''), date, valid_until:validUntil, h:r.h, salt:r.saltB64, canon: CANON_URL};
+            const data = {
+              ver: VERSION,
+              pib: normName(r.name),
+              award_title: r.award_title || normAwardTitle(awardInput ? awardInput.value : '') || 'Нагорода',
+              cid: r.cid,
+              extra: (r.extra||''),
+              date,
+              valid_until:validUntil,
+              h:r.h,
+              salt:r.saltB64,
+              canon: CANON_URL
+            };
             buildQrForRow(data, (qrImgEl)=>{
               const rendered = renderCertToCanvas(data, qrImgEl);
               activeCanvas = rendered.canvas;
@@ -774,6 +795,7 @@
       ctx.restore();
     }
     const fallback = {
+      award: {x:(baseWidth||1000)*0.6,y:(baseHeight||700)*0.52,size:32,align:'left',angle:0},
       name: {x:(baseWidth||1000)*0.6,y:(baseHeight||700)*0.6,size:28,align:'left',angle:0},
       id: {x:(baseWidth||1000)*0.6,y:(baseHeight||700)*0.635,size:20,align:'left',angle:0},
       extra: {x:(baseWidth||1000)*0.6,y:(baseHeight||700)*0.74,size:24,align:'left',angle:0},
@@ -782,13 +804,15 @@
       qr: {x:(baseWidth||1000)*0.15,y:(baseHeight||700)*0.6,size:220},
       int: {x:(baseWidth||1000)-180,y:(baseHeight||700)-30,size:14,align:'left',angle:0}
     };
-    const cName = coords.name || fallback.name;
+  const cAward = coords.award || fallback.award;
+  const cName = coords.name || fallback.name;
     const cId   = coords.id   || fallback.id;
     const cExtra = coords.extra || fallback.extra;
     const cDate = coords.date || fallback.date;
   const cExp  = coords.expires || fallback.expires;
   const cQR   = coords.qr || fallback.qr;
-    drawTextBlock(data.pib, cName, { size: 28, family: 'sans-serif', color: '#000' });
+  if(data.award_title){ drawTextBlock(data.award_title, cAward, { size: 32, family: 'sans-serif', color: '#000' }); }
+  drawTextBlock(data.pib, cName, { size: 28, family: 'sans-serif', color: '#000' });
     drawTextBlock(data.cid, cId, { size: 20, family: 'sans-serif', color: '#000' });
     const extraText = (data.extra||'').trim();
     if(extraText){ drawTextBlock(extraText, cExtra, { size: 24, family: 'sans-serif', color: '#000' }); }
@@ -868,7 +892,17 @@
   function buildQrForRow(data, cb){
     // Generate lightweight QR via server (same endpoint). We need a temporary img.
     // Include salt (critical for offline / name-based verification). Fallback to empty string if absent (legacy rows before fix).
-    const payloadObj = {v:3, cid:data.cid, s:data.salt||'', org:ORG, date:data.date, valid_until:data.valid_until, canon: data.canon || CANON_URL, extra: (data.extra||'')};
+    const payloadObj = {
+      v: data.ver || VERSION,
+      cid: data.cid,
+      s: data.salt||'',
+      org: ORG,
+  award_title: data.award_title || 'Нагорода',
+      date: data.date,
+      valid_until: data.valid_until,
+      canon: data.canon || CANON_URL,
+      extra: (data.extra||'')
+    };
     const payloadStr = JSON.stringify(payloadObj);
     const packed = btoa(unescape(encodeURIComponent(payloadStr))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
     const tmp = new Image();
@@ -893,7 +927,18 @@
   const infinite = form.infinite.checked;
   const validUntil = infinite? INFINITE_SENTINEL : (form.valid_until.value||'');
   const extra = (r.extra || ((form.extra && typeof form.extra.value === 'string') ? form.extra.value.trim() : ''));
-  const data = {ver:3, pib:normName(r.name), cid:r.cid, extra, date, valid_until:validUntil, h:r.h, salt:r.saltB64, canon: CANON_URL};
+  const data = {
+    ver: VERSION,
+    pib: normName(r.name),
+    award_title: r.award_title || normAwardTitle(awardInput ? awardInput.value : '') || 'Нагорода',
+    cid: r.cid,
+    extra,
+    date,
+    valid_until:validUntil,
+    h:r.h,
+    salt:r.saltB64,
+    canon: CANON_URL
+  };
     // Trigger QR request immediately; render once QR and background are ready
     buildQrForRow(data, (qrImgEl)=>{
       ensureBg(()=>{

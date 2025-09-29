@@ -23,6 +23,10 @@
   const resetBtn = document.getElementById('resetBtn');
   const canvas = document.getElementById('certCanvas');
   const ctx = canvas.getContext('2d');
+  const awardDisplay = document.getElementById('awardTitleDisplay');
+  function escapeHtml(str){
+    return String(str==null?'':str).replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s]));
+  }
   function normalizeDimension(value){
     const num = Number(value);
     return Number.isFinite(num) && num > 0 ? num : null;
@@ -32,6 +36,19 @@
     width: normalizeDimension(metaSeed.width),
     height: normalizeDimension(metaSeed.height)
   };
+  function deriveInitialAwardTitle(){
+    const winVal = (typeof window !== 'undefined' && typeof window.__ACTIVE_AWARD_TITLE === 'string') ? window.__ACTIVE_AWARD_TITLE.trim() : '';
+    if(winVal) return winVal;
+    if(awardDisplay){
+      const dataVal = typeof awardDisplay.dataset?.awardTitle === 'string' ? awardDisplay.dataset.awardTitle.trim() : '';
+      if(dataVal) return dataVal;
+      const textVal = awardDisplay.textContent ? awardDisplay.textContent.trim() : '';
+      if(textVal) return textVal;
+    }
+    return 'Нагорода';
+  }
+  let activeAwardTitle = deriveInitialAwardTitle();
+  if(typeof window !== 'undefined'){ window.__ACTIVE_AWARD_TITLE = activeAwardTitle; }
   function getTemplateBaseSize(){
     const width = normalizeDimension(activeTemplateMeta.width) || normalizeDimension(bgImage && bgImage.naturalWidth) || canvas.width;
     const height = normalizeDimension(activeTemplateMeta.height) || normalizeDimension(bgImage && bgImage.naturalHeight) || canvas.height;
@@ -86,6 +103,12 @@
       .replace(/\s+/g,' ')
       .trim()
       .toUpperCase();
+  }
+  function normAwardTitle(s){
+    return String(s||'')
+      .normalize('NFC')
+      .replace(/\s+/g,' ')
+      .trim();
   }
   // Розширений набір латинських символів, що мають візуальних «двійників» у кирилиці
   // A B C E H I K M O P T X Y (та відповідні малі: a c e h i k m o p t x y) + попередні T/O/C
@@ -185,6 +208,7 @@
       ctx.restore();
     }
     const fallback = {
+      award: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.52, size: 32, align: 'left', angle: 0},
       name: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.6, size: 28, align: 'left', angle: 0},
       id: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.635, size: 20, align: 'left', angle: 0},
       extra: {x: (baseSize.width||1000) * 0.6, y: (baseSize.height||700) * 0.74, size: 24, align: 'left', angle: 0},
@@ -193,12 +217,16 @@
       qr: {x: (baseSize.width||1000) * 0.15, y: (baseSize.height||700) * 0.6, size: 220},
       int: {x: (baseSize.width||1000) - 180, y: (baseSize.height||700) - 30, size: 14, align: 'left', angle: 0}
     };
+    const cAward = coords.award || fallback.award;
     const cName = coords.name || fallback.name;
     const cId   = coords.id   || fallback.id;
     const cExtra = coords.extra || fallback.extra;
     const cDate = coords.date || fallback.date;
     const cExp  = coords.expires || fallback.expires;
     const cQR   = coords.qr   || fallback.qr;
+    if(currentData.award_title){
+      drawTextBlock(currentData.award_title, cAward, { size: 32, family: 'sans-serif', color: '#000' });
+    }
     drawTextBlock(currentData.pib, cName, { size: 28, family: 'sans-serif', color: '#000' });
     drawTextBlock(currentData.cid, cId, { size: 20, family: 'sans-serif', color: '#000' });
     if(currentData.extra){ drawTextBlock(String(currentData.extra), cExtra, { size: 24, family: 'sans-serif', color: '#000' }); }
@@ -236,14 +264,24 @@
       return;
     }
   const pibNorm = normName(pibRaw); // normalized (uppercase) used in canonical
+    let awardTitle = normAwardTitle(activeAwardTitle);
+    if(!awardTitle){ awardTitle = 'Нагорода'; }
+  activeAwardTitle = awardTitle;
+  if(typeof window !== 'undefined'){ window.__ACTIVE_AWARD_TITLE = awardTitle; }
+    if(awardDisplay){
+      awardDisplay.textContent = awardTitle;
+      awardDisplay.dataset.awardTitle = awardTitle;
+    }
+    if(awardTitle.length > 160){ alert('Назва нагороди занадто довга (максимум 160 символів).'); if(genBtn) genBtn.disabled=false; return; }
     const salt = crypto.getRandomValues(new Uint8Array(32));
   const cid = genCid();
-  const version = 3;
-  const canonical = `v3|${pibNorm}|${ORG}|${cid}|${date}|${validUntil}|${CANON_URL}|${extra}`;
+  const version = 4;
+  const canonical = `v4|${pibNorm}|${ORG}|${awardTitle}|${cid}|${date}|${validUntil}|${CANON_URL}|${extra}`;
   const sig = await hmacSha256(salt, canonical);
   const h = toHex(sig);
     // Prepare render data early
   currentData = {
+    award_title: awardTitle,
     pib: pibNorm,
     cid,
     extra,
@@ -262,7 +300,7 @@
   // Передаємо опціональний template_id якщо обрано
   const tplSelect = document.getElementById('templateSelect');
   const templateId = (tplSelect && tplSelect.value) ? Number(tplSelect.value) : null;
-  const payload = {cid:cid, v:3, h:h, date:date, valid_until:validUntil, extra_info: extra || null, org_code: ORG};
+  const payload = {cid:cid, v:4, h:h, date:date, valid_until:validUntil, extra_info: extra || null, org_code: ORG, award_title: awardTitle};
   if(templateId){ payload.template_id = templateId; }
   const res = await fetch('/api/register.php', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify(payload)});
     if(!res.ok){
@@ -274,8 +312,8 @@
   // Build QR payload (JSON) then embed as base64url in verification URL
   const saltB64 = b64url(salt);
   let payloadObj;
-  // v3-only QR payload includes canon URL and extra
-  payloadObj = {v:3,cid:cid,s:saltB64,org:ORG,date:date,valid_until:validUntil,canon:CANON_URL,extra:extra};
+  // v4 QR payload includes award_title
+  payloadObj = {v:4,cid:cid,s:saltB64,org:ORG,award_title:awardTitle,date:date,valid_until:validUntil,canon:CANON_URL,extra:extra};
     const payloadStr = JSON.stringify(payloadObj);
     function b64urlStr(str){
       return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -306,7 +344,7 @@
   if(TEST_MODE){ ensureDownloadButtons(); }
   const shortCode = h.slice(0,10).toUpperCase().replace(/(.{5})(.{5})/,'$1-$2');
   const expiresDisplay = validUntil===INFINITE_SENTINEL ? '∞' : (formatDisplayDate(validUntil) || validUntil);
-  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>ORG:</strong> ${ORG}<br><strong>Версія:</strong> v${version}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${expiresDisplay}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
+  regMeta.innerHTML = `<strong>CID:</strong> ${cid}<br><strong>Організація:</strong> ${ORG}<br><strong>Назва нагороди:</strong> ${escapeHtml(awardTitle)}<br><strong>Версія:</strong> v${version}<br><strong>H:</strong> <span class="mono">${h}</span><br><strong>INT:</strong> <span class="mono">${shortCode}</span><br><strong>Expires:</strong> ${expiresDisplay}<br><strong>URL:</strong> <a href="${verifyUrl}" target="_blank" rel="noopener">відкрити перевірку</a>`;
     // Expose cryptographic data for automated test recomputation (non-PII: normalized name not stored server-side)
     try {
       regMeta.dataset.h = h;
@@ -319,6 +357,7 @@
   regMeta.dataset.version = String(version);
   if(extra) regMeta.dataset.extra = extra;
       regMeta.dataset.org = ORG;
+    regMeta.dataset.awardTitle = awardTitle;
       // Expose exact canonical base URL used in the HMAC canonical string
       regMeta.dataset.canon = CANON_URL;
     } catch(_){}
@@ -366,6 +405,19 @@
       }
       if(ev.detail.path){
         bgImage.src = ev.detail.path;
+      }
+      if(Object.prototype.hasOwnProperty.call(ev.detail,'award_title')){
+        const incoming = normAwardTitle(ev.detail.award_title);
+        activeAwardTitle = incoming || 'Нагорода';
+        if(awardDisplay){
+          awardDisplay.textContent = activeAwardTitle;
+          awardDisplay.dataset.awardTitle = activeAwardTitle;
+        }
+        if(typeof window !== 'undefined'){ window.__ACTIVE_AWARD_TITLE = activeAwardTitle; }
+        if(currentData){
+          currentData.award_title = activeAwardTitle;
+          try { renderAll(); } catch(_e){}
+        }
       }
       if(Object.prototype.hasOwnProperty.call(ev.detail,'coords')){
         activeCoords = resolveActiveCoords();

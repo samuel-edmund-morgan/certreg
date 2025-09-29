@@ -35,6 +35,11 @@ $coords = $cfg['coords'] ?? [];
       <input type="hidden" id="templateIdHidden" name="template_id" value="">
       <span class="fs-12 text-muted">Попередній перегляд фонового зображення оновиться при виборі. Якщо список порожній — використовується стандартний глобальний шаблон.</span>
     </label>
+    <div>
+      <div class="fw-600">Назва нагороди</div>
+      <div id="awardTitleDisplay" class="fs-14 mt-4" data-award-title="Нагорода">Нагорода</div>
+      <span class="fs-12 text-muted">Це заголовок, який друкується на сертифікаті та входить до цифрового підпису. Значення успадковується з вибраного шаблону.</span>
+    </div>
     <label>Додаткова інформація (необов’язково)
       <input type="text" name="extra" placeholder="напр., Номінація — Стійкість" maxlength="255">
       <span class="fs-12 text-muted">Це поле зберігається у БД та додається у QR-пейлоад (без ПІБ). Якщо не потрібно — залиште порожнім.</span>
@@ -95,6 +100,9 @@ $coords = $cfg['coords'] ?? [];
         </label>
         <label class="minw-200 flex-1">Додаткова інформація (спільна, необов’язково)
           <input type="text" name="extra" placeholder="напр., Номінація — Стійкість" maxlength="255">
+        </label>
+        <label class="minw-200 flex-1">Назва нагороди (спільна)
+          <input type="text" name="award_title" id="bulkAwardTitleInput" maxlength="160" value="Нагорода" placeholder="Нагорода">
         </label>
       </fieldset>
       <div class="flex flex-wrap gap-12 align-center" id="bulkExpiryWrap">

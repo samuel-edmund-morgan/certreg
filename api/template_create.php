@@ -27,6 +27,10 @@ $name = trim($_POST['name'] ?? '');
 if($name==='') json_fail('name_required');
 if(mb_strlen($name) > 160) json_fail('name_too_long');
 
+$awardTitleRaw = isset($_POST['award_title']) ? trim((string)$_POST['award_title']) : '';
+$awardTitle = $awardTitleRaw !== '' ? $awardTitleRaw : 'Нагорода';
+if(mb_strlen($awardTitle) > 160) json_fail('award_title_too_long');
+
 // org resolution: admin can optionally pass org_id (future), for now we use session org for operator
 $orgId = null;
 if($isAdmin){
@@ -89,7 +93,12 @@ try {
     $have = [];
     foreach($colsStmt->fetchAll(PDO::FETCH_ASSOC) as $c){ $have[$c['Field']] = true; }
     $required = ['org_id','name','code','status','filename','file_ext','file_hash','file_size','width','height','version','created_at','updated_at'];
+    $awardTitleSupported = isset($have['award_title']);
+    if($awardTitleSupported){
+        $required[] = 'award_title';
+    }
     $missing = [];
+    if(!$awardTitleSupported){ $missing[] = 'award_title'; }
     foreach($required as $r){ if(!isset($have[$r])) $missing[]=$r; }
     if($missing){ json_fail('schema_mismatch',500,['missing'=>$missing]); }
 } catch(Throwable $e){ /* ignore: let later db fail handle */ }
@@ -127,10 +136,11 @@ try {
 // Insert initial row (code may be null now)
 try {
     $pdo->beginTransaction();
-    $ins = $pdo->prepare('INSERT INTO templates (org_id,name,code,status,filename,file_ext,file_hash,file_size,width,height,version,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,NOW(),NOW())');
+    $sql = 'INSERT INTO templates (org_id,name,code,status,award_title,filename,file_ext,file_hash,file_size,width,height,version,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,1,NOW(),NOW())';
+    $ins = $pdo->prepare($sql);
     $initialCode = $code !== '' ? $code : $placeholder; // never NULL now
     $status = 'active';
-    $ins->execute([$orgId,$name,$initialCode,$status,$origName,$ext,$fileHash,$size,$width,$height]);
+    $ins->execute([$orgId,$name,$initialCode,$status,$awardTitle,$origName,$ext,$fileHash,$size,$width,$height]);
     $tplId = (int)$pdo->lastInsertId();
     if($autoPlaceholder){
         // deterministic fallback code T{ID}
@@ -230,6 +240,7 @@ json_ok(['template'=>[
     'id'=>$tplId,
     'org_id'=>$orgId,
     'name'=>$name,
+    'award_title'=>$awardTitle,
     'code'=>$code,
     'status'=>'active',
     'filename'=>$origName,

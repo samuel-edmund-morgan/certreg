@@ -89,6 +89,7 @@
 - [ ] Central validation helpers (lengths, patterns, file checks)
 - [ ] Query/index optimization pass
 - [ ] Architecture / security / API docs expansion
+- [ ] Automated test cadence (document required php tests/run_tests.php & Playwright suites per release)
 - [x] Basic smoke & unit tests (template CRUD)
 
 ---

@@ -28,6 +28,7 @@ $h   = val_str($payload,'h',64);
 $extra  = val_str($payload,'extra_info',255);
 $date   = val_str($payload,'date',10); // issued_date YYYY-MM-DD
 $validUntil = val_str($payload,'valid_until',10); // YYYY-MM-DD or sentinel
+$awardTitle = val_str($payload,'award_title',160);
 $orgCodeProvided = val_str($payload,'org_code',64);
 // Detect test mode (Playwright) to relax certain validations for determinism
 $__TEST_MODE = (getenv('CERTREG_TEST_MODE') === '1') || (($_ENV['CERTREG_TEST_MODE'] ?? null) === '1') || (($_SERVER['CERTREG_TEST_MODE'] ?? null) === '1');
@@ -42,7 +43,7 @@ if (!$cid || !$h || strlen($h)!==64 || !ctype_xdigit($h)) {
 }
 if ($date && !preg_match('/^\d{4}-\d{2}-\d{2}$/',$date)) { $date=null; }
 // v3 only
-if ($v !== 3) { http_response_code(422); echo json_encode(['error'=>'unsupported_version']); exit; }
+if (!in_array($v,[3,4],true)) { http_response_code(422); echo json_encode(['error'=>'unsupported_version']); exit; }
 if(!$validUntil){ $validUntil = $sentinel; }
 if(!preg_match('/^\d{4}-\d{2}-\d{2}$/',$validUntil)) { http_response_code(422); echo json_encode(['error'=>'bad_valid_until']); exit; }
 // basic logical check: if not sentinel and earlier than issued_date
@@ -94,18 +95,22 @@ try {
   }
   // Validate template_id if provided: must exist, belong to effective org (or admin/global rules), and be active
   $tplOrgId = null;
+  $templateAwardTitle = null;
   if($templateId){
     try {
       // Ensure templates table exists
       $chkT = $pdo->query("SHOW TABLES LIKE 'templates'");
       if($chkT && $chkT->fetch()){
-        $stTpl = $pdo->prepare('SELECT id, org_id, status FROM templates WHERE id = ?');
+        $stTpl = $pdo->prepare('SELECT id, org_id, status, award_title FROM templates WHERE id = ?');
         $stTpl->execute([$templateId]);
         $tpl = $stTpl->fetch(PDO::FETCH_ASSOC);
         if(!$tpl){ http_response_code(422); echo json_encode(['error'=>'template_not_found']); exit; }
         $tplOrgId = isset($tpl['org_id']) ? (int)$tpl['org_id'] : null;
         $status = strtolower((string)$tpl['status']);
         if($status !== 'active'){ http_response_code(422); echo json_encode(['error'=>'template_inactive']); exit; }
+        if(isset($tpl['award_title']) && is_string($tpl['award_title'])){
+          $templateAwardTitle = trim($tpl['award_title']);
+        }
   // If both effectiveOrgId and tplOrgId are known, they must match (production only)
   if(!$__TEST_MODE && $effectiveOrgId && $tplOrgId && $tplOrgId !== $effectiveOrgId){ http_response_code(422); echo json_encode(['error'=>'template_wrong_org']); exit; }
         // If effective org not yet resolved but template has org_id, adopt it
@@ -117,27 +122,48 @@ try {
     } catch(Throwable $e){ $templateId = null; }
   }
 
+  if($awardTitle === null || $awardTitle === ''){
+    if($templateAwardTitle && $templateAwardTitle !== ''){
+      $awardTitle = $templateAwardTitle;
+    }
+  }
+  if($awardTitle === null || $awardTitle === ''){
+    $awardTitle = 'Нагорода';
+  }
+  if($v === 4 && ($awardTitle === null || $awardTitle === '')){
+    http_response_code(422); echo json_encode(['error'=>'award_title_required']); exit;
+  }
+  if(mb_strlen($awardTitle) > 160){ http_response_code(422); echo json_encode(['error'=>'award_title_too_long']); exit; }
+
   // Insert token (with org_id and template_id if columns exist)
   if($tokensHasOrg){
     // Detect template_id column
     static $tokensHasTpl = null; if($tokensHasTpl===null){ try { $chk=$pdo->query("SHOW COLUMNS FROM `tokens` LIKE 'template_id'"); $tokensHasTpl = ($chk && $chk->rowCount()===1); } catch(Throwable $e){ $tokensHasTpl=false; } }
-    if($tokensHasTpl){
-      $st = $pdo->prepare("INSERT INTO tokens (cid, version, org_id, template_id, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?,?,?)");
-      $st->execute([$cid,$v,$effectiveOrgId,$templateId,$h,$extra,$date,$validUntil]);
-    } else {
-      $st = $pdo->prepare("INSERT INTO tokens (cid, version, org_id, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?,?)");
-      $st->execute([$cid,$v,$effectiveOrgId,$h,$extra,$date,$validUntil]);
-    }
+    static $tokensHasAward = null; if($tokensHasAward===null){ try { $chk=$pdo->query("SHOW COLUMNS FROM `tokens` LIKE 'award_title'"); $tokensHasAward = ($chk && $chk->rowCount()===1); } catch(Throwable $e){ $tokensHasAward=false; } }
+    $columns = ['cid','version','org_id'];
+    $values = [$cid,$v,$effectiveOrgId];
+    if($tokensHasTpl){ $columns[]='template_id'; $values[]=$templateId; }
+    if($tokensHasAward){ $columns[]='award_title'; $values[]=$awardTitle; }
+    $columns = array_merge($columns,['h','extra_info','issued_date','valid_until']);
+    $values = array_merge($values,[$h,$extra,$date,$validUntil]);
+    $placeholders = implode(',', array_fill(0,count($columns),'?'));
+    $sql = 'INSERT INTO tokens ('.implode(',',$columns).') VALUES ('.$placeholders.')';
+    $st = $pdo->prepare($sql);
+    $st->execute($values);
   } else {
     // No org_id column, but template_id may still exist in tokens schema
     static $tokensHasTplOnly = null; if($tokensHasTplOnly===null){ try { $chk=$pdo->query("SHOW COLUMNS FROM `tokens` LIKE 'template_id'"); $tokensHasTplOnly = ($chk && $chk->rowCount()===1); } catch(Throwable $e){ $tokensHasTplOnly=false; } }
-    if($tokensHasTplOnly){
-      $st = $pdo->prepare("INSERT INTO tokens (cid, version, template_id, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?,?)");
-      $st->execute([$cid,$v,$templateId,$h,$extra,$date,$validUntil]);
-    } else {
-      $st = $pdo->prepare("INSERT INTO tokens (cid, version, h, extra_info, issued_date, valid_until) VALUES (?,?,?,?,?,?)");
-      $st->execute([$cid,$v,$h,$extra,$date,$validUntil]);
-    }
+    static $tokensHasAwardOnly = null; if($tokensHasAwardOnly===null){ try { $chk=$pdo->query("SHOW COLUMNS FROM `tokens` LIKE 'award_title'"); $tokensHasAwardOnly = ($chk && $chk->rowCount()===1); } catch(Throwable $e){ $tokensHasAwardOnly=false; } }
+    $columns = ['cid','version'];
+    $values = [$cid,$v];
+    if($tokensHasTplOnly){ $columns[]='template_id'; $values[]=$templateId; }
+    if($tokensHasAwardOnly){ $columns[]='award_title'; $values[]=$awardTitle; }
+    $columns = array_merge($columns,['h','extra_info','issued_date','valid_until']);
+    $values = array_merge($values,[$h,$extra,$date,$validUntil]);
+    $placeholders = implode(',', array_fill(0,count($columns),'?'));
+    $sql = 'INSERT INTO tokens ('.implode(',',$columns).') VALUES ('.$placeholders.')';
+    $st = $pdo->prepare($sql);
+    $st->execute($values);
   }
   $tokenId = $pdo->lastInsertId();
   // Audit: creation event (no PII)

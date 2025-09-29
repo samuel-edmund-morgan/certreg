@@ -22,8 +22,9 @@
   const storedCoords = storedCoordsRaw ? parseJsonSafe(storedCoordsRaw) : null;
   const bodyCoords = document.body && document.body.dataset ? parseJsonSafe(document.body.dataset.coords || '') : null;
 
-  const FIELD_ORDER = ['name','id','extra','date','expires','qr','int'];
+  const FIELD_ORDER = ['award','name','id','extra','date','expires','qr','int'];
   const FIELD_META = {
+    award: { label: 'Назва нагороди', supportsAngle: true, supportsSize: true, supportsBox: true },
     name: { label: 'ПІБ', supportsAngle: true, supportsSize: true, supportsBox: true },
     id: { label: 'CID', supportsAngle: true, supportsSize: true, supportsBox: true },
     extra: { label: 'Додаткова', supportsAngle: true, supportsSize: true, supportsBox: true },
@@ -34,6 +35,7 @@
   };
 
   const FIELD_HINTS = {
+    award: 'Основний заголовок нагороди. Відображається у верхній частині.',
     name: 'Основний підпис (ПІБ). За потреби змініть розмір шрифту.',
     id: 'Ідентифікатор CID. Рекомендуємо залишати менший розмір.',
     extra: 'Додаткове поле (факультативно).',
@@ -43,6 +45,7 @@
     int: 'Службовий код INT (короткий хеш).'
   };
   const FIELD_PLACEHOLDERS = {
+    award: 'ПОЧЕСНА НАГОРОДА',
     name: 'ОЛЕКСАНДР ОЛЕКСАНДРОВИЧ ОЛЕКСАНДРОВ',
     id: 'Cmg28rac7-c897',
     extra: 'Якась додаткова інформація',
@@ -51,6 +54,7 @@
     int: 'INT 4167D-784D9'
   };
   const DEFAULT_FONT_FAMILY = 'Montserrat, "DejaVu Sans", sans-serif';
+  const DEFAULT_TEXT_COLOR = '#1f2937';
   const measureCanvas = document.createElement('canvas');
   const measureCtx = measureCanvas.getContext('2d');
 
@@ -58,6 +62,19 @@
   const BOOL_PROPS = new Set(['uppercase','wrap','bold','italic']);
   const STRING_PROPS = new Set(['font','color','text']);
   const COLOR_RE = /^#[0-9a-f]{3,8}$/i;
+
+  function normalizeColor(value){
+    if(typeof value !== 'string') return '';
+    const str = value.trim();
+    if(str === '') return '';
+    if(!COLOR_RE.test(str)) return '';
+    if(str.length === 4 || str.length === 5){
+      const hex = str.slice(1);
+      const doubled = hex.split('').map(ch => ch+ch).join('');
+      return '#'+doubled.toLowerCase();
+    }
+    return str.toLowerCase();
+  }
 
   const tplWidth = Number(hostSection.dataset.templateWidth || '0');
   const tplHeight = Number(hostSection.dataset.templateHeight || '0');
@@ -67,13 +84,14 @@
     const usableWidth = width || 1200;
     const nameFieldWidth = Math.max(420, Math.round(usableWidth * 0.46));
     const block = {
-      name: { x: 600, y: 420, size: 28, angle: 0, width: nameFieldWidth, height: 48 },
-      id: { x: 600, y: 445, size: 20, angle: 0, width: Math.max(280, Math.round(usableWidth * 0.32)), height: 32 },
-      extra: { x: 600, y: 520, size: 24, angle: 0, width: nameFieldWidth, height: 44 },
-      date: { x: 600, y: 570, size: 24, angle: 0, width: Math.max(260, Math.round(usableWidth * 0.28)), height: 36 },
-      expires: { x: 600, y: 600, size: 20, angle: 0, width: Math.max(320, Math.round(usableWidth * 0.34)), height: 34 },
+      award: { x: 600, y: 350, size: 30, angle: 0, width: nameFieldWidth, height: 50, color: DEFAULT_TEXT_COLOR },
+      name: { x: 600, y: 420, size: 28, angle: 0, width: nameFieldWidth, height: 48, color: DEFAULT_TEXT_COLOR },
+      id: { x: 600, y: 445, size: 20, angle: 0, width: Math.max(280, Math.round(usableWidth * 0.32)), height: 32, color: DEFAULT_TEXT_COLOR },
+      extra: { x: 600, y: 520, size: 24, angle: 0, width: nameFieldWidth, height: 44, color: DEFAULT_TEXT_COLOR },
+      date: { x: 600, y: 570, size: 24, angle: 0, width: Math.max(260, Math.round(usableWidth * 0.28)), height: 36, color: DEFAULT_TEXT_COLOR },
+      expires: { x: 600, y: 600, size: 20, angle: 0, width: Math.max(320, Math.round(usableWidth * 0.34)), height: 34, color: DEFAULT_TEXT_COLOR },
       qr: { x: 150, y: 420, size: 220 },
-      int: { x: (width ? Math.max(40, width - 200) : 820), y: (height ? Math.max(40, height - 40) : 650), size: 14, angle: 0, width: Math.max(220, Math.round(usableWidth * 0.22)), height: 28 }
+      int: { x: (width ? Math.max(40, width - 200) : 820), y: (height ? Math.max(40, height - 40) : 650), size: 14, angle: 0, width: Math.max(220, Math.round(usableWidth * 0.22)), height: 28, color: DEFAULT_TEXT_COLOR }
     };
     return block;
   }
@@ -121,7 +139,12 @@
       } else if(STRING_PROPS.has(key)){
         const str = String(val).trim();
         if(key === 'color'){
-          if(str === '' || COLOR_RE.test(str)) target[key] = str.toLowerCase();
+          const normalized = normalizeColor(str);
+          if(normalized){
+            target[key] = normalized;
+          } else if(str === ''){
+            target[key] = '';
+          }
         } else {
           if(str !== '') target[key] = str;
         }
@@ -167,21 +190,30 @@
     }
     delete target.align;
     if(meta.isQr){
+      delete target.bold;
+      delete target.italic;
+      delete target.color;
       if(!Number.isFinite(target.size)) target.size = base.size || 200;
       target.size = clamp(target.size, 20, bounds.maxSize);
       delete target.align;
       delete target.angle;
       delete target.width;
       delete target.height;
-    } else if(meta.supportsBox){
-      const auto = computeAutoBox(field, target);
-      const width = clamp(auto.width, bounds.minWidth, bounds.maxWidth);
-      const height = clamp(auto.height, bounds.minHeight, bounds.maxHeight);
-      target.width = width;
-      target.height = height;
     } else {
-      delete target.width;
-      delete target.height;
+      target.bold = !!target.bold;
+      target.italic = !!target.italic;
+      const normalizedColor = normalizeColor(target.color) || DEFAULT_TEXT_COLOR;
+      target.color = normalizedColor;
+      if(meta.supportsBox){
+        const auto = computeAutoBox(field, target);
+        const width = clamp(auto.width, bounds.minWidth, bounds.maxWidth);
+        const height = clamp(auto.height, bounds.minHeight, bounds.maxHeight);
+        target.width = width;
+        target.height = height;
+      } else {
+        delete target.width;
+        delete target.height;
+      }
     }
     return target;
   }
@@ -259,6 +291,12 @@
   const resetBtn = document.getElementById('coordsResetBtn');
   const defaultsBtn = document.getElementById('coordsDefaultsBtn');
   const summaryText = document.getElementById('coordsSummaryText');
+  const styleTogglesWrap = document.getElementById('coordsStyleToggles');
+  const inputBold = document.getElementById('coordsFieldBold');
+  const inputItalic = document.getElementById('coordsFieldItalic');
+  const colorRow = document.getElementById('coordsColorRow');
+  const inputColor = document.getElementById('coordsFieldColor');
+  const btnColorReset = document.getElementById('coordsFieldColorReset');
 
   if(!selectField || !inputX || !inputY || !inputSize || !inputAngle || !saveBtn || !resetBtn || !defaultsBtn) return;
 
@@ -427,6 +465,7 @@
           placeholder.style.lineHeight = (lineHeightFactor * fontPx)+'px';
           placeholder.style.fontWeight = data.bold ? '600' : '500';
           placeholder.style.fontStyle = data.italic ? 'italic' : 'normal';
+          placeholder.style.color = data.color || DEFAULT_TEXT_COLOR;
           placeholder.style.textTransform = data.uppercase ? 'uppercase' : 'none';
           placeholder.style.textAlign = align;
           const allowWrap = data.wrap === true;
@@ -493,12 +532,36 @@
       inputAngle.classList.add('is-disabled');
       if(labelAngle) labelAngle.classList.add('is-disabled');
     }
+    if(styleTogglesWrap){
+      if(meta.isQr){
+        styleTogglesWrap.hidden = true;
+        if(inputBold){ inputBold.checked = false; inputBold.disabled = true; }
+        if(inputItalic){ inputItalic.checked = false; inputItalic.disabled = true; }
+      } else {
+        styleTogglesWrap.hidden = false;
+        if(inputBold){ inputBold.disabled = false; inputBold.checked = !!data.bold; }
+        if(inputItalic){ inputItalic.disabled = false; inputItalic.checked = !!data.italic; }
+      }
+    }
+    if(colorRow){
+      if(meta.isQr){
+        colorRow.hidden = true;
+        if(inputColor){ inputColor.disabled = true; inputColor.value = DEFAULT_TEXT_COLOR; }
+        if(btnColorReset){ btnColorReset.disabled = true; }
+      } else {
+        colorRow.hidden = false;
+        const clr = normalizeColor(data.color) || DEFAULT_TEXT_COLOR;
+        if(inputColor){ inputColor.disabled = false; inputColor.value = clr; }
+        if(btnColorReset){ btnColorReset.disabled = false; }
+      }
+    }
     if(hintEl){ hintEl.textContent = FIELD_HINTS[field] || ''; }
   }
 
   function applyPatch(field, patch){
     const data = state.coords[field];
     if(!data) return;
+    const meta = FIELD_META[field] || {};
     let changed = false;
     if(patch.x !== undefined){
       const nx = clamp(Number(patch.x), bounds.minX, bounds.maxX);
@@ -508,13 +571,26 @@
       const ny = clamp(Number(patch.y), bounds.minY, bounds.maxY);
       if(Number.isFinite(ny) && ny !== data.y){ data.y = ny; changed = true; }
     }
-    if(patch.size !== undefined && (FIELD_META[field] || {}).supportsSize !== false){
+    if(patch.size !== undefined && meta.supportsSize !== false){
       const ns = clamp(Number(patch.size), bounds.minSize, bounds.maxSize);
       if(Number.isFinite(ns) && ns !== data.size){ data.size = ns; changed = true; }
     }
-    if(patch.angle !== undefined && (FIELD_META[field] || {}).supportsAngle){
+    if(patch.angle !== undefined && meta.supportsAngle){
       const na = clamp(Number(patch.angle), bounds.minAngle, bounds.maxAngle);
       if(Number.isFinite(na) && na !== data.angle){ data.angle = na; changed = true; }
+    }
+    if(patch.bold !== undefined && !meta.isQr){
+      const nb = !!patch.bold;
+      if(nb !== !!data.bold){ data.bold = nb; changed = true; }
+    }
+    if(patch.italic !== undefined && !meta.isQr){
+      const ni = !!patch.italic;
+      if(ni !== !!data.italic){ data.italic = ni; changed = true; }
+    }
+    if(patch.color !== undefined && !meta.isQr){
+      const normalized = normalizeColor(typeof patch.color === 'string' ? patch.color : '');
+      const nextColor = normalized || DEFAULT_TEXT_COLOR;
+      if(nextColor !== data.color){ data.color = nextColor; changed = true; }
     }
     if(changed){
       renderMarker(field);
@@ -562,6 +638,28 @@
   inputY.addEventListener('input', ()=> applyPatch(state.activeField, { y: Number(inputY.value) }));
   inputSize.addEventListener('input', ()=> applyPatch(state.activeField, { size: Number(inputSize.value) }));
   inputAngle.addEventListener('input', ()=> applyPatch(state.activeField, { angle: Number(inputAngle.value) }));
+  if(inputBold){
+    inputBold.addEventListener('change', ()=> applyPatch(state.activeField, { bold: inputBold.checked }));
+  }
+  if(inputItalic){
+    inputItalic.addEventListener('change', ()=> applyPatch(state.activeField, { italic: inputItalic.checked }));
+  }
+  if(inputColor){
+    inputColor.addEventListener('input', ()=>{
+      if(!inputColor.disabled){
+        applyPatch(state.activeField, { color: inputColor.value });
+      }
+    });
+  }
+  if(btnColorReset){
+    btnColorReset.addEventListener('click', ()=>{
+      if(btnColorReset.disabled) return;
+      applyPatch(state.activeField, { color: DEFAULT_TEXT_COLOR });
+      if(inputColor && !inputColor.disabled){
+        inputColor.value = DEFAULT_TEXT_COLOR;
+      }
+    });
+  }
 
   const csrfToken = (document.querySelector('input[name="_csrf"]') || document.querySelector('meta[name="csrf"]'))?.value || '';
 

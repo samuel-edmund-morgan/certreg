@@ -105,7 +105,7 @@
         js.results.forEach(r=>{
           const tr = document.querySelector('tr[data-cid="'+r.cid+'"]');
           if(!tr) return;
-          const statusCell = tr.querySelector('td:nth-child(7)'); // 7th column = Статус
+          const statusCell = tr.querySelector('[data-role="status-cell"]');
           if(r.revoked_at){
             tr.classList.add('row-revoked');
             if(statusCell) statusCell.innerHTML='<span class="badge badge-danger">Відкликано</span>';

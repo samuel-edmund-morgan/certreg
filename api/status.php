@@ -8,7 +8,14 @@ rate_limit('status');
 if(!headers_sent()) header('Content-Type: application/json; charset=utf-8');
 $cid = trim($_GET['cid'] ?? '');
 if ($cid==='') { http_response_code(400); echo json_encode(['error'=>'missing_cid']); exit; }
-$st = $pdo->prepare("SELECT h, version, revoked_at, revoked_at IS NOT NULL AS revoked, revoke_reason, valid_until FROM tokens WHERE cid=? LIMIT 1");
+$hasAwardColumn = false;
+try {
+  $chkAward = $pdo->query("SHOW COLUMNS FROM `tokens` LIKE 'award_title'");
+  $hasAwardColumn = ($chkAward && $chkAward->fetch() !== false);
+} catch(Throwable $e){ $hasAwardColumn = false; }
+$selectCols = 'h, version, revoked_at, revoked_at IS NOT NULL AS revoked, revoke_reason, valid_until';
+if($hasAwardColumn){ $selectCols .= ', award_title'; }
+$st = $pdo->prepare("SELECT $selectCols FROM tokens WHERE cid=? LIMIT 1");
 $st->execute([$cid]);
 $row = $st->fetch();
 if (!$row) { echo json_encode(['exists'=>false]); exit; }
@@ -41,5 +48,6 @@ echo json_encode([
   'revoke_reason'=>$row['revoked'] ? (string)$row['revoke_reason'] : null,
   'revoked_at'=>$row['revoked'] ? $row['revoked_at'] : null,
   'valid_until'=>$validUntil,
-  'expired'=>$expired
+  'expired'=>$expired,
+  'award_title'=>$hasAwardColumn ? $row['award_title'] : null
 ]);

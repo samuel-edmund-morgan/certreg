@@ -59,6 +59,7 @@ require __DIR__.'/header.php';
   <div class="fs-13 lh-14 mt-8" id="techData">
           <strong>CID:</strong> <span id="cidOut"></span><br>
           <strong>Версія:</strong> <span id="verOut"></span><br>
+          <strong>Назва нагороди:</strong> <span id="awardOut"></span><br>
           <strong>Організація:</strong> <span id="orgOut"></span><br>
           <strong>Сіль (base64url):</strong> <code class="code-box mt-2" id="saltOut"></code>
           <strong>Дата:</strong> <span id="dateOut"></span><br>

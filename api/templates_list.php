@@ -24,7 +24,10 @@ if(!$isAdmin){
     $reqOrg = $sessionOrg ?: 0; // 0 щоб нічого не віддати якщо раптом null
 }
 
-$columns = ['t.id','t.name','t.code','t.status','t.filename','t.file_ext','t.width','t.height','t.version','t.created_at','t.updated_at'];
+$hasAwardCol = column_exists($pdo,'templates','award_title');
+if(!$hasAwardCol){ echo json_encode(['error'=>'schema_mismatch']); return; }
+
+$columns = ['t.id','t.name','t.award_title','t.code','t.status','t.filename','t.file_ext','t.width','t.height','t.version','t.created_at','t.updated_at'];
 $hasOrgCol = column_exists($pdo,'templates','org_id');
 if($hasOrgCol){ $columns[]='t.org_id'; }
 $hasCoordsCol = column_exists($pdo,'templates','coords');

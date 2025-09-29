@@ -26,7 +26,7 @@ body{
   background:var(--bg);
   color:var(--text);
   font:15px/1.5 'Montserrat', system-ui, 'Segoe UI', Roboto, Ubuntu;
-  font-synthesis:none; /* prevent faux bold/italic to reduce flash weight shift */
+  font-synthesis: weight style; /* allow synthetic italic where dedicated face unavailable */
 }
 
 /* Шрифти: використовуйте реальні ваги, щоб уникнути «тонких» кнопок */
@@ -172,6 +172,14 @@ main{flex:1}
 .table-wrap-orgs #orgsTable th,
 .table-wrap-orgs #orgsTable td{border:0;padding:12px 14px;}
 .table thead th{background:#f1f5f9;text-align:left;position:sticky;top:0;z-index:1}
+.table--tokens{min-width:0;table-layout:auto}
+.table--tokens th,.table--tokens td{padding:8px 10px}
+.table--tokens th.col-select,.table--tokens td.col-select{width:44px;text-align:center}
+.table--tokens th.col-cid,.table--tokens td.col-cid{width:150px;white-space:nowrap}
+.table--tokens td.col-cid{font-size:11px}
+.table--tokens th.col-count,.table--tokens td.col-count{width:120px}
+.table--tokens th.col-actions,.table--tokens td.col-actions{width:96px;text-align:right}
+.table--tokens td.col-actions .btn{width:100%;justify-content:center}
 
 /* Alerts */
 .alert{padding:10px 12px;border-radius:10px;background:#fff3cd;border:1px solid #ffe69c}
@@ -625,6 +633,13 @@ main{flex:1}
 .coords-editor__overlay .coords-marker{pointer-events:auto}
 .coords-editor__panel{flex:0 0 320px;width:320px;max-width:340px;min-height:340px;background:#f8fafc;border:1px solid rgba(148,163,184,.35);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
 .coords-editor__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}
+.coords-editor,.coords-editor__panel,.coords-marker__placeholder{font-family:'Montserrat','DejaVu Sans',sans-serif}
+.coords-editor__toggles{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.coords-editor__toggle{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#1f2937}
+.coords-editor__toggle input{margin:0}
+.coords-editor__color{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#1f2937}
+.coords-editor__color input[type="color"]{width:48px;height:32px;padding:0;border:1px solid rgba(148,163,184,.6);border-radius:8px;background:#fff;cursor:pointer}
+.coords-editor__color button{align-self:flex-start}
 .coords-editor__grid .is-disabled{opacity:.5;pointer-events:none;cursor:default}
 .coords-editor__grid input.is-disabled{background:#e2e8f0;border-color:rgba(148,163,184,.6)}
 .coords-editor__hint{min-height:76px;line-height:1.45;display:flex;align-items:flex-start}
@@ -647,7 +662,7 @@ main{flex:1}
 .coords-marker.is-active::before{background:#f59e0b}
 .coords-marker.is-active .coords-marker__label{background:rgba(250,204,21,.92);color:#312e81}
 .coords-marker--text.is-active .coords-marker__text-box{border-color:rgba(249,115,22,.9);background:rgba(249,115,22,.12)}
-.coords-marker--text.is-active .coords-marker__placeholder{color:rgba(79,70,229,.95)}
+.coords-marker--text.is-active .coords-marker__placeholder{color:inherit}
 .coords-marker--text.is-active::after{background:rgba(249,115,22,.85)}
 .coords-marker:active{cursor:grabbing}
 .coords-marker.dragging::before{background:#f97316}

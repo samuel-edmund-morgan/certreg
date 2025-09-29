@@ -3,8 +3,10 @@
 (function(){
   const singleSel = document.getElementById('templateSelect');
   const bulkSel = document.getElementById('bulkTemplateSelect');
+  const awardDisplay = document.getElementById('awardTitleDisplay');
   const coordsMap = new Map();
   const metaMap = new Map();
+  const awardMap = new Map();
   window.__ACTIVE_TEMPLATE_META = window.__ACTIVE_TEMPLATE_META || { width: null, height: null };
   if(!singleSel && !bulkSel) return; // якщо UI ще не додано
 
@@ -53,6 +55,12 @@
           width: (Number.isFinite(Number(it.width)) && Number(it.width) > 0) ? Number(it.width) : null,
           height: (Number.isFinite(Number(it.height)) && Number(it.height) > 0) ? Number(it.height) : null
         });
+        if(typeof it.award_title === 'string'){
+          const trimmed = it.award_title.trim();
+          awardMap.set(key, trimmed || 'Нагорода');
+        } else {
+          awardMap.set(key, 'Нагорода');
+        }
       });
       fillSelect(singleSel, items);
       fillSelect(bulkSel, items);
@@ -79,6 +87,7 @@
     const path = resolvePathFromSelect(sel);
     let coords = null;
     let meta = { width: null, height: null };
+    let awardTitle = 'Нагорода';
     try {
       if(sel && sel.value){
         const stored = coordsMap.get(String(sel.value));
@@ -91,6 +100,10 @@
             width: normalizeDimension(optMeta.width),
             height: normalizeDimension(optMeta.height)
           };
+        }
+        const award = awardMap.get(String(sel.value));
+        if(typeof award === 'string' && award.trim()){
+          awardTitle = award.trim();
         }
       }
     } catch(_e){}
@@ -107,21 +120,38 @@
     }
     if(sel === singleSel){
       window.__SINGLE_TEMPLATE_COORDS = coords;
+      applyAwardValue('awardTitleDisplay', awardTitle);
     } else if(sel === bulkSel){
       window.__BULK_TEMPLATE_COORDS = coords;
+      applyAwardValue('bulkAwardTitleInput', awardTitle);
     }
     window.__ACTIVE_TEMPLATE_COORDS = coords;
     window.__ACTIVE_TEMPLATE_META = meta;
+    window.__ACTIVE_AWARD_TITLE = awardTitle;
     if(!path){
       // revert до дефолту
       const body = document.body;
       const tpl = body ? body.getAttribute('data-template') : '/files/cert_template.jpg';
       window.__ISSUE_TEMPLATE_OVERRIDE = null;
-      document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path: tpl, coords, width: meta.width, height: meta.height}}));
+      document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path: tpl, coords, width: meta.width, height: meta.height, award_title: awardTitle}}));
       return;
     }
     window.__ISSUE_TEMPLATE_OVERRIDE = path;
-    document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path, coords, width: meta.width, height: meta.height}}));
+    document.dispatchEvent(new CustomEvent('cert-template-change', {detail:{path, coords, width: meta.width, height: meta.height, award_title: awardTitle}}));
+  }
+
+  function applyAwardValue(id, value){
+    const resolved = (value && typeof value === 'string') ? value.trim() : '';
+    const finalVal = resolved || 'Нагорода';
+    if(id === 'awardTitleDisplay'){
+      if(awardDisplay){
+        awardDisplay.textContent = finalVal;
+        awardDisplay.dataset.awardTitle = finalVal;
+      }
+      return;
+    }
+    const input = document.getElementById(id);
+    if(input){ input.value = finalVal; }
   }
 
   if(singleSel){

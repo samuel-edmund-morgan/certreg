@@ -34,6 +34,7 @@ if($hasCol('extra_info')) $allowedSorts[] = 'extra_info';
 if($hasCol('issued_date')) $allowedSorts[] = 'issued_date';
 if($hasCol('created_at')) $allowedSorts[] = 'created_at';
 if($hasCol('lookup_count')) $allowedSorts[] = 'lookup_count';
+if($hasCol('award_title')) $allowedSorts[] = 'award_title';
 if(!in_array($sort, $allowedSorts, true)) {
   // Prefer created_at if exists, else cid
   $sort = $hasCol('created_at') ? 'created_at' : 'cid';
@@ -42,7 +43,7 @@ $dir = strtolower($dir) === 'asc' ? 'asc' : 'desc';
 
 $where = '';$params=[];$conds=[];
 // Detect optional schema: tokens.template_id, templates table, organizations table, tokens.id
-$hasTplIdCol = false; $hasTemplatesTable = false; $hasOrgCol = false; $hasOrgTable = false; $hasIdCol = false; $tplHasName=false; $tplHasCode=false;
+$hasTplIdCol = false; $hasTemplatesTable = false; $hasOrgCol = false; $hasOrgTable = false; $hasIdCol = false; $tplHasName=false; $tplHasCode=false; $tplHasAwardTitle=false;
 try { $c=$pdo->query("SHOW COLUMNS FROM tokens LIKE 'template_id'"); if($c && $c->fetch()) $hasTplIdCol=true; } catch(Throwable $e){}
 try { $t=$pdo->query("SHOW TABLES LIKE 'templates'"); if($t && $t->fetch()) $hasTemplatesTable=true; } catch(Throwable $e){}
 try { $co=$pdo->query("SHOW COLUMNS FROM tokens LIKE 'org_id'"); if($co && $co->fetch()) $hasOrgCol=true; } catch(Throwable $e){}
@@ -52,10 +53,12 @@ try { $ci=$pdo->query("SHOW COLUMNS FROM tokens LIKE 'id'"); if($ci && $ci->fetc
 if($hasTemplatesTable){
   try { $cn=$pdo->query("SHOW COLUMNS FROM templates LIKE 'name'"); if($cn && $cn->fetch()) $tplHasName=true; } catch(Throwable $e){}
   try { $cc=$pdo->query("SHOW COLUMNS FROM templates LIKE 'code'"); if($cc && $cc->fetch()) $tplHasCode=true; } catch(Throwable $e){}
+  try { $ca=$pdo->query("SHOW COLUMNS FROM templates LIKE 'award_title'"); if($ca && $ca->fetch()) $tplHasAwardTitle=true; } catch(Throwable $e){}
 }
 if($q!==''){
   $qConds = ["cid LIKE :q"];
   if($hasCol('extra_info')){ $qConds[] = "extra_info LIKE :q"; }
+  if($hasCol('award_title')){ $qConds[] = "award_title LIKE :q"; }
   $conds[] = '('.implode(' OR ',$qConds).')';
   $params[':q'] = "%$q%";
 }
@@ -93,6 +96,7 @@ if ($sort === 'status') {
     'issued_date' => 'tokens.issued_date',
     'created_at' => 'tokens.created_at',
     'lookup_count' => 'tokens.lookup_count',
+    'award_title' => 'tokens.award_title',
   ];
   $col = $map[$sort] ?? 'tokens.cid';
   $orderBy = "ORDER BY {$col} {$dir}";
@@ -109,12 +113,14 @@ if($hasTplIdCol && $hasTemplatesTable){
     $selTpl = ', t.id AS tpl_id'
       . ($tplHasName ? ', t.name AS tpl_name' : ', NULL AS tpl_name')
       . ($tplHasCode ? ', t.code AS tpl_code' : ', NULL AS tpl_code')
-      . ', o.code AS tpl_org_code';
+      . ', o.code AS tpl_org_code'
+      . ($tplHasAwardTitle ? ', t.award_title AS tpl_award_title' : ', NULL AS tpl_award_title');
   } else {
     $selTpl = ', t.id AS tpl_id'
       . ($tplHasName ? ', t.name AS tpl_name' : ', NULL AS tpl_name')
       . ($tplHasCode ? ', t.code AS tpl_code' : ', NULL AS tpl_code')
-      . ', NULL AS tpl_org_code';
+      . ', NULL AS tpl_org_code'
+      . ($tplHasAwardTitle ? ', t.award_title AS tpl_award_title' : ', NULL AS tpl_award_title');
   }
 }
 
@@ -129,6 +135,7 @@ if($hasCol('revoke_reason')) $selectParts[] = 'tokens.revoke_reason'; else $sele
 if($hasCol('created_at')) $selectParts[] = 'tokens.created_at'; else $selectParts[] = 'NULL AS created_at';
 if($hasCol('lookup_count')) $selectParts[] = 'tokens.lookup_count'; else $selectParts[] = '0 AS lookup_count';
 if($hasCol('last_lookup_at')) $selectParts[] = 'tokens.last_lookup_at'; else $selectParts[] = 'NULL AS last_lookup_at';
+if($hasCol('award_title')) $selectParts[] = 'tokens.award_title'; else $selectParts[] = "NULL AS award_title";
 $selCore = implode(', ',$selectParts);
 $rows = [];
 $total = 0;
@@ -184,6 +191,8 @@ try {
             'tpl_name'=>null,
             'tpl_code'=>null,
             'tpl_org_code'=>null,
+            'award_title'=>null,
+            'tpl_award_title'=>null,
           ];
         }
         unset($rr);
@@ -196,6 +205,7 @@ try {
 }
 $pages = max(1,(int)ceil($total/$perPage));
 $csrf = csrf_token();
+$showAwardCol = $hasCol('award_title') || ($hasTemplatesTable && $tplHasAwardTitle);
 
 function sort_arrow($column, $currentSort, $currentDir) {
     if ($column === $currentSort) {
@@ -280,18 +290,27 @@ function render_sort_arrow($column, $sort, $dir) {
         <span id="bulkStatus" class="fs-12"></span>
       </div>
     </div>
-    <table class="table">
+    <table class="table table--tokens">
       <thead>
         <tr>
-          <th><input type="checkbox" id="chkAll"></th>
-          <th><a href="#" class="sort<?= sort_arrow('cid', $sort, $dir) ?>" data-sort="cid">CID <?= render_sort_arrow('cid', $sort, $dir) ?></a></th>
+          <th class="col-select"><input type="checkbox" id="chkAll"></th>
+          <th class="col-cid"><a href="#" class="sort<?= sort_arrow('cid', $sort, $dir) ?>" data-sort="cid">CID <?= render_sort_arrow('cid', $sort, $dir) ?></a></th>
           <th><a href="#" class="sort<?= sort_arrow('extra_info', $sort, $dir) ?>" data-sort="extra_info">Дод. інформація <?= render_sort_arrow('extra_info', $sort, $dir) ?></a></th>
+          <?php if($showAwardCol): ?>
+            <th>
+              <?php if($hasCol('award_title')): ?>
+                <a href="#" class="sort<?= sort_arrow('award_title', $sort, $dir) ?>" data-sort="award_title">Назва нагороди <?= render_sort_arrow('award_title', $sort, $dir) ?></a>
+              <?php else: ?>
+                Назва нагороди
+              <?php endif; ?>
+            </th>
+          <?php endif; ?>
           <th><a href="#" class="sort<?= sort_arrow('issued_date', $sort, $dir) ?>" data-sort="issued_date">Дата <?= render_sort_arrow('issued_date', $sort, $dir) ?></a></th>
           <th><a href="#" class="sort<?= sort_arrow('created_at', $sort, $dir) ?>" data-sort="created_at">Створено <?= render_sort_arrow('created_at', $sort, $dir) ?></a></th>
           <?php if($hasTplIdCol && $hasTemplatesTable): ?><th>Шаблон</th><?php endif; ?>
           <th><a href="#" class="sort<?= sort_arrow('status', $sort, $dir) ?>" data-sort="status">Статус <?= render_sort_arrow('status', $sort, $dir) ?></a></th>
-          <th title="Кількість перевірок / остання"><a href="#" class="sort<?= sort_arrow('lookup_count', $sort, $dir) ?>" data-sort="lookup_count">Перевірок <?= render_sort_arrow('lookup_count', $sort, $dir) ?></a></th>
-          <th></th>
+          <th class="col-count" title="Кількість перевірок / остання"><a href="#" class="sort<?= sort_arrow('lookup_count', $sort, $dir) ?>" data-sort="lookup_count">Перевірок <?= render_sort_arrow('lookup_count', $sort, $dir) ?></a></th>
+          <th class="col-actions"></th>
         </tr>
       </thead>
       <tbody>
@@ -300,11 +319,20 @@ function render_sort_arrow($column, $sort, $dir) {
             $issuedDisplay = format_display_date($r['issued_date'] ?? null) ?? ($r['issued_date'] ?? '');
             $createdDisplay = format_display_datetime($r['created_at'] ?? null, true) ?? ($r['created_at'] ?? '');
             $lastLookupDisplay = format_display_datetime($r['last_lookup_at'] ?? null, true);
+            $awardDisplay = '';
+            if(isset($r['award_title']) && trim((string)$r['award_title']) !== ''){
+              $awardDisplay = trim((string)$r['award_title']);
+            } elseif(!empty($r['tpl_award_title'])) {
+              $awardDisplay = trim((string)$r['tpl_award_title']);
+            }
           ?>
   <tr class="<?= $r['revoked_at'] ? 'row-revoked':'' ?>" data-cid="<?= htmlspecialchars($r['cid']) ?>" data-created="<?= htmlspecialchars($createdDisplay) ?>" data-status="<?= $r['revoked_at'] ? 'revoked':'active' ?>">
-          <td><input type="checkbox" class="rowChk" value="<?= htmlspecialchars($r['cid']) ?>"></td>
-          <td class="mono fs-12"><a class="link-plain" href="/token.php?cid=<?= urlencode($r['cid']) ?>"><?= htmlspecialchars($r['cid']) ?></a></td>
+    <td class="col-select"><input type="checkbox" class="rowChk" value="<?= htmlspecialchars($r['cid']) ?>"></td>
+    <td class="mono fs-12 col-cid"><a class="link-plain" href="/token.php?cid=<?= urlencode($r['cid']) ?>"><?= htmlspecialchars($r['cid']) ?></a></td>
           <td><?= htmlspecialchars($r['extra_info'] ?? '') ?></td>
+          <?php if($showAwardCol): ?>
+            <td><?= htmlspecialchars($awardDisplay !== '' ? $awardDisplay : 'Нагорода') ?></td>
+          <?php endif; ?>
           <td><?= htmlspecialchars($issuedDisplay) ?></td>
           <td><?= htmlspecialchars($createdDisplay) ?></td>
           <?php if($hasTplIdCol && $hasTemplatesTable): ?>
@@ -318,14 +346,14 @@ function render_sort_arrow($column, $sort, $dir) {
               <?php endif; ?>
             </td>
           <?php endif; ?>
-          <td>
+          <td data-role="status-cell">
             <?php if($r['revoked_at']): ?>
               <span class="badge badge-danger" title="<?= htmlspecialchars($r['revoke_reason'] ?? '') ?>">Відкликано</span>
             <?php else: ?>
               <span class="badge badge-success">Активний</span>
             <?php endif; ?>
           </td>
-          <td class="fs-11 nowrap">
+          <td class="fs-11 nowrap col-count">
             <?= (int)($r['lookup_count'] ?? 0) ?>
             <?php if($lastLookupDisplay): ?>
               <br><span class="text-muted" title="Остання перевірка (UTC)"><?= htmlspecialchars($lastLookupDisplay) ?></span>
@@ -333,7 +361,7 @@ function render_sort_arrow($column, $sort, $dir) {
               <br><span class="text-muted">—</span>
             <?php endif; ?>
           </td>
-          <td><a class="btn btn-light btn-sm" href="/token.php?cid=<?= urlencode($r['cid']) ?>">Деталі</a></td>
+          <td class="col-actions"><a class="btn btn-light btn-sm" href="/token.php?cid=<?= urlencode($r['cid']) ?>">Деталі</a></td>
         </tr>
       <?php endforeach; ?>
       </tbody>

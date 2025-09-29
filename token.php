@@ -30,12 +30,18 @@ if(!empty($row['h'] ?? null)){
 $hasTplCol = false;
 $tplInfo = null;
 $tplLabel = null;
+$hasTplAward = false;
 try {
   $c = $pdo->query("SHOW COLUMNS FROM tokens LIKE 'template_id'");
   if($c && $c->fetch()){
     $hasTplCol = true;
     if(!empty($row['template_id'])){
-      $s = $pdo->prepare("SELECT t.id, t.name, t.code, o.code AS org_code FROM templates t LEFT JOIN organizations o ON o.id = t.org_id WHERE t.id = ?");
+      try {
+        $tplAwardCol = $pdo->query("SHOW COLUMNS FROM templates LIKE 'award_title'");
+        if($tplAwardCol && $tplAwardCol->fetch()){ $hasTplAward = true; }
+      } catch (Throwable $ie) { /* noop */ }
+      $tplAwardSelect = $hasTplAward ? ', t.award_title' : ', NULL AS award_title';
+      $s = $pdo->prepare("SELECT t.id, t.name, t.code, o.code AS org_code{$tplAwardSelect} FROM templates t LEFT JOIN organizations o ON o.id = t.org_id WHERE t.id = ?");
       $s->execute([$row['template_id']]);
       $tplInfo = $s->fetch(PDO::FETCH_ASSOC) ?: null;
       if($tplInfo){
@@ -45,6 +51,19 @@ try {
     }
   }
 } catch (Throwable $e) { /* noop */ }
+$hasTokenAward = false;
+try {
+  $tokAwardCol = $pdo->query("SHOW COLUMNS FROM tokens LIKE 'award_title'");
+  if($tokAwardCol && $tokAwardCol->fetch()){ $hasTokenAward = true; }
+} catch (Throwable $e) { /* noop */ }
+
+$awardTitle = '';
+if($hasTokenAward && isset($row['award_title']) && trim((string)$row['award_title']) !== ''){
+  $awardTitle = trim((string)$row['award_title']);
+} elseif($tplInfo && isset($tplInfo['award_title']) && trim((string)$tplInfo['award_title']) !== '') {
+  $awardTitle = trim((string)$tplInfo['award_title']);
+}
+if($awardTitle === ''){ $awardTitle = 'Нагорода'; }
 ?>
 <section class="section">
   <h2 class="mt-0 flex flex-wrap gap-8 align-center">Нагорода (CID): <span class="mono"><?= htmlspecialchars($row['cid']) ?></span>
@@ -58,6 +77,7 @@ try {
   <div class="card maxw-760">
     <div class="details-grid">
       <div><strong>Версія</strong></div><div><?= (int)$row['version'] ?></div>
+  <div><strong>Назва нагороди</strong></div><div><?= htmlspecialchars($awardTitle) ?></div>
   <div><strong>Додаткова інформація</strong></div><div><?= htmlspecialchars($row['extra_info'] ?? '') ?></div>
   <div><strong>Дата видачі</strong></div><div><?= htmlspecialchars($issuedDateDisplay ?? '') ?></div>
   <div><strong>Створено (UTC)</strong></div><div><?= htmlspecialchars($createdAtDisplay ?? '') ?></div>

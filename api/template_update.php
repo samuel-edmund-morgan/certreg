@@ -157,6 +157,15 @@ if(array_key_exists('status',$_POST)){
     if($status !== strtolower($row['status'])){ $updates[]='status=?'; $params[]=$status; }
 }
 
+// award_title (<=160, default fallback)
+if(array_key_exists('award_title', $_POST)){
+    $award = trim((string)$_POST['award_title']);
+    if($award === ''){ $award = 'Нагорода'; }
+    if(mb_strlen($award) > 160) jfail('award_title_too_long');
+    if(!array_key_exists('award_title', $row)) jfail('schema_mismatch');
+    if($award !== $row['award_title']){ $updates[]='award_title=?'; $params[]=$award; }
+}
+
 // Файл (опційно)
 if(isset($_FILES['template_file']) && ($_FILES['template_file']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE){
     $f = $_FILES['template_file'];
@@ -242,7 +251,7 @@ if($fileReplaced){
 
 // Повернути оновлений рядок
 try {
-    $st=$pdo->prepare('SELECT id,org_id,name,code,status,filename,file_ext,file_hash,file_size,width,height,version,created_at,updated_at,coords FROM templates WHERE id=? LIMIT 1');
+    $st=$pdo->prepare('SELECT id,org_id,name,award_title,code,status,filename,file_ext,file_hash,file_size,width,height,version,created_at,updated_at,coords FROM templates WHERE id=? LIMIT 1');
     $st->execute([$id]);
     $tpl=$st->fetch(PDO::FETCH_ASSOC);
     if(!$tpl) jfail('not_found_post');

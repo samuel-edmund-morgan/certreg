@@ -35,7 +35,10 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     if($action==='rename'){
       $name=trim($_POST['name'] ?? '');
       if($name===''||mb_strlen($name)>160){ header('Location: template.php?id='.$id.'&msg=badname'); exit; }
-      $pdo->prepare('UPDATE templates SET name=?, updated_at=NOW() WHERE id=? LIMIT 1')->execute([$name,$id]);
+      $awardTitleRaw = trim($_POST['award_title'] ?? '');
+      $awardTitle = $awardTitleRaw !== '' ? $awardTitleRaw : 'Нагорода';
+      if(mb_strlen($awardTitle) > 160){ header('Location: template.php?id='.$id.'&msg=badaward'); exit; }
+      $pdo->prepare('UPDATE templates SET name=?, award_title=?, updated_at=NOW() WHERE id=? LIMIT 1')->execute([$name,$awardTitle,$id]);
       header('Location: template.php?id='.$id.'&msg=renamed'); exit;
     } elseif($action==='toggle') {
       $st2=$pdo->prepare('SELECT status FROM templates WHERE id=? LIMIT 1');
@@ -124,18 +127,19 @@ $coordsEditorJsVer = @filemtime($_SERVER['DOCUMENT_ROOT'].'/assets/js/template_c
 require_once __DIR__.'/header.php';
 $msg = $_GET['msg'] ?? '';
 ?>
-<section class="section" data-template-id="<?= (int)$row['id'] ?>" data-template-org="<?= (int)$row['org_id'] ?>" data-template-width="<?= $tplWidth ?>" data-template-height="<?= $tplHeight ?>" data-template-original="<?= $tplOriginalEsc ?>" data-template-preview="<?= $tplPreviewEsc ?>">
+<section class="section" data-template-id="<?= (int)$row['id'] ?>" data-template-org="<?= (int)$row['org_id'] ?>" data-template-width="<?= $tplWidth ?>" data-template-height="<?= $tplHeight ?>" data-template-original="<?= $tplOriginalEsc ?>" data-template-preview="<?= $tplPreviewEsc ?>" data-template-award="<?= htmlspecialchars($row['award_title'] ?? '') ?>">
   <h1 class="mt-0">Шаблон #<?= htmlspecialchars($row['id']) ?></h1>
   <p class="fs-14 text-muted maxw-760">Управління окремим шаблоном. <a href="/settings.php?tab=templates" class="link-accent">← Повернутися до списку</a></p>
   <?php if($msg): ?><div class="mb-12 fs-13"><?php
-  $map=[ 'renamed'=>'Назву змінено','toggled'=>'Статус змінено','replaced'=>'Файл оновлено','deleted'=>'Видалено','badname'=>'Некоректна назва','badid'=>'ID не збігається','nofile'=>'Файл не надано','upload'=>'Помилка завантаження','invalid'=>'Невалідний upload','filesize'=>'Розмір файлу не підходить','badext'=>'Погане розширення','notimg'=>'Не зображення','dim'=>'Неприпустимі розміри','badstatus'=>'Неможливо змінити статус (невідомий або заборонений)','in_use'=>'Шаблон використовується у вже виданих нагородах — видалення заблоковано.','err'=>'Внутрішня помилка','unknown'=>'Невідома дія' ];
+  $map=[ 'renamed'=>'Назви оновлено','toggled'=>'Статус змінено','replaced'=>'Файл оновлено','deleted'=>'Видалено','badname'=>'Некоректна назва шаблону','badaward'=>'Некоректна назва нагороди','badid'=>'ID не збігається','nofile'=>'Файл не надано','upload'=>'Помилка завантаження','invalid'=>'Невалідний upload','filesize'=>'Розмір файлу не підходить','badext'=>'Погане розширення','notimg'=>'Не зображення','dim'=>'Неприпустимі розміри','badstatus'=>'Неможливо змінити статус (невідомий або заборонений)','in_use'=>'Шаблон використовується у вже виданих нагородах — видалення заблоковано.','err'=>'Внутрішня помилка','unknown'=>'Невідома дія' ];
     echo htmlspecialchars($map[$msg] ?? $msg);
   ?></div><?php endif; ?>
   <?php if($err==='db'): ?><div class="alert alert-error">Помилка БД.</div><?php else: ?>
   <div class="details-grid mb-24">
     <div>ID</div><div class="mono"><?= (int)$row['id'] ?></div>
     <div>Орг</div><div class="mono"><?= (int)$row['org_id'] ?></div>
-    <div>Назва</div><div class="mono"><?= htmlspecialchars($row['name']) ?></div>
+  <div>Назва шаблону</div><div class="mono"><?= htmlspecialchars($row['name']) ?></div>
+  <div>Назва нагороди</div><div class="mono"><?= htmlspecialchars($row['award_title'] ?? '') ?></div>
     <div>Код</div><div class="mono"><code><?= htmlspecialchars($row['code']) ?></code></div>
     <div>Статус</div><div><?php
       $statusMap = [ 'active'=>['label'=>'активний','cls'=>'badge-status-active'], 'inactive'=>['label'=>'неактивний','cls'=>'badge-status-inactive'], 'archived'=>['label'=>'архівований','cls'=>'badge-status-archived'] ];
@@ -177,6 +181,7 @@ $msg = $_GET['msg'] ?? '';
         <div class="coords-editor__field">
           <label for="coordsFieldSelect">Поле</label>
           <select id="coordsFieldSelect">
+            <option value="award">Назва нагороди</option>
             <option value="name">ПІБ</option>
             <option value="id">CID</option>
             <option value="extra">Додаткова інформація</option>
@@ -195,6 +200,21 @@ $msg = $_GET['msg'] ?? '';
           <input type="number" id="coordsFieldSize" step="1" min="1" max="5000">
           <label for="coordsFieldAngle" class="coords-editor__angle">Кут</label>
           <input type="number" id="coordsFieldAngle" class="coords-editor__angle" step="1" min="-360" max="360">
+        </div>
+        <div class="coords-editor__toggles" id="coordsStyleToggles">
+          <label class="coords-editor__toggle">
+            <input type="checkbox" id="coordsFieldBold">
+            <span>Жирний</span>
+          </label>
+          <label class="coords-editor__toggle">
+            <input type="checkbox" id="coordsFieldItalic">
+            <span>Курсив</span>
+          </label>
+        </div>
+        <div class="coords-editor__color" id="coordsColorRow">
+          <label for="coordsFieldColor">Колір тексту</label>
+          <input type="color" id="coordsFieldColor" value="#1f2937">
+          <button type="button" class="btn btn-xs btn-light" id="coordsFieldColorReset">Скинути</button>
         </div>
         <div class="coords-editor__hint fs-12 text-muted" id="coordsEditorHint"></div>
       </div>
@@ -216,8 +236,11 @@ $msg = $_GET['msg'] ?? '';
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
     <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
     <input type="hidden" name="action" value="rename">
-    <label>Нова назва
-      <input type="text" name="name" required maxlength="160" placeholder="<?= htmlspecialchars($row['name']) ?>">
+    <label>Нова назва шаблону
+      <input type="text" name="name" required maxlength="160" value="<?= htmlspecialchars($row['name']) ?>" placeholder="<?= htmlspecialchars($row['name']) ?>">
+    </label>
+    <label>Назва нагороди (відображається на сертифікаті)
+      <input type="text" name="award_title" maxlength="160" value="<?= htmlspecialchars($row['award_title'] ?? '') ?>" placeholder="<?= htmlspecialchars($row['award_title'] ?? 'Нагорода') ?>">
     </label>
     <button class="btn btn-primary" type="submit">Змінити назву</button>
   </form>

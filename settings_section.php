@@ -159,7 +159,8 @@ switch($tab){
             .'<form id="templateCreateForm" class="form tpl-create-form" method="post" action="/api/template_create.php" enctype="multipart/form-data" autocomplete="off">'
             .'<input type="hidden" name="_csrf" value="'.htmlspecialchars($csrfTpl).'" />'
             .'<div class="tpl-create-grid">'
-                .'<label>Назва<br><input type="text" name="name" required maxlength="160" placeholder="Template name" /></label>'
+                .'<label>Назва шаблону<br><input type="text" name="name" required maxlength="160" placeholder="Template name" /></label>'
+                .'<label>Назва нагороди<br><input type="text" name="award_title" maxlength="160" placeholder="Нагорода" value="Нагорода" /></label>'
                 .(is_admin() ? '<label>Організація<br><select name="org_id" id="tplOrgSelect" required aria-label="Виберіть організацію"><option value="">Завантаження...</option></select></label>' : '')
                 .'<details class="tpl-adv"><summary class="fs-12 link-accent">Додатково (code)</summary><label>Code<br><input type="text" name="code" pattern="[A-Za-z0-9_-]{2,60}" maxlength="60" placeholder="(auto)" /></label><p class="fs-12 text-muted mt-4">Якщо залишити порожнім – згенерується T<ID>.</p></details>'
                 .'<label>Файл (JPG/PNG/WEBP ≤15MB)<br><input type="file" name="template_file" accept="image/jpeg,image/png,image/webp" required /></label>'

@@ -167,6 +167,32 @@ try {
     echo "FK exists for tokens.template_id -> templates (skipped)\n";
   }
 
+  // 3. Award title support
+  if(columnExists($pdo,'templates','award_title')){
+    echo "Column exists: templates.award_title (skipped)\n";
+  } else {
+    $pdo->exec("ALTER TABLE templates ADD COLUMN award_title VARCHAR(160) NOT NULL DEFAULT 'Нагорода'");
+    echo "Added column templates.award_title\n";
+  }
+  if(columnExists($pdo,'tokens','award_title')){
+    echo "Column exists: tokens.award_title (skipped)\n";
+  } else {
+    $pdo->exec("ALTER TABLE tokens ADD COLUMN award_title VARCHAR(160) NOT NULL DEFAULT 'Нагорода'");
+    echo "Added column tokens.award_title\n";
+  }
+  if(columnExists($pdo,'tokens','template_id') && columnExists($pdo,'tokens','award_title') && columnExists($pdo,'templates','award_title')){
+    $rows = $pdo->exec("UPDATE tokens t JOIN templates tpl ON tpl.id = t.template_id SET t.award_title = tpl.award_title WHERE t.award_title = 'Нагорода' AND tpl.award_title <> 'Нагорода'");
+    if($rows === false){
+      echo "Warning: award_title backfill query failed\n";
+    } elseif($rows > 0){
+      echo "Backfilled tokens.award_title from templates ({$rows} rows)\n";
+    } else {
+      echo "No award_title backfill required\n";
+    }
+  } else {
+    echo "Skipping award_title backfill (dependencies missing)\n";
+  }
+
   if($pdo->inTransaction()){
     $pdo->commit();
   } else {
