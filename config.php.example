@@ -15,7 +15,7 @@ return [
 
     // === Branding defaults (can be overridden by DB branding_settings and per-organization rows) ===
     // Multiline site name: use literal \n to force line break in header (replaced with <br>)
-    'site_name' => "Реєстр нагород\n Національної академії Служби безпеки України",
+    'site_name' => "Валідатор нагород\n Назва Організації",
     'logo_path' => '/assets/logo.png',
     'favicon_path' => '/assets/favicon.ico',
     // Base certificate background (operators may later pick org-specific / template-specific once implemented)

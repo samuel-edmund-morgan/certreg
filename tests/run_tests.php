@@ -2,11 +2,55 @@
 // Lightweight test harness (no PHPUnit) to capture current working behavior as a baseline.
 // Run via: php tests/run_tests.php
 
+ob_start();
+register_shutdown_function(function(){ if(ob_get_level()>0){ @ob_end_flush(); } });
+putenv('CERTREG_TEST_MODE=1');
+$_ENV['CERTREG_TEST_MODE'] = '1';
+$_SERVER['CERTREG_TEST_MODE'] = '1';
+
 require_once __DIR__.'/../auth.php';
 require_once __DIR__.'/../db.php';
 
 function assert_true($cond, $msg){
   if(!$cond){ echo "[FAIL] $msg\n"; exit(1);} else { echo "[OK] $msg\n"; }
+}
+function assert_same($expected, $actual, $msg){
+  if($expected !== $actual){
+    echo "[FAIL] $msg (expected ".var_export($expected,true)." got ".var_export($actual,true).")\n";
+    exit(1);
+  }
+  echo "[OK] $msg\n";
+}
+
+function api_register(array $payload){
+  global $pdo;
+  $prevRequest = $_SERVER['REQUEST_METHOD'] ?? null;
+  $prevContent = $_SERVER['CONTENT_TYPE'] ?? null;
+  $prevAccept  = $_SERVER['HTTP_ACCEPT'] ?? null;
+  $prevToken   = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+  $_SERVER['REQUEST_METHOD'] = 'POST';
+  $_SERVER['CONTENT_TYPE'] = 'application/json';
+  $_SERVER['HTTP_ACCEPT'] = 'application/json';
+  $_SERVER['REMOTE_ADDR'] = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+  $_POST = [];
+  $_SESSION['csrf'] = bin2hex(random_bytes(16));
+  $_SERVER['HTTP_X_CSRF_TOKEN'] = $_SESSION['csrf'];
+  $_SESSION['admin_id'] = $_SESSION['admin_id'] ?? 1;
+  $_SESSION['admin_user'] = $_SESSION['admin_user'] ?? 'admin_test';
+  $_SESSION['admin_role'] = $_SESSION['admin_role'] ?? 'admin';
+  $_SESSION['org_id'] = $_SESSION['org_id'] ?? null;
+  $GLOBALS['__TEST_JSON_BODY'] = json_encode($payload, JSON_UNESCAPED_UNICODE);
+  ob_start();
+  include __DIR__.'/../api/register.php';
+  $raw = ob_get_clean();
+  unset($GLOBALS['__TEST_JSON_BODY']);
+  $code = http_response_code();
+  if($code === false){ $code = 200; }
+  if($prevRequest !== null) $_SERVER['REQUEST_METHOD'] = $prevRequest; else unset($_SERVER['REQUEST_METHOD']);
+  if($prevContent !== null) $_SERVER['CONTENT_TYPE'] = $prevContent; else unset($_SERVER['CONTENT_TYPE']);
+  if($prevAccept !== null) $_SERVER['HTTP_ACCEPT'] = $prevAccept; else unset($_SERVER['HTTP_ACCEPT']);
+  if($prevToken !== null) $_SERVER['HTTP_X_CSRF_TOKEN'] = $prevToken; else unset($_SERVER['HTTP_X_CSRF_TOKEN']);
+  return [$code, json_decode($raw, true)];
 }
 
 // 1. Ensure schema columns exist (tokens)
@@ -15,19 +59,43 @@ foreach(['cid','h','version','issued_date','created_at','lookup_count','last_loo
   assert_true(in_array($c,$cols,true),"tokens column $c present");
 }
 
-// 2. Use register API (simulated internal include) to create token (emulates POST JSON)
+// 2. Use реальний register API (через include) для створення токена
 $cid = 'T'.bin2hex(random_bytes(4));
 $h = bin2hex(random_bytes(32));
 $extra_info='TEST-EXTRA'; $issued=date('Y-m-d'); $valid='4000-01-01';
-$_SERVER['REQUEST_METHOD']='POST';
-$_SESSION['admin_id']=1; $_SESSION['admin_user']='admin_test';
-$payload = json_encode(['cid'=>$cid,'v'=>3,'h'=>$h,'extra_info'=>$extra_info,'date'=>$issued,'valid_until'=>$valid]);
-// Inject JSON body for register
-file_put_contents(sys_get_temp_dir().'/__req_body.json',$payload);
-// Monkey patch php://input via stream wrapper not trivial; instead directly call DB insert like API would already validated.
-$stmt = $pdo->prepare("INSERT INTO tokens (cid,version,h,extra_info,issued_date,valid_until) VALUES (?,?,?,?,?,?)");
-$stmt->execute([$cid,3,$h,$extra_info,$issued,$valid]);
-assert_true($pdo->lastInsertId()>0,'register token row (simulated)');
+$award='Тестова нагорода';
+[$status,$resp] = api_register([
+  'cid'=>$cid,
+  'v'=>4,
+  'h'=>$h,
+  'extra_info'=>$extra_info,
+  'date'=>$issued,
+  'valid_until'=>$valid,
+  'award_title'=>$award
+]);
+assert_same(200, $status, 'register status code 200');
+assert_true(is_array($resp) && ($resp['ok'] ?? null) === true, 'register ok flag true');
+$row = $pdo->prepare('SELECT * FROM tokens WHERE cid=? LIMIT 1');
+$row->execute([$cid]);
+$tokenRow = $row->fetch(PDO::FETCH_ASSOC);
+assert_true($tokenRow !== false, 'token persisted via API');
+if(array_key_exists('award_title', $tokenRow)){
+  assert_same($award, $tokenRow['award_title'], 'award title stored');
+} else {
+  echo "[INFO] tokens.award_title column missing – пропущено перевірку\n";
+}
+
+// 2b. Перевірка конфлікту при повторній реєстрації того самого CID
+[$statusConflict,$respConflict] = api_register([
+  'cid'=>$cid,
+  'v'=>4,
+  'h'=>bin2hex(random_bytes(32)),
+  'date'=>$issued,
+  'valid_until'=>$valid,
+  'award_title'=>$award
+]);
+assert_same(409, $statusConflict, 'register duplicate status 409');
+assert_same('conflict', $respConflict['error'] ?? null, 'register conflict error code');
 
 // 3. Call status endpoint internally
 $_GET['cid']=$cid; ob_start(); include __DIR__.'/../api/status.php'; $json = ob_get_clean();
@@ -35,6 +103,11 @@ $data = json_decode($json,true);
 assert_true(isset($data['exists']) && $data['exists']===true,'status exists true');
 assert_true($data['h']===$h,'status hash matches');
 assert_true(isset($data['valid_until']) && $data['valid_until']===$valid,'valid_until matches');
+if(array_key_exists('award_title', $data)){
+  assert_same($award, $data['award_title'], 'status exposes award title');
+} else {
+  echo "[INFO] status API без award_title (пропуск перевірки)\n";
+}
 
 // 4. Revoke via direct DB + audit events (create + revoke)
 $pdo->prepare("INSERT INTO token_events (cid,event_type) VALUES (?,?)")->execute([$cid,'create']);

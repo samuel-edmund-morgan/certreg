@@ -69,16 +69,28 @@
   function bindStatic(){
     if(!table) return;
     table.querySelectorAll('th.sortable').forEach(th=>{
+      if(th.dataset.boundSort) return;
+      th.dataset.boundSort='1';
       th.addEventListener('click',()=>{
         const s=th.getAttribute('data-sort');
         if(state.sort===s){ state.dir = state.dir==='ASC'?'DESC':'ASC'; } else { state.sort=s; state.dir='ASC'; }
         state.page=1; load();
       });
     });
-    if(searchBtn) searchBtn.addEventListener('click',()=>{ state.q=searchInput.value.trim(); state.page=1; load(); });
-    if(resetBtn) resetBtn.addEventListener('click',()=>{ searchInput.value=''; state.q=''; state.page=1; load(); });
-    if(searchInput) searchInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); state.q=searchInput.value.trim(); state.page=1; load(); }});
-    if(createForm){
+    if(searchBtn && !searchBtn.dataset.boundClick){
+      searchBtn.dataset.boundClick='1';
+      searchBtn.addEventListener('click',()=>{ state.q=searchInput.value.trim(); state.page=1; load(); });
+    }
+    if(resetBtn && !resetBtn.dataset.boundClick){
+      resetBtn.dataset.boundClick='1';
+      resetBtn.addEventListener('click',()=>{ searchInput.value=''; state.q=''; state.page=1; load(); });
+    }
+    if(searchInput && !searchInput.dataset.boundEnter){
+      searchInput.dataset.boundEnter='1';
+      searchInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); state.q=searchInput.value.trim(); state.page=1; load(); }});
+    }
+    if(createForm && !createForm.dataset.boundSubmit){
+      createForm.dataset.boundSubmit='1';
       createForm.addEventListener('submit', async e=>{
         e.preventDefault(); const btn=document.getElementById('orgCreateBtn'); const st=document.getElementById('orgCreateStatus');
         st.textContent='Збереження...'; btn.disabled=true;
@@ -130,7 +142,10 @@
     resetBtn=document.getElementById('orgResetBtn');
     createForm=document.getElementById('orgCreateForm');
     bindStatic();
-    if(table) table.addEventListener('click', onTableClick);
+    if(table && !table.dataset.boundClick){
+      table.dataset.boundClick='1';
+      table.addEventListener('click', onTableClick);
+    }
     load();
   }
 

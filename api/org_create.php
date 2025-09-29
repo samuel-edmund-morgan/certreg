@@ -16,7 +16,7 @@ $supportContact = trim($_POST['support_contact'] ?? '');
 $errors=[];
 if($name==='') $errors['name']='empty';
 if($code==='') $errors['code']='empty';
-if($code!=='' && !preg_match('/^[A-Z0-9_-]{2,32}$/',$code)) $errors['code']='format';
+if($code!=='' && !preg_match('/^[A-Z0-9_\-]{2,32}$/',$code)) $errors['code']='format';
 
 function norm_hex_org($v){
   $v=trim($v); if($v==='') return '';

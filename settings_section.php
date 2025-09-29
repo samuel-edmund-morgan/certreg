@@ -7,7 +7,9 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/db.php';
 // Enforces admin access.
 require_admin();
 
-header('Content-Type: text/html; charset=utf-8');
+if(!headers_sent()){
+    header('Content-Type: text/html; charset=utf-8');
+}
 
 $tab = $_GET['tab'] ?? 'branding';
 
@@ -102,7 +104,7 @@ switch($tab){
                     <input class="input" type="text" name="name" required maxlength="255" placeholder="Назва організації">
                 </label>'
                 .'<label>Код (immutable)
-                    <input class="input" type="text" name="code" required pattern="[A-Z0-9_-]{2,32}" maxlength="32" placeholder="ACME">
+                    <input class="input" type="text" name="code" required pattern="[A-Z0-9_\-]{2,32}" maxlength="32" placeholder="ACME">
                 </label>'
                 .'<label>Primary колір
                     <div class="flex gap-8 align-center color-field">'
@@ -162,7 +164,7 @@ switch($tab){
                 .'<label>Назва шаблону<br><input type="text" name="name" required maxlength="160" placeholder="Template name" /></label>'
                 .'<label>Назва нагороди<br><input type="text" name="award_title" maxlength="160" placeholder="Нагорода" value="Нагорода" /></label>'
                 .(is_admin() ? '<label>Організація<br><select name="org_id" id="tplOrgSelect" required aria-label="Виберіть організацію"><option value="">Завантаження...</option></select></label>' : '')
-                .'<details class="tpl-adv"><summary class="fs-12 link-accent">Додатково (code)</summary><label>Code<br><input type="text" name="code" pattern="[A-Za-z0-9_-]{2,60}" maxlength="60" placeholder="(auto)" /></label><p class="fs-12 text-muted mt-4">Якщо залишити порожнім – згенерується T<ID>.</p></details>'
+                .'<details class="tpl-adv"><summary class="fs-12 link-accent">Додатково (code)</summary><label>Code<br><input type="text" name="code" pattern="[A-Za-z0-9_\-]{2,60}" maxlength="60" placeholder="(auto)" /></label><p class="fs-12 text-muted mt-4">Якщо залишити порожнім – згенерується T<ID>.</p></details>'
                 .'<label>Файл (JPG/PNG/WEBP ≤15MB)<br><input type="file" name="template_file" accept="image/jpeg,image/png,image/webp" required /></label>'
                 .'<div class="tpl-actions"><button class="btn btn-primary" type="submit" id="tplCreateBtn">Створити</button><span id="tplCreateStatus" class="fs-12 text-muted ml-8" aria-live="polite"></span></div>'
             .'</div>'

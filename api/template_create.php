@@ -52,7 +52,7 @@ if($isAdmin){
 // Optional code (user supplied)
 $code = trim($_POST['code'] ?? '');
 if($code !== ''){
-    if(!preg_match('~^[A-Za-z0-9_-]{2,60}$~', $code)) json_fail('bad_code');
+    if(!preg_match('~^[A-Za-z0-9_\-]{2,60}$~', $code)) json_fail('bad_code');
 }
 
 // File validation

@@ -38,9 +38,9 @@ Thumbs.db
 ehthumbs.db
 Icon?
 
-assets/logo.png
-assets/favicon.ico
-files/cert_template.jpg
+#assets/logo.png
+#assets/favicon.ico
+#files/cert_template.jpg
 
 # Node / Playwright test artifacts
 node_modules/
