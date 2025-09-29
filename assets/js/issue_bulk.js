@@ -39,7 +39,6 @@
   if(!form) return; // if page not present
   const tableBody = document.querySelector('#bulkTable tbody');
   const addRowBtn = document.getElementById('addRowBtn');
-  const pasteBtn = document.getElementById('pasteMultiBtn');
   const clearAllBtn = document.getElementById('clearAllBtn');
   const generateBtn = document.getElementById('bulkGenerateBtn');
   const retryBtn = document.getElementById('bulkRetryBtn');
@@ -165,6 +164,13 @@
   function normAwardTitle(s){
     return String(s||'').normalize('NFC').replace(/\s+/g,' ').trim();
   }
+  function resolveBulkAwardTitle(){
+    const bulkSpecific = (typeof window!=='undefined' && typeof window.__BULK_AWARD_TITLE === 'string') ? window.__BULK_AWARD_TITLE : '';
+    const active = (typeof window!=='undefined' && typeof window.__ACTIVE_AWARD_TITLE === 'string') ? window.__ACTIVE_AWARD_TITLE : '';
+    const raw = bulkSpecific || active || '';
+    const normalized = normAwardTitle(raw);
+    return normalized || 'Нагорода';
+  }
   function hasMixedRisk(raw){
   // Original heuristic flagged certain Latin letters that visually resemble Cyrillic.
   // This proved over-aggressive in tests where short Latin prefixes (e.g., 'Dbg') precede Cyrillic tokens.
@@ -255,25 +261,12 @@
   }
   addRowBtn.addEventListener('click', ()=>addRow());
   clearAllBtn.addEventListener('click', ()=>{ if(!rows.length) return; if(!confirm('Очистити усі рядки?')) return; rows=[]; tableBody.innerHTML=''; updateGenerateState(); resultsBox.classList.add('d-none'); resultsBox.innerHTML=''; });
-  pasteBtn.addEventListener('click', ()=>{
-    const txt = prompt('Вставте список:\nКожен рядок: ПІБ');
-    if(!txt) return;
-    const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-    lines.forEach(line=>{
-      if(rows.length>=MAX_ROWS) return;
-      let name=line;
-      addRow(name);
-    });
-    updateGenerateState();
-  });
 
   const infiniteCb = form.querySelector('input[name="infinite"]');
   const validUntilInput = form.querySelector('input[name="valid_until"]');
   const validWrap = document.getElementById('bulkValidUntilWrap');
   const extraInput = form.querySelector('input[name="extra"]');
-  const awardInput = form.querySelector('input[name="award_title"]');
-  function syncBulkHints(){ /* placeholder for future award-specific hints */ }
-  if(extraInput){ extraInput.addEventListener('input', ()=>{ syncBulkHints(); updateGenerateState(); }); setTimeout(syncBulkHints,0); }
+  if(extraInput){ extraInput.addEventListener('input', ()=>{ updateGenerateState(); }); }
   function syncExpiry(){
     if(infiniteCb.checked){ validUntilInput.disabled=true; validUntilInput.value=''; validWrap.classList.add('hidden-slot'); }
     else { validUntilInput.disabled=false; validWrap.classList.remove('hidden-slot'); }
@@ -301,9 +294,7 @@
     function clearWatch(){ try { clearInterval(watchdog); } catch(_e){} }
   const extra = (form.extra && typeof form.extra.value === 'string') ? form.extra.value.trim() : '';
     const effectiveExtra = extra || (TEST_MODE ? 'Bulk Crypto' : '');
-    const awardRaw = awardInput ? awardInput.value : '';
-    let awardTitle = normAwardTitle(awardRaw);
-    if(!awardTitle){ awardTitle = 'Нагорода'; }
+  const awardTitle = resolveBulkAwardTitle();
     if(awardTitle.length > 160){ alert('Назва нагороди занадто довга (максимум 160 символів).'); return; }
     const date = form.date.value;
     const infinite = form.infinite.checked;
@@ -633,6 +624,11 @@
     // In test mode ensure ticket exists; if not yet, retry shortly (race safety)
   // In updated test mode flow we skip waiting for a ticket: manual click occurs after rows OK; if a ticket exists (single-row path) we'll fulfill it, otherwise we proceed to direct POST/GET fallback below.
     const date=form.date.value; const infinite=form.infinite.checked; const validUntil=infinite?INFINITE_SENTINEL:(form.valid_until.value||'');
+    let selectedSize = null;
+    try {
+      selectedSize = resolvePageSizeSelection();
+    } catch(_ignored){}
+    if(!selectedSize) selectedSize = currentPageSize;
     ensureBg(()=>{
       // Sequentially render each to same canvas and capture JPEG buffers
   let activeCanvas = getRenderCanvas();
@@ -644,7 +640,7 @@
             const data = {
               ver: VERSION,
               pib: normName(r.name),
-              award_title: r.award_title || normAwardTitle(awardInput ? awardInput.value : '') || 'Нагорода',
+              award_title: r.award_title || resolveBulkAwardTitle(),
               cid: r.cid,
               extra: (r.extra||''),
               date,
@@ -666,7 +662,7 @@
         if(pages.length && pages.length < okRows.length){
           while(pages.length < okRows.length){ pages.push(pages[pages.length-1]); }
         }
-  const pdfBytes = buildMultiPagePdfFromJpegs(pages, activeCanvas.width, activeCanvas.height);
+  const pdfBytes = buildMultiPagePdfFromJpegs(pages, activeCanvas.width, activeCanvas.height, selectedSize);
   const blob = new Blob([pdfBytes], {type:'application/pdf'});
   try { logBulk && logBulk('batchPdf.size', {bytes: pdfBytes.length, pages: pages.length, avgPageBytes: pages.length? Math.round(pdfBytes.length/pages.length) : 0}); } catch(_e){}
         if(window.__TEST_MODE){
@@ -699,7 +695,7 @@
       })();
     });
   }
-  function buildMultiPagePdfFromJpegs(jpegByteArrays, W, H){
+  function buildMultiPagePdfFromJpegs(jpegByteArrays, imageWidth, imageHeight, pageSize){
     // Rebuild implementation: correct stream objects & XObject naming (/Im0,/Im1,...)
     const enc = s=> new TextEncoder().encode(s);
     let parts=[]; const offsets=[]; let pos=0;
@@ -709,24 +705,34 @@
     const pagesNum = 2;
     let nextObj = 3; // next free object number
     const imageObjNums=[]; const pageObjNums=[];
+    const imgW = Number.isFinite(imageWidth) && imageWidth > 0 ? imageWidth : 1000;
+    const imgH = Number.isFinite(imageHeight) && imageHeight > 0 ? imageHeight : 700;
+    const pageWidth = (pageSize && Number.isFinite(pageSize.widthPt) && pageSize.widthPt > 0) ? pageSize.widthPt : imgW;
+    const pageHeight = (pageSize && Number.isFinite(pageSize.heightPt) && pageSize.heightPt > 0) ? pageSize.heightPt : imgH;
+    const rawScale = Math.min(pageWidth / imgW, pageHeight / imgH);
+    const scaleFactor = (Number.isFinite(rawScale) && rawScale > 0) ? rawScale : 1;
+    const drawWidth = imgW * scaleFactor;
+    const drawHeight = imgH * scaleFactor;
+    const offsetX = (pageWidth - drawWidth) / 2;
+    const offsetY = (pageHeight - drawHeight) / 2;
     // Image objects
     jpegByteArrays.forEach((bytes)=>{
       const num = nextObj++;
       offsets[num]=pos; push(`${num} 0 obj\n`);
-      push(`<< /Type /XObject /Subtype /Image /Width ${W} /Height ${H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`);
+      push(`<< /Type /XObject /Subtype /Image /Width ${formatPdfNumber(imgW)} /Height ${formatPdfNumber(imgH)} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`);
       push(bytes); push(`\nendstream\nendobj\n`);
       imageObjNums.push(num);
     });
     // For each page: content + page object
     jpegByteArrays.forEach((_,i)=>{
       const imgObj = imageObjNums[i];
-      const contentStream = `q\n${W} 0 0 ${H} 0 0 cm\n/Im${i} Do\nQ`;
+      const contentStream = `q\n${formatPdfNumber(drawWidth)} 0 0 ${formatPdfNumber(drawHeight)} ${formatPdfNumber(offsetX)} ${formatPdfNumber(offsetY)} cm\n/Im${i} Do\nQ`;
       const contentBytes = enc(contentStream);
       const contentNum = nextObj++;
       offsets[contentNum]=pos; push(`${contentNum} 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n${contentStream}\nendstream\nendobj\n`);
       const pageNum = nextObj++;
       pageObjNums.push(pageNum);
-      offsets[pageNum]=pos; push(`${pageNum} 0 obj\n<< /Type /Page /Parent ${pagesNum} 0 R /Resources << /XObject << /Im${i} ${imgObj} 0 R >> /ProcSet [/PDF /ImageC] >> /MediaBox [0 0 ${W} ${H}] /Contents ${contentNum} 0 R >>\nendobj\n`);
+      offsets[pageNum]=pos; push(`${pageNum} 0 obj\n<< /Type /Page /Parent ${pagesNum} 0 R /Resources << /XObject << /Im${i} ${imgObj} 0 R >> /ProcSet [/PDF /ImageC] >> /MediaBox [0 0 ${formatPdfNumber(pageWidth)} ${formatPdfNumber(pageHeight)}] /Contents ${contentNum} 0 R >>\nendobj\n`);
     });
     // Pages tree
     offsets[pagesNum]=pos; push(`${pagesNum} 0 obj\n<< /Type /Pages /Kids [${pageObjNums.map(n=>n+' 0 R').join(' ')}] /Count ${pageObjNums.length} >>\nendobj\n`);
@@ -777,6 +783,9 @@
       };
       if(typeof window!=='undefined'){ window.__ACTIVE_TEMPLATE_META = bulkTemplateMeta; }
       ensureBulkCanvasSize(document.getElementById(BULK_CANVAS_ID));
+    }
+    if(Object.prototype.hasOwnProperty.call(ev.detail,'award_title')){
+      try { window.__BULK_AWARD_TITLE = ev.detail.award_title || ''; } catch(_e){}
     }
     if(ev.detail.path){
       bulkBgImg = null;
@@ -1009,7 +1018,7 @@
   const data = {
     ver: VERSION,
     pib: normName(r.name),
-    award_title: r.award_title || normAwardTitle(awardInput ? awardInput.value : '') || 'Нагорода',
+  award_title: r.award_title || resolveBulkAwardTitle(),
     cid: r.cid,
     extra,
     date,

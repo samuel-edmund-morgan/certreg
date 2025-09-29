@@ -1,101 +1,22 @@
 # CertReg Roadmap
 
-## Vision
-Побудувати мультиорганізаційну платформу видачі та верифікації нагород із гнучким брендуванням, шаблонами сертифікатів, аудитом дій та можливістю масштабування для інтеграцій.
+## 1. Повне тестове покриття
+- **Інвентаризація коду**: системно пройти всі файли (PHP, JS, CSS, Playwright-сценарії), задокументувати призначення кожної функції, endpoint-а, CLI-скрипту й допоміжного модуля.
+- **PHP тести**: розширити `tests/` та CLI-скрипти, щоб охопити кожну гілку логіки (API, helper-и, cron, self-check, security guard-и). Відмітити необхідні фікстури/моки БД.
+- **Playwright E2E**: побудувати сценарії, що проходять через усі критичні UI-флоу (видача, bulk, revoke/unrevoke, verify, org-switch, налаштування, tokens CRUD, безпекові перевірки).
+- **Coverage tooling**: додати звіти для PHP (Xdebug/pcov) та Playwright trace/video, автоматизувати контроль порогу покриття.
+- **CI інтеграція**: оновити GitHub Actions для запуску всіх тестів (PHP + Playwright) на PR, з кешуванням залежностей та завантаженням артефактів (coverage, trace, screenshots).
 
----
-## Phase 1: Template System (High Priority)
-### 1.1 DB & Schema
-- [x] Create `templates` table (org scoped, status enum, file metadata, coords JSON, versioning fields)
-- [x] Alter `tokens` add `template_id` FK (ON DELETE SET NULL)
+## 2. Гайд з розгортання
+- **Локальне середовище**: описати prerequisites (версії PHP/MySQL, Node, Composer, npm), послідовність встановлення залежностей та конфігурацію `config.php`.
+- **Підготовка БД**: задокументувати міграції, seed-дані, скрипти `scripts/` та перевірки (`self_check.php`).
+- **Dev/Prod сценарії**: створити покрокові інструкції для запуску локально, у Docker/контейнерах (якщо плануємо), та рекомендації для продакшену (Nginx, HTTPS, cron, backups).
+- **Troubleshooting**: додати типові помилки й способи усунення, включно з налаштуванням тестового режиму `CERTREG_TEST_MODE`.
+- **Перевірка інструкції**: виконати гайд на чистій машині/VM, зафіксувати неточності й одразу їх виправити.
 
-### 1.2 Backend CRUD APIs
-- [x] `api/template_create.php` – upload file, validate, store metadata, generate preview
-- [x] `api/template_update.php` – update name/coords, optional file replace
-- [x] `api/template_delete.php` – delete template, nullify references
-- [x] `api/template_toggle.php` – switch active/inactive
-- [x] Extend `templates_list.php` – full metadata + minimal mode
-
-### 1.3 UI & Editor
-- [x] Templates tab in `settings.php`
-- [x] `template.php` detail page (basic manage: rename/toggle/replace/delete)
-- [x] JS coords editor (canvas + drag/drop, property panel, save)
-- [x] Preview generation pipeline
-
-### 1.4 Issuance Integration
-- [x] Template select in single & bulk issuance
-- [x] Persist `template_id` with token
-- [x] Org ownership validation
-- [x] Coordinate-based render (image/PDF step)
-- [x] README section: Templates
-
----
-## Phase 2: Issuance Enhancements (High Priority)
-### 2.1 Batch PDF Generation
-- [x] PDF/ZIP pipeline
-- [x] Real-time progress indicator
-- [x] Memory/stream optimizations
-- [x] Page size options (A4/Letter/Custom)
-
-
----
-## Phase 4: UX Improvements (Low Priority)
-
-### 4.1 Interface Enhancements
-- [ ] Mobile layout refinements
-
-
----
-### Technical Debt & Foundations
-- [ ] Unified API error format `{ ok:false, error, message }`
-- [ ] Central validation helpers (lengths, patterns, file checks)
-- [ ] Query/index optimization pass
-- [ ] Architecture / security / API docs expansion
-- [ ] Automated test cadence (document required php tests/run_tests.php & Playwright suites per release)
-- [x] Basic smoke & unit tests (template CRUD)
-
----
-## Data Structures (Draft)
-### templates.coords JSON element example:
-```json
-{
-  "field": "recipient_name",
-  "x": 420,
-  "y": 690,
-  "size": 48,
-  "font": "Montserrat",
-  "align": "center",
-  "color": "#102d4e"
-}
-```
-Potential future keys: `max_width`, `uppercase`, `letter_spacing`.
-
----
-## File Layout (Proposed)
-```
-files/
-  templates/
-    {org_id}/
-      {template_id}/
-        original.{ext}
-        preview.jpg
-```
-
----
-## API Response Standard
-Success:
-```json
-{ "ok": true, "data": { /* ... */ } }
-```
-Error:
-```json
-{ "ok": false, "error": "CODE", "message": "Human readable" }
-```
-
----
-## Changelog Anchor
-Maintain updates here when milestones are completed.
-
----
-## Notes
-This roadmap is a living document; adjust as priorities shift or constraints emerge.
+## 3. Адаптивний дизайн (мобільна версія)
+- **Аудит інтерфейсів**: скласти список сторінок/компонентів, що потребують адаптивності (dashboard, tokens, issue, verify, settings, auth).
+- **Дизайн-система**: визначити breakpoints, гнучкі сітки, типографіку та поведінку таблиць/форм на малих екранах.
+- **Реалізація**: поступово впроваджувати mobile-first стилі у `assets/css/styles.css`, оновлювати JS-логіку (таби, таблиці, popover-и).
+- **Тестування**: перевірити макети на реальних пристроях/емуляторах, додати Playwright viewport-тести (mobile Chrome/Safari профілі).
+- **Документація**: описати нові класи й патерни у стилгайді, оновити скріншоти/гайди.

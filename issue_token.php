@@ -149,9 +149,6 @@ $coords = $cfg['coords'] ?? [];
         <label class="minw-200 flex-1">Додаткова інформація (спільна, необов’язково)
           <input type="text" name="extra" placeholder="напр., Номінація — Стійкість" maxlength="255">
         </label>
-        <label class="minw-200 flex-1">Назва нагороди (спільна)
-          <input type="text" name="award_title" id="bulkAwardTitleInput" maxlength="160" value="Нагорода" placeholder="Нагорода">
-        </label>
       </fieldset>
       <div class="flex flex-wrap gap-12 align-center" id="bulkExpiryWrap">
         <label class="flex mb-0 gap-6 align-center nowrap fs-13"><input type="checkbox" name="infinite" checked> <span>Безтерміновий</span></label>
@@ -166,7 +163,6 @@ $coords = $cfg['coords'] ?? [];
         </table>
         <div class="flex gap-8 mt-8 flex-wrap">
           <button type="button" class="btn" id="addRowBtn">+ Рядок</button>
-          <button type="button" class="btn" id="pasteMultiBtn">Вставити список</button>
           <button type="button" class="btn" id="clearAllBtn">Очистити</button>
         </div>
       </div>

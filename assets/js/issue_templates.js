@@ -123,7 +123,7 @@
       applyAwardValue('awardTitleDisplay', awardTitle);
     } else if(sel === bulkSel){
       window.__BULK_TEMPLATE_COORDS = coords;
-      applyAwardValue('bulkAwardTitleInput', awardTitle);
+      window.__BULK_AWARD_TITLE = awardTitle;
     }
     window.__ACTIVE_TEMPLATE_COORDS = coords;
     window.__ACTIVE_TEMPLATE_META = meta;
