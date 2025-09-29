@@ -46,6 +46,10 @@
   const progressHint = document.getElementById('bulkProgressHint');
   if(progressHint){ progressHint.setAttribute('aria-live','polite'); }
   const resultsBox = document.getElementById('bulkResults');
+  const pageSizeSelect = document.getElementById('bulkPageSizeSelect');
+  const pageSizeCustomWrap = document.getElementById('bulkCustomPageSize');
+  const pageSizeWidthInput = document.getElementById('bulkPageWidth');
+  const pageSizeHeightInput = document.getElementById('bulkPageHeight');
   // Prefer values provided via header <body data-*>; fall back to legacy globals, then safe defaults
   const INFINITE_SENTINEL = (document.body && document.body.dataset && document.body.dataset.inf) || window.__INFINITE_SENTINEL || '4000-01-01';
   const ORG_RAW = (document.body && document.body.dataset && document.body.dataset.org) || window.__ORG_CODE || 'ORG-CERT';
@@ -77,6 +81,49 @@
     width: normalizeDimension(metaSeed.width),
     height: normalizeDimension(metaSeed.height)
   };
+  function mmToPt(mm){ const num = Number(mm); return Number.isFinite(num) ? (num * 72) / 25.4 : null; }
+  function inToPt(inch){ const num = Number(inch); return Number.isFinite(num) ? num * 72 : null; }
+  const PAGE_SIZE_PRESETS = {
+    'a4-landscape': { widthPt: mmToPt(297), heightPt: mmToPt(210), label: 'A4 landscape' },
+    'a4-portrait': { widthPt: mmToPt(210), heightPt: mmToPt(297), label: 'A4 portrait' },
+    'letter-landscape': { widthPt: inToPt(11), heightPt: inToPt(8.5), label: 'Letter landscape' },
+    'letter-portrait': { widthPt: inToPt(8.5), heightPt: inToPt(11), label: 'Letter portrait' }
+  };
+  function formatPdfNumber(n){
+    if(!Number.isFinite(n)) return '0';
+    if(Math.abs(n) < 1e-6) return '0';
+    return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+  }
+  function toggleCustomPageSize(){
+    if(!pageSizeSelect || !pageSizeCustomWrap) return;
+    if(pageSizeSelect.value === 'custom') pageSizeCustomWrap.classList.remove('is-hidden');
+    else pageSizeCustomWrap.classList.add('is-hidden');
+  }
+  if(pageSizeSelect){
+    pageSizeSelect.addEventListener('change', toggleCustomPageSize);
+    toggleCustomPageSize();
+  }
+  function extractCustomPageSize(){
+    if(!pageSizeWidthInput || !pageSizeHeightInput) return null;
+    const wMm = Number(pageSizeWidthInput.value);
+    const hMm = Number(pageSizeHeightInput.value);
+    if(!Number.isFinite(wMm) || wMm <= 0 || !Number.isFinite(hMm) || hMm <= 0) return null;
+    const wPt = mmToPt(wMm);
+    const hPt = mmToPt(hMm);
+    if(!wPt || !hPt) return null;
+    return { widthPt: wPt, heightPt: hPt, label: `Custom ${wMm}×${hMm} мм` };
+  }
+  function resolvePageSizeSelection({ requireValid } = {}){
+    if(!pageSizeSelect) return null;
+    const choice = pageSizeSelect.value || 'auto';
+    if(choice === 'auto') return null;
+    if(PAGE_SIZE_PRESETS[choice]) return PAGE_SIZE_PRESETS[choice];
+    const custom = extractCustomPageSize();
+    if(custom) return custom;
+    if(requireValid){ throw new Error('Для власного формату потрібно задати ширину та висоту (мм).'); }
+    return null;
+  }
+  let currentPageSize = null;
   function getActiveCoords(){
     if(typeof window !== 'undefined'){
       try {
@@ -423,6 +470,14 @@
   generateBtn.addEventListener('click', ()=>{
     const target = rows.filter(r=>r.status==='idle' || r.status==='error');
     if(!target.length) return;
+    let pageSizeChoice = null;
+    try {
+      pageSizeChoice = resolvePageSizeSelection({ requireValid: true });
+    } catch(err){
+      alert(err.message || 'Невірно заданий формат PDF.');
+      return;
+    }
+    currentPageSize = pageSizeChoice;
     logBulk('click.generate', {count: target.length, test: !!window.__TEST_MODE});
     try { window.__BULK_CLICK_COUNT = (window.__BULK_CLICK_COUNT||0)+1; } catch(_e){}
   // Multi-row test mode no longer auto-creates a ticket; manual Batch PDF click will generate + download.
@@ -433,7 +488,16 @@
     setTimeout(()=>processRows(target),0);
   });
   retryBtn.addEventListener('click', ()=>{
-    const target = rows.filter(r=>r.status==='error'); if(!target.length) return; processRows(target);
+    const target = rows.filter(r=>r.status==='error'); if(!target.length) return;
+    let pageSizeChoice = null;
+    try {
+      pageSizeChoice = resolvePageSizeSelection({ requireValid: true });
+    } catch(err){
+      alert(err.message || 'Невірно заданий формат PDF.');
+      return;
+    }
+    currentPageSize = pageSizeChoice;
+    processRows(target);
   });
 
   // Defer first row until we know if bulk tab is shown first; if bulk already active, bootstrap immediately.
@@ -836,17 +900,32 @@
     const jpegDataUrl = canvas.toDataURL('image/jpeg',0.92);
     const b64 = jpegDataUrl.split(',')[1];
     const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
-    const W=canvas.width,H=canvas.height;
-    const contentStream = `q\n${W} 0 0 ${H} 0 0 cm\n/Im0 Do\nQ`;
+    let selectedSize = null;
+    try {
+      selectedSize = resolvePageSizeSelection();
+    } catch(_ignored){}
+    if(!selectedSize) selectedSize = currentPageSize;
+  const canvasWidth = canvas.width;
+  const canvasHeight = canvas.height;
+  const targetWidth = (selectedSize && Number.isFinite(selectedSize.widthPt)) ? selectedSize.widthPt : canvasWidth;
+  const targetHeight = (selectedSize && Number.isFinite(selectedSize.heightPt)) ? selectedSize.heightPt : canvasHeight;
+  const scaleFactor = Math.min(targetWidth / canvasWidth, targetHeight / canvasHeight);
+  const drawWidth = canvasWidth * (Number.isFinite(scaleFactor) && scaleFactor > 0 ? scaleFactor : 1);
+  const drawHeight = canvasHeight * (Number.isFinite(scaleFactor) && scaleFactor > 0 ? scaleFactor : 1);
+  const offsetX = (targetWidth - drawWidth) / 2;
+  const offsetY = (targetHeight - drawHeight) / 2;
+  const imageWidth = canvasWidth;
+  const imageHeight = canvasHeight;
+    const contentStream = `q\n${formatPdfNumber(drawWidth)} 0 0 ${formatPdfNumber(drawHeight)} ${formatPdfNumber(offsetX)} ${formatPdfNumber(offsetY)} cm\n/Im0 Do\nQ`;
     const enc = s=> new TextEncoder().encode(s);
     let parts=[]; const offsets=[]; let pos=0;
     function push(x){ if(typeof x==='string'){ const b=enc(x); parts.push(b); pos+=b.length; } else { parts.push(x); pos+=x.length; } }
     push('%PDF-1.4\n%âãÏÓ\n');
     function obj(n,body){ offsets[n]=pos; push(`${n} 0 obj\n${body}\nendobj\n`); }
-    obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
-    obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-    obj(3,`<< /Type /Page /Parent 2 0 R /Resources << /XObject << /Im0 4 0 R >> /ProcSet [/PDF /ImageC] >> /MediaBox [0 0 ${W} ${H}] /Contents 5 0 R >>`);
-    offsets[4]=pos; push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${W} /Height ${H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`); push(bytes); push(`\nendstream\nendobj\n`);
+  obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+  obj(3,`<< /Type /Page /Parent 2 0 R /Resources << /XObject << /Im0 4 0 R >> /ProcSet [/PDF /ImageC] >> /MediaBox [0 0 ${formatPdfNumber(targetWidth)} ${formatPdfNumber(targetHeight)}] /Contents 5 0 R >>`);
+  offsets[4]=pos; push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${formatPdfNumber(imageWidth)} /Height ${formatPdfNumber(imageHeight)} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`); push(bytes); push(`\nendstream\nendobj\n`);
     const contentBytes = enc(contentStream);
     obj(5,`<< /Length ${contentBytes.length} >>\nstream\n${contentStream}\nendstream`);
     const xrefOffset = pos; const objCount=6; let xref='xref\n0 '+objCount+'\n'; xref+='0000000000 65535 f \n';

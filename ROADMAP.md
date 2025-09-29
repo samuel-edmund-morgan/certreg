@@ -35,7 +35,7 @@
 - [x] PDF/ZIP pipeline
 - [x] Real-time progress indicator
 - [x] Memory/stream optimizations
-- [ ] Page size options (A4/Letter/Custom)
+- [x] Page size options (A4/Letter/Custom)
 
 
 ---

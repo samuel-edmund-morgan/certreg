@@ -24,6 +24,10 @@
   const canvas = document.getElementById('certCanvas');
   const ctx = canvas.getContext('2d');
   const awardDisplay = document.getElementById('awardTitleDisplay');
+  const pageSizeSelect = document.getElementById('pageSizeSelect');
+  const pageSizeCustomWrap = document.getElementById('customPageSize');
+  const pageSizeWidthInput = document.getElementById('pageSizeWidth');
+  const pageSizeHeightInput = document.getElementById('pageSizeHeight');
   function escapeHtml(str){
     return String(str==null?'':str).replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s]));
   }
@@ -36,6 +40,54 @@
     width: normalizeDimension(metaSeed.width),
     height: normalizeDimension(metaSeed.height)
   };
+  function mmToPt(mm){ const num = Number(mm); return Number.isFinite(num) ? (num * 72) / 25.4 : null; }
+  function inToPt(inch){ const num = Number(inch); return Number.isFinite(num) ? num * 72 : null; }
+  const PAGE_SIZE_PRESETS = {
+    'a4-landscape': { widthPt: mmToPt(297), heightPt: mmToPt(210), label: 'A4 landscape' },
+    'a4-portrait': { widthPt: mmToPt(210), heightPt: mmToPt(297), label: 'A4 portrait' },
+    'letter-landscape': { widthPt: inToPt(11), heightPt: inToPt(8.5), label: 'Letter landscape' },
+    'letter-portrait': { widthPt: inToPt(8.5), heightPt: inToPt(11), label: 'Letter portrait' }
+  };
+  function formatPdfNumber(n){
+    if(!Number.isFinite(n)) return '0';
+    if(Math.abs(n) < 1e-6) return '0';
+    return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+  }
+  function toggleCustomSizeVisibility(){
+    if(!pageSizeSelect || !pageSizeCustomWrap) return;
+    if(pageSizeSelect.value === 'custom'){
+      pageSizeCustomWrap.classList.remove('is-hidden');
+    } else {
+      pageSizeCustomWrap.classList.add('is-hidden');
+    }
+  }
+  if(pageSizeSelect){
+    pageSizeSelect.addEventListener('change', toggleCustomSizeVisibility);
+    toggleCustomSizeVisibility();
+  }
+  function extractCustomSize(){
+    if(!pageSizeWidthInput || !pageSizeHeightInput) return null;
+    const wMm = Number(pageSizeWidthInput.value);
+    const hMm = Number(pageSizeHeightInput.value);
+    if(!Number.isFinite(wMm) || wMm <= 0 || !Number.isFinite(hMm) || hMm <= 0) return null;
+    const wPt = mmToPt(wMm);
+    const hPt = mmToPt(hMm);
+    if(!wPt || !hPt) return null;
+    return { widthPt: wPt, heightPt: hPt, label: `Custom ${wMm}×${hMm} мм` };
+  }
+  function resolveSelectedPdfSize({ requireValid } = {}){
+    if(!pageSizeSelect) return null;
+    const choice = pageSizeSelect.value || 'auto';
+    if(choice === 'auto') return null;
+    if(PAGE_SIZE_PRESETS[choice]) return PAGE_SIZE_PRESETS[choice];
+    const custom = extractCustomSize();
+    if(custom) return custom;
+    if(requireValid){
+      throw new Error('Для власного формату заповніть ширину та висоту (мм).');
+    }
+    return null;
+  }
+  let currentPdfSize = null;
   function deriveInitialAwardTitle(){
     const winVal = (typeof window !== 'undefined' && typeof window.__ACTIVE_AWARD_TITLE === 'string') ? window.__ACTIVE_AWARD_TITLE.trim() : '';
     if(winVal) return winVal;
@@ -263,6 +315,15 @@
       alert('У ПІБ виявлено можливі латинські символи: '+risk+' разом із кирилицею. Замініть їх кириличними аналогами (А, В, С, Е, Н, І, К, М, О, Р, Т, Х, У).');
       return;
     }
+    let pdfSizeSelection = null;
+    try {
+      pdfSizeSelection = resolveSelectedPdfSize({ requireValid: true });
+    } catch(err){
+      alert(err.message || 'Неправильний формат розміру PDF.');
+      if(genBtn) genBtn.disabled = false;
+      return;
+    }
+    currentPdfSize = pdfSizeSelection;
   const pibNorm = normName(pibRaw); // normalized (uppercase) used in canonical
     let awardTitle = normAwardTitle(activeAwardTitle);
     if(!awardTitle){ awardTitle = 'Нагорода'; }
@@ -451,9 +512,21 @@
     const jpegDataUrl = canvas.toDataURL('image/jpeg',0.92); // includes QR + text
     const b64 = jpegDataUrl.split(',')[1];
     const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
-    const W = canvas.width; const H = canvas.height; // points (1:1)
-    // Content stream drawing image at full page
-    const contentStream = `q\n${W} 0 0 ${H} 0 0 cm\n/Im0 Do\nQ`;
+    let selectedSize = null;
+    try {
+      selectedSize = resolveSelectedPdfSize();
+    } catch(_ignored){}
+    if(!selectedSize) selectedSize = currentPdfSize;
+    const targetWidth = (selectedSize && Number.isFinite(selectedSize.widthPt)) ? selectedSize.widthPt : canvas.width;
+    const targetHeight = (selectedSize && Number.isFinite(selectedSize.heightPt)) ? selectedSize.heightPt : canvas.height;
+    const scaleFactor = Math.min(targetWidth / canvas.width, targetHeight / canvas.height);
+    const drawWidth = canvas.width * (Number.isFinite(scaleFactor) && scaleFactor > 0 ? scaleFactor : 1);
+    const drawHeight = canvas.height * (Number.isFinite(scaleFactor) && scaleFactor > 0 ? scaleFactor : 1);
+  const offsetX = (targetWidth - drawWidth) / 2;
+  const offsetY = (targetHeight - drawHeight) / 2;
+  const imageWidth = canvas.width;
+  const imageHeight = canvas.height;
+    const contentStream = `q\n${formatPdfNumber(drawWidth)} 0 0 ${formatPdfNumber(drawHeight)} ${formatPdfNumber(offsetX)} ${formatPdfNumber(offsetY)} cm\n/Im0 Do\nQ`;
     const enc = (s)=> new TextEncoder().encode(s);
     // Build objects incrementally collecting offsets
     let parts = [];
@@ -466,12 +539,12 @@
     push(header);
     function obj(n, body){ offsets[n]=position; push(`${n} 0 obj\n${body}\nendobj\n`); }
     // Will insert image & content separately due to binary streams
-    obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
-    obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-    obj(3,`<< /Type /Page /Parent 2 0 R /Resources << /XObject << /Im0 4 0 R >> /ProcSet [/PDF /ImageC] >> /MediaBox [0 0 ${W} ${H}] /Contents 5 0 R >>`);
+  obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+  obj(3,`<< /Type /Page /Parent 2 0 R /Resources << /XObject << /Im0 4 0 R >> /ProcSet [/PDF /ImageC] >> /MediaBox [0 0 ${formatPdfNumber(targetWidth)} ${formatPdfNumber(targetHeight)}] /Contents 5 0 R >>`);
     // Image object (4)
     offsets[4]=position;
-    push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${W} /Height ${H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`);
+  push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${formatPdfNumber(imageWidth)} /Height ${formatPdfNumber(imageHeight)} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`);
     push(bytes);
     push(`\nendstream\nendobj\n`);
     // Content object (5)
@@ -557,6 +630,14 @@
       toggleDetails.textContent='Показати технічні деталі';
     }
   });
-  resetBtn.addEventListener('click', ()=>{ form.reset(); resultWrap.classList.add('d-none'); advancedBlock.classList.add('d-none'); toggleDetails.classList.add('d-none'); toggleDetails.textContent='Показати технічні деталі'; });
+  resetBtn.addEventListener('click', ()=>{
+    form.reset();
+    currentPdfSize = null;
+    toggleCustomSizeVisibility();
+    resultWrap.classList.add('d-none');
+    advancedBlock.classList.add('d-none');
+    toggleDetails.classList.add('d-none');
+    toggleDetails.textContent='Показати технічні деталі';
+  });
   // No course/grade in v3-only model
 })();

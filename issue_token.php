@@ -35,6 +35,30 @@ $coords = $cfg['coords'] ?? [];
       <input type="hidden" id="templateIdHidden" name="template_id" value="">
       <span class="fs-12 text-muted">Попередній перегляд фонового зображення оновиться при виборі. Якщо список порожній — використовується стандартний глобальний шаблон.</span>
     </label>
+    <fieldset class="page-size-fieldset">
+      <legend class="fw-600 fs-14">Розмір сторінки PDF</legend>
+      <div class="page-size-row">
+        <label class="page-size-field">Формат
+          <select id="pageSizeSelect" name="page_size">
+            <option value="auto" selected>Авто (за шаблоном)</option>
+            <option value="a4-landscape">A4 — ландшафт (297×210 мм)</option>
+            <option value="a4-portrait">A4 — портрет (210×297 мм)</option>
+            <option value="letter-landscape">Letter — ландшафт (279×216 мм)</option>
+            <option value="letter-portrait">Letter — портрет (216×279 мм)</option>
+            <option value="custom">Власний розмір…</option>
+          </select>
+        </label>
+        <div id="customPageSize" class="page-size-custom is-hidden">
+          <label class="page-size-field">Ширина (мм)
+            <input type="number" id="pageSizeWidth" min="50" max="1000" step="1" placeholder="297" inputmode="decimal">
+          </label>
+          <label class="page-size-field">Висота (мм)
+            <input type="number" id="pageSizeHeight" min="50" max="1000" step="1" placeholder="210" inputmode="decimal">
+          </label>
+        </div>
+      </div>
+      <p class="fs-12 text-muted mt-4">Налаштування впливає лише на геометрію PDF. Зображення сертифіката масштабується пропорційно, без обрізання.</p>
+    </fieldset>
     <div>
       <div class="fw-600">Назва нагороди</div>
       <div id="awardTitleDisplay" class="fs-14 mt-4" data-award-title="Нагорода">Нагорода</div>
@@ -94,6 +118,30 @@ $coords = $cfg['coords'] ?? [];
           <option>(Завантаження...)</option>
         </select>
       </label>
+      <fieldset class="page-size-fieldset">
+        <legend class="fw-600 fs-14">Розмір сторінки PDF</legend>
+        <div class="page-size-row">
+          <label class="page-size-field">Формат
+            <select id="bulkPageSizeSelect" name="page_size_bulk">
+              <option value="auto" selected>Авто (за шаблоном)</option>
+              <option value="a4-landscape">A4 — ландшафт (297×210 мм)</option>
+              <option value="a4-portrait">A4 — портрет (210×297 мм)</option>
+              <option value="letter-landscape">Letter — ландшафт (279×216 мм)</option>
+              <option value="letter-portrait">Letter — портрет (216×279 мм)</option>
+              <option value="custom">Власний розмір…</option>
+            </select>
+          </label>
+          <div id="bulkCustomPageSize" class="page-size-custom is-hidden">
+            <label class="page-size-field">Ширина (мм)
+              <input type="number" id="bulkPageWidth" min="50" max="1000" step="1" placeholder="297" inputmode="decimal">
+            </label>
+            <label class="page-size-field">Висота (мм)
+              <input type="number" id="bulkPageHeight" min="50" max="1000" step="1" placeholder="210" inputmode="decimal">
+            </label>
+          </div>
+        </div>
+        <p class="fs-12 text-muted mt-4">Обраний формат застосовується до всіх PDF у пакеті. При кастомному розмірі задайте ширину та висоту в міліметрах.</p>
+      </fieldset>
   <fieldset class="flex flex-wrap gap-12">
         <label class="minw-200">Дата проходження
           <input type="date" name="date" required>

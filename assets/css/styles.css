@@ -359,6 +359,14 @@ main{flex:1}
   .expiry-row{display:flex;align-items:center;gap:14px;min-height:38px;flex-wrap:nowrap}
   .expiry-row .expiry-slot{transition:opacity .18s ease, visibility .18s ease;}
   .hidden-slot{opacity:0;visibility:hidden;pointer-events:none;position:relative}
+  .page-size-fieldset{border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:#fff;margin:6px 0 8px}
+  .page-size-fieldset legend{padding:0 6px}
+  .page-size-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .page-size-field{display:flex;flex-direction:column;gap:6px;min-width:180px}
+  .page-size-field select,
+  .page-size-field input{padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:14px}
+  .page-size-custom{display:flex;flex-wrap:wrap;gap:12px}
+  .is-hidden{display:none!important}
   /* Reserve width so layout doesn't shift when showing date input */
   #validUntilWrap{width:170px}
   #validUntilWrap input[type=date]{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:14px}
