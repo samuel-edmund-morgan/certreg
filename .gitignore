@@ -41,6 +41,10 @@ Icon?
 #assets/logo.png
 #assets/favicon.ico
 #files/cert_template.jpg
+files/branding/*
+files/templates/*
+!files/branding/.gitkeep
+!files/templates/.gitkeep
 
 # Node / Playwright test artifacts
 node_modules/

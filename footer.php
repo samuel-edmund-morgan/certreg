@@ -7,7 +7,7 @@
 			$year = date('Y');
 			$footerText = $cfg['footer_text'] ?? '';
 			$supportContact = $cfg['support_contact'] ?? '';
-			if($footerText===''){ $footerText = "Національна академія СБУ"; }
+			if($footerText===''){ $footerText = "Назва Організації"; }
 			// Auto prepend © YEAR if user omitted
 			$displayFooter = (preg_match('/^©/u',$footerText) ? $footerText : '© '.$year.' '.$footerText);
 			$displayFooter = htmlspecialchars($displayFooter, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -53,7 +53,7 @@
 					<span><?= $supportDisplay ?></span>
 				<?php endif; ?>
 			<?php else: ?>
-				Підтримка: <a href="tel:+380445277690">527-76-90</a>
+				Підтримка: <a href="tel:+380444444444">444-44-44</a>
 			<?php endif; ?>
 		</div>
 	</div>

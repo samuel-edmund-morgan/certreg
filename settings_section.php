@@ -73,7 +73,7 @@ function render_branding_section(PDO $pdo, array $cfg){
             <input type="file" name="favicon_file" accept="image/x-icon,image/png,image/svg+xml">
         </div>
         <label>Текст у футері (© ...)
-            <input type="text" name="footer_text" placeholder="© <?= date('Y') ?> Національна академія СБУ" value="<?= htmlspecialchars($branding['footer_text'] ?? '') ?>" maxlength="255">
+            <input type="text" name="footer_text" placeholder="© <?= date('Y') ?> Назва Організації" value="<?= htmlspecialchars($branding['footer_text'] ?? '') ?>" maxlength="255">
             <span class="fs-12 text-muted">Якщо пусто – використається дефолт із конфігурації (рік оновлюється автоматично).</span>
         </label>
         <label>Контакт підтримки
